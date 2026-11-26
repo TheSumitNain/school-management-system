@@ -74,7 +74,7 @@ func (f *fakeStaffAccountRepository) EnableStaffAccount(_ context.Context, _, _,
 func TestStaffAccountServiceValidatesDirectoryFiltersAndPagination(t *testing.T) {
 	repo := &fakeStaffAccountRepository{}
 	service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
-	valid := models.StaffDirectoryFilter{Search: "  teacher  ", EmploymentStatus: "active", AccountStatus: "enabled", ProfileStatus: "complete", Limit: 50, Offset: 100}
+	valid := models.StaffDirectoryFilter{Search: "  teacher  ", StaffType: "teaching", EmploymentStatus: "active", AccountStatus: "enabled", ProfileStatus: "complete", Limit: 50, Offset: 100}
 	page, err := service.ListDirectoryPage(context.Background(), 31, 8, valid)
 	if err != nil || page == nil || page.Limit != 50 || page.Offset != 100 {
 		t.Fatalf("valid directory query failed: page=%+v err=%v", page, err)
@@ -82,7 +82,7 @@ func TestStaffAccountServiceValidatesDirectoryFiltersAndPagination(t *testing.T)
 	for _, invalid := range []models.StaffDirectoryFilter{
 		{Limit: 101}, {Limit: -1}, {Limit: 50, Offset: -1}, {Limit: 50, Offset: 1_000_001},
 		{Limit: 50, EmploymentStatus: "terminated"}, {Limit: 50, AccountStatus: "pending"},
-		{Limit: 50, ProfileStatus: "unknown"}, {Limit: 50, Search: strings.Repeat("x", 101)},
+		{Limit: 50, ProfileStatus: "unknown"}, {Limit: 50, StaffType: "other"}, {Limit: 50, Search: strings.Repeat("x", 101)},
 	} {
 		if _, err := service.ListDirectoryPage(context.Background(), 31, 8, invalid); err != ErrInvalidStaffAccount {
 			t.Fatalf("invalid directory filter %+v error=%v, want ErrInvalidStaffAccount", invalid, err)

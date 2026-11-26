@@ -13,6 +13,7 @@ func TestStaffDirectoryPaginationFiltersAndSchoolIsolationPostgresIntegration(t 
 	repo := NewUserRepository(fixture.pool)
 	suffix := fmt.Sprint(time.Now().UnixNano())
 	names := []string{"Directory Alpha", "Directory Beta", "Directory Gamma", "Directory Delta"}
+	staffTypes := []string{"teaching", "non_teaching", "teaching", "non_teaching"}
 	for i, name := range names {
 		username := fmt.Sprintf("directory-%s-%d", suffix, i)
 		var principalID int64
@@ -29,6 +30,11 @@ func TestStaffDirectoryPaginationFiltersAndSchoolIsolationPostgresIntegration(t 
 			VALUES ($1, $2, $3, $4, 'Office Staff', '9876543220', 'active')
 		`, principalID, fixture.schoolID, fmt.Sprintf("DIR-%s-%02d", suffix, i), name); err != nil {
 			t.Fatalf("create directory profile %q: %v", name, err)
+		}
+		if _, err := fixture.pool.Exec(fixture.ctx, `
+			UPDATE staff_profiles SET staff_type=$3 WHERE principal_id=$1 AND school_id=$2
+		`, principalID, fixture.schoolID, staffTypes[i]); err != nil {
+			t.Fatalf("set directory staff type %q: %v", name, err)
 		}
 	}
 	// A legacy login without a profile must be filterable as incomplete.
@@ -53,6 +59,11 @@ func TestStaffDirectoryPaginationFiltersAndSchoolIsolationPostgresIntegration(t 
 		VALUES ($1, $2, $3, 'Directory Inactive', 'Office Staff', '9876543221', 'active')
 	`, inactivePrincipalID, fixture.schoolID, "DIR-OFF-"+suffix); err != nil {
 		t.Fatalf("create inactive directory profile: %v", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		UPDATE staff_profiles SET staff_type='teaching' WHERE principal_id=$1 AND school_id=$2
+	`, inactivePrincipalID, fixture.schoolID); err != nil {
+		t.Fatalf("set inactive staff type: %v", err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `
 		UPDATE staff_profiles SET employment_status='inactive' WHERE principal_id=$1 AND school_id=$2
@@ -105,6 +116,16 @@ func TestStaffDirectoryPaginationFiltersAndSchoolIsolationPostgresIntegration(t 
 	if err != nil || disabledPage.Total != 1 || disabledPage.Staff[0].PrincipalID != inactivePrincipalID {
 		t.Fatalf("disabled-account filter mismatch: page=%+v err=%v", disabledPage, err)
 	}
+
+	teachingPage, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID, models.StaffDirectoryFilter{StaffType: "teaching", Limit: 50})
+	if err != nil || teachingPage.Total != 3 { t.Fatalf("teaching filter mismatch: %+v %v", teachingPage, err) }
+	nonTeachingPage, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID, models.StaffDirectoryFilter{StaffType: "non_teaching", Limit: 50})
+	if err != nil || nonTeachingPage.Total != 2 { t.Fatalf("non-teaching filter mismatch: %+v %v", nonTeachingPage, err) }
+	unclassifiedPage, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID, models.StaffDirectoryFilter{StaffType: "unclassified", Limit: 50})
+	if err != nil || unclassifiedPage.Total < 1 { t.Fatalf("unclassified filter mismatch: %+v %v", unclassifiedPage, err) }
+	legacyFound := false
+	for _, user := range unclassifiedPage.Staff { if user.Username == "dir-leg-"+suffix { legacyFound = true } }
+	if !legacyFound { t.Fatalf("unclassified filter omitted legacy account: %+v", unclassifiedPage.Staff) }
 
 	foreignPage, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.staffPrincipalID, fixture.schoolID,
 		models.StaffDirectoryFilter{Limit: 50})

@@ -187,6 +187,9 @@ func (s *StaffAccountService) ListDirectoryPage(ctx context.Context, actorPrinci
 	if len([]rune(filter.Search)) > 100 {
 		return nil, ErrInvalidStaffAccount
 	}
+	if filter.StaffType != "" && filter.StaffType != "teaching" && filter.StaffType != "non_teaching" && filter.StaffType != "unclassified" {
+		return nil, ErrInvalidStaffAccount
+	}
 	if filter.EmploymentStatus != "" && filter.EmploymentStatus != "active" && filter.EmploymentStatus != "inactive" {
 		return nil, ErrInvalidStaffAccount
 	}

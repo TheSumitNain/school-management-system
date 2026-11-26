@@ -1283,12 +1283,13 @@ func (r *UserRepository) ListStaffDirectoryPage(ctx context.Context, actorPrinci
 		WHERE u.school_id = $1
 		  AND ($2 = '' OR concat_ws(' ', u.username, sp.full_name, sp.employee_code, sp.designation, sp.mobile_number) ILIKE '%' || $2 || '%')
 		  AND ($3 = '' OR COALESCE(sp.employment_status, '') = $3)
-		  AND ($4 = '' OR ($4 = 'enabled' AND u.status = 'active') OR ($4 = 'disabled' AND u.status <> 'active'))
-		  AND ($5 = '' OR ($5 = 'complete' AND sp.principal_id IS NOT NULL) OR ($5 = 'incomplete' AND sp.principal_id IS NULL))
+		  AND ($4 = '' OR ($4 = 'teaching' AND sp.staff_type = 'teaching') OR ($4 = 'non_teaching' AND sp.staff_type = 'non_teaching') OR ($4 = 'unclassified' AND (sp.principal_id IS NULL OR sp.staff_type IS NULL OR sp.staff_type = '')))
+		  AND ($5 = '' OR ($5 = 'enabled' AND u.status = 'active') OR ($5 = 'disabled' AND u.status <> 'active'))
+		  AND ($6 = '' OR ($6 = 'complete' AND sp.principal_id IS NOT NULL) OR ($6 = 'incomplete' AND sp.principal_id IS NULL))
 	`
 	page := &models.StaffDirectoryPage{Staff: make([]models.User, 0), Limit: filter.Limit, Offset: filter.Offset}
 	countQuery := "SELECT COUNT(*) " + filtered
-	if err := r.db.QueryRow(ctx, countQuery, schoolID, filter.Search, filter.EmploymentStatus, filter.AccountStatus, filter.ProfileStatus).Scan(&page.Total); err != nil {
+	if err := r.db.QueryRow(ctx, countQuery, schoolID, filter.Search, filter.EmploymentStatus, filter.StaffType, filter.AccountStatus, filter.ProfileStatus).Scan(&page.Total); err != nil {
 		return nil, fmt.Errorf("count school staff directory: %w", err)
 	}
 	rows, err := r.db.Query(ctx, `
@@ -1311,8 +1312,8 @@ func (r *UserRepository) ListStaffDirectoryPage(ctx context.Context, actorPrinci
 		   )
 	`+filtered+`
 		ORDER BY LOWER(COALESCE(NULLIF(sp.full_name, ''), u.username)), u.id
-		LIMIT $6 OFFSET $7
-	`, schoolID, filter.Search, filter.EmploymentStatus, filter.AccountStatus, filter.ProfileStatus, filter.Limit, filter.Offset)
+		LIMIT $7 OFFSET $8
+	`, schoolID, filter.Search, filter.EmploymentStatus, filter.StaffType, filter.AccountStatus, filter.ProfileStatus, filter.Limit, filter.Offset)
 	if err != nil {
 		return nil, fmt.Errorf("query school staff directory page: %w", err)
 	}

@@ -97,11 +97,13 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
         const limit = Number(url.searchParams.get("limit"));
         const offset = Number(url.searchParams.get("offset") ?? "0");
         const search = (url.searchParams.get("search") ?? "").toLowerCase();
+        const staffType = url.searchParams.get("staff_type") ?? "";
         const employment = url.searchParams.get("employment_status") ?? "";
         const account = url.searchParams.get("account_status") ?? "";
         const profile = url.searchParams.get("profile_status") ?? "";
         const matching = staffRows.filter(item =>
           (!search || [item.username, item.full_name, item.employee_code, item.designation, item.mobile_number].some(value => String(value ?? "").toLowerCase().includes(search))) &&
+          (!staffType || (staffType === "unclassified" ? (!item.staff_type || item.staff_type === "") : item.staff_type === staffType)) &&
           (!employment || item.employment_status === employment) &&
           (!account || (account === "enabled" ? item.status === "active" : item.status !== "active")) &&
           (!profile || (profile === "complete" ? item.profile_complete === true : item.profile_complete !== true))
@@ -384,17 +386,35 @@ test("staff workspace opens on a real-data overview and hides permission-gated o
 });
 
 
-test("staff directory filters independently narrow employment, login account and profile completeness", async ({ page }) => {
+test("staff directory filters independently narrow staff type, employment, login account and profile completeness", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
-    { id: 1, principal_id: 611, school_id: 10, username: "active.enabled", employee_code: "EMP-F-01", full_name: "Active Enabled", designation: "Teacher", mobile_number: "9876543210", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
-    { id: 2, principal_id: 612, school_id: 10, username: "active.disabled", employee_code: "EMP-F-02", full_name: "Active Disabled", designation: "Teacher", mobile_number: "9876543211", employment_status: "active", profile_complete: true, status: "disabled", must_change_password: true },
-    { id: 3, principal_id: 613, school_id: 10, username: "inactive.disabled", employee_code: "EMP-F-03", full_name: "Inactive Disabled", designation: "Office Assistant", mobile_number: "9876543212", employment_status: "inactive", profile_complete: true, status: "disabled", must_change_password: false },
+    { id: 1, principal_id: 611, school_id: 10, staff_type: "teaching", username: "active.enabled", employee_code: "EMP-F-01", full_name: "Active Enabled", designation: "Teacher", mobile_number: "9876543210", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+    { id: 2, principal_id: 612, school_id: 10, staff_type: "teaching", username: "active.disabled", employee_code: "EMP-F-02", full_name: "Active Disabled", designation: "Teacher", mobile_number: "9876543211", employment_status: "active", profile_complete: true, status: "disabled", must_change_password: true },
+    { id: 3, principal_id: 613, school_id: 10, staff_type: "non_teaching", username: "inactive.disabled", employee_code: "EMP-F-03", full_name: "Inactive Disabled", designation: "Office Assistant", mobile_number: "9876543212", employment_status: "inactive", profile_complete: true, status: "disabled", must_change_password: false },
     { id: 4, principal_id: 614, school_id: 10, username: "profile.pending", employee_code: "EMP-F-04", full_name: "Profile Pending", designation: "Staff", mobile_number: "9876543213", employment_status: "active", profile_complete: false, status: "disabled", must_change_password: false },
     { id: 5, principal_id: 615, school_id: 10, username: "profile.unknown", employee_code: "EMP-F-05", full_name: "Profile Unknown", designation: "Staff", mobile_number: "9876543214", employment_status: "active", status: "disabled", must_change_password: false },
   ];
   await signInAndOpenStaff(page, rows);
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await expect(page.getByText("1–5 of 5 staff members")).toBeVisible();
+
+  await page.getByRole("button", { name: "Filter by staff type" }).click();
+  await page.getByRole("option", { name: "Teaching", exact: true }).click();
+  await expect(page.getByText("1–2 of 2 staff members")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Active Enabled" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Active Disabled" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Inactive Disabled" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Filter by staff type" }).click();
+  await page.getByRole("option", { name: "Non-teaching", exact: true }).click();
+  await expect(page.getByText("1–1 of 1 staff members")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Inactive Disabled" })).toBeVisible();
+  await page.getByRole("button", { name: "Filter by staff type" }).click();
+  await page.getByRole("option", { name: "Unclassified", exact: true }).click();
+  await expect(page.getByText("1–2 of 2 staff members")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Profile Unknown" })).toBeVisible();
+  await page.getByRole("button", { name: "Filter by staff type" }).click();
+  await page.getByRole("option", { name: "All staff types", exact: true }).click();
 
   await page.getByRole("button", { name: "Filter by employment status" }).click();
   await page.getByRole("option", { name: "Active", exact: true }).click();
@@ -418,7 +438,7 @@ test("staff directory filters independently narrow employment, login account and
   await page.getByRole("button", { name: "Filter by employment status" }).click();
   await page.getByRole("option", { name: "All employment", exact: true }).click();
 
-  const profileCompletenessFilter = page.locator(".staff-directory-filters .app-select").nth(2).locator("button.app-select-trigger");
+  const profileCompletenessFilter = page.locator(".staff-directory-filters .app-select").nth(3).locator("button.app-select-trigger");
   await expect(profileCompletenessFilter).toBeVisible();
   await profileCompletenessFilter.click();
   await page.getByRole("option", { name: "Incomplete", exact: true }).click();

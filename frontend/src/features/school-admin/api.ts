@@ -41,6 +41,7 @@ export function getSchoolStaffDirectorySummary(signal?: AbortSignal) {
 }
 export type StaffDirectoryFilters = {
   search: string;
+  staffType: string;
   employmentStatus: string;
   accountStatus: string;
   profileStatus: string;
@@ -52,6 +53,7 @@ export function getSchoolStaffDirectory(filters: StaffDirectoryFilters, signal?:
   params.set("limit", String(filters.limit));
   params.set("offset", String(filters.offset));
   if (filters.search.trim()) params.set("search", filters.search.trim());
+  if (filters.staffType) params.set("staff_type", filters.staffType);
   if (filters.employmentStatus) params.set("employment_status", filters.employmentStatus);
   if (filters.accountStatus) params.set("account_status", filters.accountStatus);
   if (filters.profileStatus) params.set("profile_status", filters.profileStatus);

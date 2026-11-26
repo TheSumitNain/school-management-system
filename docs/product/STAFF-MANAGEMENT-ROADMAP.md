@@ -1,6 +1,7 @@
-## 2026-11-26 — Add Staff classification implemented; role-assignment contract gap remains
+## 2026-11-26 — Staff Type classification and directory filter implemented; role-assignment gap remains
 
-- Add Staff and Edit Staff now require an explicit Teaching / Non-teaching classification in Step 1. The value is persisted in `staff_profiles.staff_type`, included in audit metadata, and shown in the directory, profile and CSV export.
+- Add Staff and Edit Staff require an explicit Teaching / Non-teaching classification in Step 1. The value is persisted in `staff_profiles.staff_type`, included in audit metadata, and shown in the directory, profile and CSV export.
+- The server-paginated Staff Directory now filters by Teaching, Non-teaching and Unclassified. The filter is included in CSV export requests, combined with the existing employment/login/profile filters, and validated server-side. Legacy rows with no profile or a NULL/empty type remain discoverable under Unclassified.
 - Existing staff profiles remain unclassified (`NULL`) until a School Admin explicitly chooses a type; no historical type is inferred.
 - The wizard still creates a login for every employee and does not assign a role. The target Step 3 says login is conditional and a role is required when login is enabled, with Teacher as the default for teaching staff. Profile-only onboarding remains blocked by the identity-schema approval gate.
 - Keep role assignment separate until the role-mapping, authorization and atomicity contract is approved. Do not create implicit role grants or change the current permission/delegation rules. Teaching classification alone does not grant Teacher access.

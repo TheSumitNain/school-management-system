@@ -38,6 +38,7 @@ type User struct {
 
 type StaffDirectoryFilter struct {
 	Search string
+	StaffType string
 	EmploymentStatus string
 	AccountStatus string
 	ProfileStatus string

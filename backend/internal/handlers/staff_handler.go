@@ -143,7 +143,7 @@ func (h *StaffHandler) Create(c *gin.Context) {
 }
 
 func (h *StaffHandler) List(c *gin.Context) {
-	if c.Query("limit") != "" || c.Query("offset") != "" || c.Query("search") != "" || c.Query("employment_status") != "" || c.Query("account_status") != "" || c.Query("profile_status") != "" {
+	if c.Query("limit") != "" || c.Query("offset") != "" || c.Query("search") != "" || c.Query("employment_status") != "" || c.Query("staff_type") != "" || c.Query("account_status") != "" || c.Query("profile_status") != "" {
 		h.ListDirectoryPage(c)
 		return
 	}
@@ -250,6 +250,7 @@ func (h *StaffHandler) ListDirectoryPage(c *gin.Context) {
 	filter := models.StaffDirectoryFilter{
 		Search: c.Query("search"),
 		EmploymentStatus: c.Query("employment_status"),
+		StaffType: c.Query("staff_type"),
 		AccountStatus: c.Query("account_status"),
 		ProfileStatus: c.Query("profile_status"),
 		Limit: limit,
