@@ -1,3 +1,12 @@
+## 2026-11-26 — Staff substitution history page recovery and full CI verification
+
+- Added a page-clamp safeguard to Substitution History: if concurrent changes or refreshed server data reduce the filtered total below the currently selected page, the workspace returns to the last valid page instead of leaving an empty out-of-range view.
+- Added a Playwright regression that opens page 2 of a 51-row history, simulates the server total shrinking to 50, refreshes and verifies the view returns to page 1 with correct navigation state.
+- Frontend CI [45753794052](https://github.com/TheSumitNain/school-management-system/actions/runs/45753794052) **PASS** on `d7fabf411e7a18cba4cf16902c668b27b41fd585`: TypeScript, Vite production build and **144 Playwright tests passed**. Backend CI [45753794146](https://github.com/TheSumitNain/school-management-system/actions/runs/45753794146) **PASS** on the same checkpoint: full migrations, Go/PostgreSQL integration suite and `go vet`.
+- No schema migration or persistent school data change. Manual authenticated School Admin browser sign-off and previously documented approval gates remain outstanding; `main` remains untouched.
+
+---
+
 ## 2026-11-26 — Staff Leave/Substitution pagination and complete report export verified
 
 - Staff Leave Requests and Substitution History now use bounded server-side pages (default 50, maximum 100), exact filtered totals, stable ordering, and Previous/Next navigation. Query keys include pagination state and filters reset to page one.

@@ -82,6 +82,14 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
   const create=useCreateStaffSubstitutionMutation();
   const cancel=useCancelStaffSubstitutionMutation();
 
+  useEffect(()=>{
+    const total=substitutionsQuery.data?.pagination?.total;
+    if(total===undefined)return;
+    const lastPage=Math.max(1,Math.ceil(total/substitutionPageSize));
+    if(substitutionPage>lastPage)setSubstitutionPage(lastPage);
+  },[substitutionsQuery.data?.pagination?.total,substitutionPage,substitutionPageSize]);
+
+
   const activeStaff=useMemo(()=>staff.filter(item=>item.employment_status==="active"&&item.status==="active"),[staff]);
   const staffOptions=[{value:"0",label:"All staff"},...staff.map(item=>({value:String(item.principal_id),label:(item.full_name||item.username)+" · "+(item.employee_code||"No employee code")}))];
   const entryOptions=useMemo(()=>entries.slice().sort((a,b)=>a.day_of_week-b.day_of_week||a.period_number-b.period_number||a.class_name.localeCompare(b.class_name)).map(item=>({

@@ -2902,6 +2902,42 @@ test("staff substitution assigns a dated cover, validates the timetable weekday 
 });
 
 
+
+test("substitution history clamps to the last valid page when the server-side total shrinks", async ({ page }) => {
+  const rows=Array.from({length:51},(_,index)=>({
+    id:index+1,timetable_entry_id:700+index,cover_date:"2026-11-16",
+    original_teacher_principal_id:501,original_teacher_name:"Original Teacher",
+    substitute_teacher_principal_id:502,substitute_teacher_name:"Substitute Teacher",
+    approved_leave_request_id:null,reason:"Coverage record "+(index+1),status:"cancelled",
+    section_name:"A",class_name:"Class 6",subject_name:"Mathematics",
+    period_number:2,period_name:"Period 2",starts_at:"09:40",ends_at:"10:20",
+    room:"Room 12",created_by_principal_id:101,created_at:"2026-11-15T10:00:00.000Z",
+  }));
+  let total=51;
+  await signInAndOpenStaff(page,[],undefined,["users.read","staff.substitutions.read"]);
+  await page.route("**/api/school/staff-substitutions?*",async route=>{
+    const url=new URL(route.request().url());
+    const pageNumber=Number(url.searchParams.get("page")??1);
+    const pageSize=Number(url.searchParams.get("page_size")??50);
+    await route.fulfill({json:{
+      substitutions:rows.slice((pageNumber-1)*pageSize,Math.min(pageNumber*pageSize,total)),
+      pagination:{page:pageNumber,page_size:pageSize,total},
+    }});
+  });
+  await page.getByRole("button",{name:"Substitutions",exact:true}).click();
+  await expect(page.getByText("Showing 1–50 of 51")).toBeVisible();
+  await page.getByRole("button",{name:"Next"}).click();
+  await expect(page.getByText("Showing 51–51 of 51")).toBeVisible();
+  await expect(page.getByText("Coverage record 51")).toBeVisible();
+  total=50;
+  await page.getByRole("button",{name:/Refresh/}).click();
+  await expect(page.getByText("Showing 1–50 of 50")).toBeVisible();
+  await expect(page.getByText("Coverage record 50")).toBeVisible();
+  await expect(page.getByText("Coverage record 51")).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Previous"})).toBeDisabled();
+  await expect(page.getByRole("button",{name:"Next"})).toBeDisabled();
+});
+
 test("substitution list staff filter can be reset without changing the default date window", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     { id: 1, principal_id: 501, school_id: 10, username: "teacher.original", employee_code: "EMP-ORIGINAL", full_name: "Original Teacher", designation: "Mathematics Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
