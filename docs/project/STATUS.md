@@ -1,3 +1,12 @@
+## 2026-11-26 — Staff Leave/Substitution pagination and complete report export verified
+
+- Staff Leave Requests and Substitution History now use bounded server-side pagination (default 50, maximum 100), exact filtered totals, stable ordering and Previous/Next navigation. Filter changes reset the page; query keys include page state to prevent cache collisions.
+- Staff Leave report CSV export fetches all matching pages in bounded batches, validates pagination metadata and fails visibly rather than silently exporting a partial result. The export retains its privacy allowlist and excludes free-text leave reasons.
+- Backend CI [45737923468](https://github.com/TheSumitNain/school-management-system/actions/runs/45737923468) **PASS** and Frontend CI [45737923385](https://github.com/TheSumitNain/school-management-system/actions/runs/45737923385) **PASS** on `b164d1b9ffe838e25df9034b39b27340847b522e`. Backend verification includes migrations, Go/PostgreSQL integration tests and `go vet`; frontend verification includes TypeScript, production build and **132 Playwright tests**.
+- No schema migration or persistent school data change. Automated acceptance is verified; manual authenticated-school browser sign-off remains outstanding. Identity-schema, approved leave-policy, payroll and private-storage gates remain unchanged. Work remains on `work`; no production database was migrated.
+
+---
+
 ## 2026-11-25 — Staff attendance audit-history cache refresh verified
 
 - Attendance mark, bulk-mark and update mutations now invalidate both staff-attendance data and staff audit-history queries, so the History & Activity panel refreshes after attendance writes. The history query uses a 30-second freshness window while explicit mutation invalidation still forces it stale.
