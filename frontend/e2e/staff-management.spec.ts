@@ -3923,8 +3923,10 @@ test("staff leave report CSV exports every matching page", async ({ page }) => {
   expect(path).toBeTruthy();
   const csv = await readFile(path!, "utf8");
   expect(csv.startsWith("\uFEFF")).toBe(true);
-  expect(csv.split(/\r?\n/)).toHaveLength(206);
-  expect(csv).toContain("Export request 205");
+  const csvLines = csv.split(/\r?\n/);
+  expect(csvLines).toHaveLength(206);
+  expect(csvLines[205]).toContain("EMP-EXPORT-01");
+  expect(csv).not.toContain("Export request 205");
 });
 
 test("staff leave requests use bounded pages and show the matching total", async ({ page }) => {
