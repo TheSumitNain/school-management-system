@@ -7,6 +7,16 @@
 
 This audit records what exists in the repository today. It is not an implementation-completion claim. The approved [Staff Management Roadmap](./STAFF-MANAGEMENT-ROADMAP.md) remains the product source of truth.
 
+## 2026-11-26 final implementation verification — Leave/Substitution pagination
+
+- Reviewed the latest `work` branch implementation at `b164d1b9ffe838e25df9034b39b27340847b522e`. Leave Requests and Substitution History use bounded server-side pagination, filtered totals and stable navigation; leave report CSV export fetches every matching page rather than exporting only the visible page.
+- Frontend CI [45737923385](https://github.com/TheSumitNain/school-management-system/actions/runs/45737923385) **PASS**, including TypeScript, production build and **132 Playwright browser tests**. Backend CI [45737923468](https://github.com/TheSumitNain/school-management-system/actions/runs/45737923468) **PASS**, including the migration chain, full Go/PostgreSQL integration tests and `go vet`.
+- The browser suite includes explicit coverage for bounded leave requests, full multi-page leave CSV export, staff workspace responsive behavior and the broader school application acceptance suite.
+- The roadmap's former open item for Leave/Substitution pagination and all-pages leave CSV export is closed for the implemented scope. The holiday/leave/substitution SQL result-set caps are also removed.
+- This is automated CI verification, not a claim of live authenticated-school manual sign-off. Identity-schema/profile-only onboarding, sensitive personal fields, leave entitlement/accrual policy, payroll and private document/photo storage remain explicitly deferred or approval-gated.
+- No schema migration or persistent school data change in this batch. Work is on `work`; `main` remains untouched.
+
+
 ## 1. Current frontend baseline
 
 The current `StaffManagementPage.tsx` is a single directory/table plus modal-driven account/profile actions. It is not the planned Staff Management workspace and will be replaced with a new page structure. The existing API client, query hooks, role/override components and shared UI primitives are reusable integration assets, not a layout constraint.
