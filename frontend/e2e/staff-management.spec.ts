@@ -905,11 +905,11 @@ test("add staff wizard validates each step before allowing progress", async ({ p
   await dialog.getByLabel("Employee code").fill("EMP-VAL-01");
   await dialog.getByLabel("Mobile number").fill("9876543219");
   await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await expect(dialog.getByText("Choose Teaching or Non-teaching staff.")).toBeVisible();
   await dialog.getByLabel("Staff type").selectOption("teaching");
   await dialog.getByRole("button", { name: "Continue" }).click();
   await expect(dialog.getByText("Enter a designation (up to 100 characters).")).toBeVisible();
-
-  await dialog.getByLabel("Staff type").selectOption("teaching");
 
   await dialog.getByLabel("Designation").fill("Class Teacher");
   await dialog.getByRole("button", { name: "Continue" }).click();
@@ -1037,6 +1037,7 @@ test("staff profile creation accepts Unicode names and designations at database 
   await expect.poll(() => created.length).toBe(1);
   expect(Array.from(String(created[0].full_name)).length).toBe(160);
   expect(Array.from(String(created[0].designation)).length).toBe(100);
+  expect(created[0].staff_type).toBe("teaching");
   expect(created[0].full_name).toBe(fullName);
   expect(created[0].designation).toBe(designation);
   await expect(page.getByRole("dialog", { name: "Share staff login credentials" })).toBeVisible();
@@ -1145,7 +1146,7 @@ test("staff creation uses the shared IST date picker and clears the credential h
   await secondDialog.getByLabel("Employee code").fill("EMP-002");
   await secondDialog.getByLabel("Mobile number").fill("9876543212");
   await secondDialog.getByRole("button", { name: "Continue" }).click();
-  await secondDialog.getByLabel("Staff type").selectOption("teaching");
+  await secondDialog.getByLabel("Staff type").selectOption("non_teaching");
   await secondDialog.getByLabel("Designation").fill("Science Teacher");
   await secondDialog.getByRole("button", { name: "Continue" }).click();
   await secondDialog.getByLabel("Login username").fill("teacher.two");
@@ -1153,6 +1154,7 @@ test("staff creation uses the shared IST date picker and clears the credential h
   await secondDialog.getByRole("button", { name: "Continue" }).click();
   await secondDialog.getByRole("button", { name: "Create employee" }).click();
   await expect.poll(() => created.length).toBe(2);
+  expect(created[1].staff_type).toBe("non_teaching");
   const deferredHandoff = page.getByRole("dialog", { name: "Share staff login credentials" });
   await expect(deferredHandoff).toBeVisible();
   await deferredHandoff.getByRole("button", { name: "Do this later" }).click();
