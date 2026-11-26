@@ -543,6 +543,12 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	`, peerAdminPrincipalID, schoolID, actorPrincipalID, overrideDelegation.ID); err != nil || tag.RowsAffected() != 1 {
 		t.Fatalf("seed protected peer School Admin override: rows=%d err=%v", tag.RowsAffected(), err)
 	}
+	if err := repo.SetStaffPermissionOverride(
+		ctx, actorPrincipalID, schoolID, peerAdminPrincipalID, overrideDelegation.ID,
+		"homework.create", "allow", "attempt to replace protected peer admin override",
+	); !errors.Is(err, ErrDelegationNotFound) {
+		t.Fatalf("updating permission override for peer School Admin error = %v, want ErrDelegationNotFound", err)
+	}
 	if err := repo.DeleteStaffPermissionOverride(ctx, actorPrincipalID, schoolID, peerAdminPrincipalID, "homework.create"); !errors.Is(err, ErrDelegationNotFound) {
 		t.Fatalf("deleting permission override for peer School Admin error = %v, want ErrDelegationNotFound", err)
 	}
@@ -556,6 +562,17 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	}
 	if protectedOverrideCount != 1 {
 		t.Fatalf("protected peer School Admin override count after rejected delete=%d want=1", protectedOverrideCount)
+	}
+	var protectedOverrideEffect, protectedOverrideReason string
+	if err := tx.QueryRow(ctx, `
+		SELECT o.effect, o.reason FROM user_permission_overrides o
+		JOIN permissions p ON p.id = o.permission_id
+		WHERE o.principal_id=$1 AND o.school_id=$2 AND p.permission_key='homework.create'
+	`, peerAdminPrincipalID, schoolID).Scan(&protectedOverrideEffect, &protectedOverrideReason); err != nil {
+		t.Fatalf("read protected peer override after rejected update/delete: %v", err)
+	}
+	if protectedOverrideEffect != "deny" || protectedOverrideReason != "protected peer admin existing override" {
+		t.Fatalf("protected peer override changed after rejected update/delete: effect=%q reason=%q", protectedOverrideEffect, protectedOverrideReason)
 	}
 
 	if err := repo.SetStaffPermissionOverride(
