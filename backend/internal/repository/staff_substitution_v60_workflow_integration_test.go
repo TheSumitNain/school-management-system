@@ -96,23 +96,36 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	if err=tx.QueryRow(ctx,`INSERT INTO staff_substitutions(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
 		VALUES($1,$2,$3,$4::date,$5,$6,'Cover for approved absence',$5) RETURNING id`,schoolID,timetableEntryID,periodID,coverDate,originalID,substituteID).Scan(&substitutionID);err!=nil{t.Fatalf("create valid dated substitution: %v",err)}
 
-	// Exercise the production pagination query against the real PostgreSQL
-	// fixture before testing the remaining database guards.
+	// Create a second period on the same cover date so the repository test
+	// verifies actual page boundaries and deterministic period ordering.
+	var secondTimetableEntryID int64
+	if err=tx.QueryRow(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,room,created_by_principal_id,updated_by_principal_id)
+		VALUES($1,$2,$3,$4,$5,$6,$7,1,'Second room',$8,$8) RETURNING id`,schoolID,yearID,sectionID,subjectID,originalID,originalAssignmentID,secondPeriodID,originalID).Scan(&secondTimetableEntryID);err!=nil{t.Fatalf("create second-period timetable entry: %v",err)}
+	var secondSubstitutionID int64
+	if err=tx.QueryRow(ctx,`INSERT INTO staff_substitutions(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
+		VALUES($1,$2,$3,$4::date,$5,$6,'Second period cover',$5) RETURNING id`,schoolID,secondTimetableEntryID,secondPeriodID,coverDate,originalID,substituteID).Scan(&secondSubstitutionID);err!=nil{t.Fatalf("create second-period substitution: %v",err)}
+
+	// Exercise the production pagination query against the real PostgreSQL fixture.
 	subRepo := &AcademicRepository{db: tx}
 	firstPage, pageErr := subRepo.ListStaffSubstitutionsPage(ctx, actorPrincipalID, schoolID, coverDate, coverDate, 0, 1, 1)
 	if pageErr != nil { t.Fatalf("read first substitution page: %v", pageErr) }
-	if firstPage.Total != 1 || len(firstPage.Items) != 1 || firstPage.Items[0].ID != substitutionID {
-		t.Fatalf("first substitution page total=%d rows=%d; want total=1 and the fixture row", firstPage.Total, len(firstPage.Items))
+	if firstPage.Total != 2 || len(firstPage.Items) != 1 || firstPage.Items[0].ID != substitutionID || firstPage.Items[0].PeriodNumber != 1 {
+		t.Fatalf("first substitution page total=%d rows=%d; want first period row and total=2", firstPage.Total, len(firstPage.Items))
 	}
-	emptyPage, pageErr := subRepo.ListStaffSubstitutionsPage(ctx, actorPrincipalID, schoolID, coverDate, coverDate, 0, 2, 1)
+	secondPage, pageErr := subRepo.ListStaffSubstitutionsPage(ctx, actorPrincipalID, schoolID, coverDate, coverDate, 0, 2, 1)
+	if pageErr != nil { t.Fatalf("read second substitution page: %v", pageErr) }
+	if secondPage.Total != 2 || len(secondPage.Items) != 1 || secondPage.Items[0].ID != secondSubstitutionID || secondPage.Items[0].PeriodNumber != 2 {
+		t.Fatalf("second substitution page total=%d rows=%d; want second period row and total=2", secondPage.Total, len(secondPage.Items))
+	}
+	emptyPage, pageErr := subRepo.ListStaffSubstitutionsPage(ctx, actorPrincipalID, schoolID, coverDate, coverDate, 0, 3, 1)
 	if pageErr != nil { t.Fatalf("read out-of-range substitution page: %v", pageErr) }
-	if emptyPage.Total != 1 || len(emptyPage.Items) != 0 {
-		t.Fatalf("out-of-range substitution page total=%d rows=%d; want total=1 rows=0", emptyPage.Total, len(emptyPage.Items))
+	if emptyPage.Total != 2 || len(emptyPage.Items) != 0 {
+		t.Fatalf("out-of-range substitution page total=%d rows=%d; want total=2 rows=0", emptyPage.Total, len(emptyPage.Items))
 	}
 	filteredPage, pageErr := subRepo.ListStaffSubstitutionsPage(ctx, actorPrincipalID, schoolID, coverDate, coverDate, originalID, 1, 10)
 	if pageErr != nil { t.Fatalf("read staff-filtered substitution page: %v", pageErr) }
-	if filteredPage.Total != 1 || len(filteredPage.Items) != 1 {
-		t.Fatalf("staff-filtered substitution page total=%d rows=%d; want total=1 rows=1", filteredPage.Total, len(filteredPage.Items))
+	if filteredPage.Total != 2 || len(filteredPage.Items) != 2 {
+		t.Fatalf("staff-filtered substitution page total=%d rows=%d; want total=2 rows=2", filteredPage.Total, len(filteredPage.Items))
 	}
 	if _, pageErr = subRepo.ListStaffSubstitutionsPage(ctx, actorPrincipalID, schoolID+999999, coverDate, coverDate, 0, 1, 10); pageErr == nil {
 		t.Fatal("cross-school substitution pagination unexpectedly succeeded")
