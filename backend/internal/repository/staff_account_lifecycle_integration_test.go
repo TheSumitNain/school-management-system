@@ -314,7 +314,7 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	if err := tx.QueryRow(ctx, "SELECT password_hash FROM users WHERE principal_id = $1", created.PrincipalID).Scan(&unchangedResetHash); err != nil {
 		t.Fatalf("read password hash after rejected reset attempts: %v", err)
 	}
-	if unchangedResetHash != "integration-test-password-hash" {
+	if unchangedResetHash != "initial-integration-password-hash" {
 		t.Fatalf("rejected empty/self reset changed target password hash: %q", unchangedResetHash)
 	}
 
