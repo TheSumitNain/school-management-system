@@ -1316,3 +1316,12 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Confirmed attendance has one row per school/staff/date; leave requests enforce date ordering, valid half-day shape, decision actor/timestamp consistency and rejection comments; substitution enforces same-school references, distinct original/substitute teachers, cancellation actor/timestamp consistency and active-slot uniqueness.
 - No additional schema defect was confirmed in this review. Existing policy approvals (leave balance/accrual, qualification/certification verification, archive retention and private document storage) remain intentionally outside implementation scope.
 - V67 full migration, PostgreSQL integration and `go vet` verification passed in Backend CI [45809288242](https://github.com/TheSumitNain/school-management-system/actions/runs/45809288242). `main` remains untouched.
+
+
+## 2026-11-26 follow-up — profile inactivation and authentication lock ordering
+
+- V68 serializes the database profile-inactivation trigger with principal refresh-session creation/rotation and account lifecycle operations by using the same `refresh-principal:{principal_id}` transaction lock.
+- V69 closes the lock-order deadlock window for direct SQL profile updates: because the AFTER trigger runs while the profile row is held, it now uses a non-blocking advisory lock and raises retryable SQLSTATE `40001` when an authentication lifecycle transaction already owns that lock. The profile change rolls back atomically; normal repository profile updates acquire the lock before touching the principal/profile rows.
+- PostgreSQL regression coverage verifies that inactivation increments token version and revokes active refresh sessions, and that a direct profile update fails fast without partial state changes while the refresh lock is held.
+- Backend CI [45811037214](https://github.com/TheSumitNain/school-management-system/actions/runs/45811037214) **PASS** on `87de3be8f5110ebfaa4d78fb72c76b3a23ef9a18`, including V68/V69 migrations, full Go/PostgreSQL integration and `go vet`.
+- This closes the automated account/profile inactivation serialization regression. It does not close the authenticated School Admin sign-off or previously documented approval gates; no existing school data is rewritten and `main` remains untouched.
