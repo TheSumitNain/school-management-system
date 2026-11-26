@@ -29,6 +29,8 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
  const canManageHolidays=permissions.includes("staff.holidays.manage");
  const [pane,setPane]=useState<"requests"|"types"|"holidays">("requests");
  const [status,setStatus]=useState("pending");
+ const [requestPage,setRequestPage]=useState(1);
+ const requestPageSize=50;
  const [requestStaffID,setRequestStaffID]=useState("");
  const [filterStaffID,setFilterStaffID]=useState("0");
  const [fromDate,setFromDate]=useState("");
@@ -79,7 +81,7 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
    ? "The To date must be on or after the From date."
    : "";
  const validDateRange=(!fromDate&&!toDate)||(Boolean(fromDate&&toDate)&&fromDate<=toDate);
- const requests=useStaffLeaveRequestsQuery({status,staffPrincipalID:Number(filterStaffID)||undefined,fromDate:fromDate||undefined,toDate:toDate||undefined},canRead&&validDateRange);
+ const requests=useStaffLeaveRequestsQuery({status,staffPrincipalID:Number(filterStaffID)||undefined,fromDate:fromDate||undefined,toDate:toDate||undefined,page:requestPage,pageSize:requestPageSize},canRead&&validDateRange);
  const range=useMemo(yearRange,[]);
  const holidays=useSchoolHolidaysQuery(range.from,range.to,canReadHolidays||canManageHolidays,canManageHolidays);
  const createRequest=useCreateStaffLeaveRequestMutation();
@@ -162,8 +164,8 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
    </form>}
    <div className="staff-leave-panel staff-leave-list-panel">
     <div className="staff-leave-list-heading"><h3>Applications</h3><button type="button" className="staff-secondary-button" onClick={()=>void requests.refetch()} disabled={requests.isFetching||!validDateRange}><RefreshCw size={14}/> Refresh</button></div>
-    <div className="staff-leave-filters"><label>Status <Select value={status} onChange={setStatus} ariaLabel="Leave request status" options={statusOptions}/></label><label>Staff <Select value={filterStaffID} onChange={setFilterStaffID} ariaLabel="Filter by staff" options={filterStaffOptions}/></label><label>From date <DatePicker value={fromDate} onChange={setFromDate} ariaLabel="Leave requests from date" placeholder="Any start date" invalid={Boolean(fromDateError)} describedBy={fromDateError?"leave-filter-from-date-error":undefined}/>{fromDateError&&<small id="leave-filter-from-date-error" className="app-field-error" role="alert">{fromDateError}</small>}</label><label>To date <DatePicker value={toDate} onChange={setToDate} ariaLabel="Leave requests to date" placeholder="Any end date" invalid={Boolean(toDateError)} describedBy={toDateError?"leave-filter-to-date-error":undefined}/>{toDateError&&<small id="leave-filter-to-date-error" className="app-field-error" role="alert">{toDateError}</small>}</label></div>
-    {(status!=="pending"||filterStaffID!=="0"||fromDate||toDate)&&<div className="staff-leave-filter-actions"><button type="button" className="staff-secondary-button" onClick={()=>{setStatus("pending");setFilterStaffID("0");setFromDate("");setToDate("");}}>Clear filters</button></div>}
+    <div className="staff-leave-filters"><label>Status <Select value={status} onChange={value=>{setStatus(value);setRequestPage(1);}} ariaLabel="Leave request status" options={statusOptions}/></label><label>Staff <Select value={filterStaffID} onChange={value=>{setFilterStaffID(value);setRequestPage(1);}} ariaLabel="Filter by staff" options={filterStaffOptions}/></label><label>From date <DatePicker value={fromDate} onChange={value=>{setFromDate(value);setRequestPage(1);}} ariaLabel="Leave requests from date" placeholder="Any start date" invalid={Boolean(fromDateError)} describedBy={fromDateError?"leave-filter-from-date-error":undefined}/>{fromDateError&&<small id="leave-filter-from-date-error" className="app-field-error" role="alert">{fromDateError}</small>}</label><label>To date <DatePicker value={toDate} onChange={value=>{setToDate(value);setRequestPage(1);}} ariaLabel="Leave requests to date" placeholder="Any end date" invalid={Boolean(toDateError)} describedBy={toDateError?"leave-filter-to-date-error":undefined}/>{toDateError&&<small id="leave-filter-to-date-error" className="app-field-error" role="alert">{toDateError}</small>}</label></div>
+    {(status!=="pending"||filterStaffID!=="0"||fromDate||toDate)&&<div className="staff-leave-filter-actions"><button type="button" className="staff-secondary-button" onClick={()=>{setStatus("pending");setFilterStaffID("0");setFromDate("");setToDate("");setRequestPage(1);}}>Clear filters</button></div>}
     {validDateRange&&requests.isPending&&<p role="status">Loading leave requests…</p>}
     {validDateRange&&requests.isError&&<p className="staff-leave-error" role="alert">Unable to load leave requests. <button type="button" onClick={()=>void requests.refetch()}>Try again</button></p>}
     {validDateRange&&requests.isSuccess&&requests.data.data.length===0&&<p className="staff-leave-empty">No leave requests match these filters.</p>}
@@ -176,6 +178,7 @@ export function StaffLeaveWorkspace({permissions,staff,canReadStaff}:Props){
       {canManageRequests&&<button type="button" className="staff-secondary-button" onClick={()=>setCancelTarget(item.id)}>Cancel request</button>}
      </div>}
     </article>)}
+    {validDateRange&&requests.data?.pagination&&requests.data.pagination.total>0&&<div className="staff-leave-filter-actions" aria-label="Leave request pagination"><span>Showing {(requestPage-1)*requestPageSize+1}–{Math.min(requestPage*requestPageSize,requests.data.pagination.total)} of {requests.data.pagination.total}</span><button type="button" className="staff-secondary-button" onClick={()=>setRequestPage(page=>Math.max(1,page-1))} disabled={requestPage===1||requests.isFetching}>Previous</button><button type="button" className="staff-secondary-button" onClick={()=>setRequestPage(page=>page+1)} disabled={requestPage*requestPageSize>=requests.data.pagination.total||requests.isFetching}>Next</button></div>}
    </div>
   </div>}
 
