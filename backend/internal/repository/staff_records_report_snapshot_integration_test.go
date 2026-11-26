@@ -19,16 +19,29 @@ func TestStaffReportsUsePoolBackedReadOnlySnapshotPostgresIntegration(t *testing
 	defer cancel()
 
 	tx, err := pool.Begin(ctx)
-	if err != nil { t.Fatalf("begin report authorization fixture: %v", err) }
+	if err != nil {
+		t.Fatalf("begin report authorization fixture: %v", err)
+	}
 	defer func() { _ = tx.Rollback(ctx) }()
+
 	var actorID, schoolID int64
 	if err := tx.QueryRow(ctx, `SELECT principal_id, school_id FROM users WHERE id=$1`, actorUserID).Scan(&actorID, &schoolID); err != nil {
 		t.Fatalf("load School Admin fixture: %v", err)
 	}
+
 	var hasRole bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM principal_roles pr JOIN roles r ON r.id=pr.role_id WHERE pr.principal_id=$1 AND pr.revoked_at IS NULL AND r.school_id=$2 AND r.role_key='school_admin' AND r.is_system=TRUE)`, actorID, schoolID).Scan(&hasRole); err != nil {
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM principal_roles pr
+			JOIN roles r ON r.id=pr.role_id
+			WHERE pr.principal_id=$1 AND pr.revoked_at IS NULL
+			  AND r.school_id=$2 AND r.role_key='school_admin' AND r.is_system=TRUE
+		)
+	`, actorID, schoolID).Scan(&hasRole); err != nil {
 		t.Fatalf("check School Admin fixture role: %v", err)
 	}
+
 	if !hasRole {
 		var platformAdminID, schoolAdminRoleID int64
 		err = tx.QueryRow(ctx, `
@@ -46,29 +59,50 @@ func TestStaffReportsUsePoolBackedReadOnlySnapshotPostgresIntegration(t *testing
 		`).Scan(&platformAdminID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			var anyBootstrapExists bool
-			checkQuery := "SELECT EXISTS (SELECT 1 FROM platform_admin_accounts) OR EXISTS (SELECT 1 FROM principal_roles pr JOIN roles r ON r.id=pr.role_id WHERE r.principal_type='platform_admin' AND r.scope_type='platform' AND r.role_key='platform_admin')"
+			checkQuery := `SELECT EXISTS (SELECT 1 FROM platform_admin_accounts)
+				OR EXISTS (
+					SELECT 1 FROM principal_roles pr
+					JOIN roles r ON r.id=pr.role_id
+					WHERE r.principal_type='platform_admin' AND r.scope_type='platform' AND r.role_key='platform_admin'
+				)`
 			if checkErr := tx.QueryRow(ctx, checkQuery).Scan(&anyBootstrapExists); checkErr != nil {
 				t.Fatalf("check Platform Admin bootstrap state: %v", checkErr)
 			}
-			if anyBootstrapExists { t.Skip("Platform Admin bootstrap exists but no active administrator can delegate permissions") }
-			platformAdminID, err = NewPlatformAdminRepository(pool).bootstrapFirstInTx(ctx, tx, fmt.Sprintf("staff-report-snapshot-%d@example.invalid", time.Now().UnixNano()), "integration-test-password-hash")
+			if anyBootstrapExists {
+				t.Skip("Platform Admin bootstrap exists but no active administrator can delegate permissions")
+			}
+			platformAdminID, err = NewPlatformAdminRepository(pool).bootstrapFirstInTx(
+				ctx,
+				tx,
+				fmt.Sprintf("staff-report-snapshot-%d@example.invalid", time.Now().UnixNano()),
+				"integration-test-password-hash",
+			)
 		}
-		if err != nil { t.Fatalf("resolve Platform Admin fixture: %v", err) }
-		if err := tx.QueryRow(ctx, `SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff' AND scope_type='school' AND role_key='school_admin' AND is_system=TRUE`, schoolID).Scan(&schoolAdminRoleID); err != nil {
+		if err != nil {
+			t.Fatalf("resolve Platform Admin fixture: %v", err)
+		}
+
+		if err := tx.QueryRow(ctx, `
+			SELECT id
+			FROM roles
+			WHERE school_id=$1 AND principal_type='staff' AND scope_type='school'
+			  AND role_key='school_admin' AND is_system=TRUE
+		`, schoolID).Scan(&schoolAdminRoleID); err != nil {
 			t.Fatalf("load School Admin role: %v", err)
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3) ON CONFLICT DO NOTHING`, actorID, schoolAdminRoleID, platformAdminID); err != nil {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO principal_roles(principal_id,role_id,assigned_by)
+			VALUES($1,$2,$3)
+			ON CONFLICT DO NOTHING
+		`, actorID, schoolAdminRoleID, platformAdminID); err != nil {
 			t.Fatalf("assign School Admin fixture role: %v", err)
 		}
 	}
-	// The shared PostgreSQL fixture may be a staff account without a fully
-	// provisioned School Admin role. This test targets report snapshot
-	// consistency, so skip rather than mutate an immutable system permission
-	// bundle or mistake an incomplete fixture for a report regression.
-	if err := authorizeStaffRecordsPermission(ctx, tx, actorID, schoolID, "users.read"); err != nil {
-		t.Skipf("report snapshot fixture lacks live users.read permission: %v", err)
+
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit report authorization fixture: %v", err)
 	}
-	if err := tx.Commit(ctx); err != nil { t.Fatalf("commit report authorization fixture: %v", err) }
+
 	repo := NewUserRepository(pool)
 	qualifications, err := repo.ListStaffQualificationReport(ctx, actorID, schoolID, StaffQualificationReportFilter{
 		RecordType: "all",
