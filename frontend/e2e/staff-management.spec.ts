@@ -3243,7 +3243,7 @@ test("staff qualifications report uses one paginated aggregate endpoint and expo
   expect(requests.every(request => request.startsWith("/api/school/staff/qualifications-report?"))).toBe(true);
 
   const downloadPromise = page.waitForEvent("download");
-  await qualificationSection.getByRole("button", { name: "Export current page CSV" }).click();
+  await qualificationSection.getByRole("button", { name: "Export all matching CSV" }).click();
   const download = await downloadPromise;
   const path = await download.path();
   expect(path).toBeTruthy();
@@ -3291,7 +3291,7 @@ test("staff experience report uses one paginated school aggregate endpoint and e
   await expect(experienceSection.getByRole("cell",{name:"Current School"})).toBeVisible();
   expect(requests.some(request=>request.includes("current_only=true"))).toBe(true);
   const downloadPromise=page.waitForEvent("download");
-  await page.getByRole("button",{name:"Export current page CSV"}).last().click();
+  await page.getByRole("button",{name:"Export all matching CSV"}).last().click();
   const download=await downloadPromise;const path=await download.path();expect(path).toBeTruthy();
   const csv=await readFile(path!,"utf8");
   expect(csv.startsWith("\uFEFF")).toBe(true);
