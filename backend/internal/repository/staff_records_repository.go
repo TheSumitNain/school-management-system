@@ -505,8 +505,10 @@ func (r *UserRepository) ListStaffQualificationReport(ctx context.Context, actor
 	tx, err := r.db.Begin(ctx)
 	if err != nil { return nil, fmt.Errorf("begin staff qualifications report snapshot: %w", err) }
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"); err != nil {
-		return nil, fmt.Errorf("set staff qualifications report snapshot: %w", err)
+	if _, callerOwnsTransaction := r.db.(pgx.Tx); !callerOwnsTransaction {
+		if _, err := tx.Exec(ctx, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"); err != nil {
+			return nil, fmt.Errorf("set staff qualifications report snapshot: %w", err)
+		}
 	}
 	if err := authorizeStaffRecordsPermission(ctx, tx, actorID, schoolID, "users.read"); err != nil {
 		return nil, fmt.Errorf("authorize staff qualifications report: %w", err)
@@ -611,8 +613,10 @@ func (r *UserRepository) ListStaffExperienceReport(ctx context.Context, actorID,
     tx, err := r.db.Begin(ctx)
     if err != nil { return nil, fmt.Errorf("begin staff experience report snapshot: %w", err) }
     defer func() { _ = tx.Rollback(ctx) }()
-    if _, err := tx.Exec(ctx, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"); err != nil {
-        return nil, fmt.Errorf("set staff experience report snapshot: %w", err)
+    if _, callerOwnsTransaction := r.db.(pgx.Tx); !callerOwnsTransaction {
+        if _, err := tx.Exec(ctx, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"); err != nil {
+            return nil, fmt.Errorf("set staff experience report snapshot: %w", err)
+        }
     }
     if err := authorizeStaffRecordsPermission(ctx, tx, actorID, schoolID, "users.read"); err != nil {
 		return nil, fmt.Errorf("authorize staff experience report: %w", err)
