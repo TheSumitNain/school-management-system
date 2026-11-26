@@ -22,7 +22,7 @@ function formatDate(value:string){return new Date(value+"T00:00:00Z").toLocaleDa
 function errorText(error:unknown,fallback:string){return error instanceof ApiError?error.message:fallback;}
 function substitutionCsvCell(value:string|number|null|undefined){
   const raw=String(value??"");
-  const safe=/^\\s*(?:=|\\+|-|@)/.test(raw)?"'"+raw:raw;
+  const safe=/^\s*(?:=|\\+|-|@)/.test(raw)?"'"+raw:raw;
   return '"'+safe.replace(/"/g,'""')+'"';
 }
 function downloadSubstitutionCsv(rows:StaffSubstitution[]){
@@ -33,8 +33,8 @@ function downloadSubstitutionCsv(rows:StaffSubstitution[]){
     item.status==="cancelled"?"Cancelled":item.cover_date<todayIST()?"Completed":"Scheduled",
     item.approved_leave_request_id??"",
   ])];
-  const csv=values.map(row=>row.map(substitutionCsvCell).join(",")).join("\\r\\n");
-  const blob=new Blob(["\\uFEFF",csv],{type:"text/csv;charset=utf-8"});
+  const csv=values.map(row=>row.map(substitutionCsvCell).join(",")).join("\r\n");
+  const blob=new Blob(["\uFEFF",csv],{type:"text/csv;charset=utf-8"});
   const url=URL.createObjectURL(blob);
   const link=document.createElement("a");
   link.href=url;link.download="staff-substitution-history.csv";
