@@ -1,3 +1,12 @@
+## 2026-11-26 — Staff modal keyboard focus containment verified
+
+- Corrected the shared modal focus trap to ignore non-rendered, hidden, `aria-hidden` and `inert` controls. Tab and Shift+Tab now wrap correctly when focus begins on the dialog container as well as at the first/last visible control.
+- Added a Playwright regression for the Add Staff wizard: initial dialog focus, Shift+Tab/Tab wrapping, Escape close, and focus restoration to the Add Staff trigger. The test fixture explicitly grants `users.create`.
+- Frontend CI [45774923847](https://github.com/TheSumitNain/school-management-system/actions/runs/45774923847) **PASS**: TypeScript, Vite production build and **152 Playwright tests passed**. Backend CI [45774923832](https://github.com/TheSumitNain/school-management-system/actions/runs/45774923832) **PASS**: complete migration chain, Go/PostgreSQL integration suite and `go vet`.
+- No new schema migration or persistent school-data change. Automated verification is green for this checkpoint; authenticated School Admin browser sign-off remains outstanding. `main` remains untouched.
+
+---
+
 ## 2026-11-26 — Staff substitution history page recovery and full CI verification
 
 - Added a page-clamp safeguard to Substitution History: if concurrent changes or refreshed server data reduce the filtered total below the currently selected page, the workspace returns to the last valid page instead of leaving an empty out-of-range view.

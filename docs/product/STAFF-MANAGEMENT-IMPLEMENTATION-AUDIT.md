@@ -7,6 +7,15 @@
 
 This audit records what exists in the repository today. It is not an implementation-completion claim. The approved [Staff Management Roadmap](./STAFF-MANAGEMENT-ROADMAP.md) remains the product source of truth.
 
+## 2026-11-26 — Staff modal keyboard focus containment verified
+
+- Corrected the shared modal focus trap to ignore non-rendered, hidden, `aria-hidden` and `inert` controls. Tab and Shift+Tab now wrap correctly when focus begins on the dialog container as well as at the first/last visible control.
+- Added a Playwright regression for the Add Staff wizard: initial dialog focus, Shift+Tab/Tab wrapping, Escape close, and focus restoration to the Add Staff trigger. The test fixture explicitly grants `users.create`.
+- Frontend CI [45774923847](https://github.com/TheSumitNain/school-management-system/actions/runs/45774923847) **PASS**: TypeScript, Vite production build and **152 Playwright tests passed**. Backend CI [45774923832](https://github.com/TheSumitNain/school-management-system/actions/runs/45774923832) **PASS**: complete migration chain, Go/PostgreSQL integration suite and `go vet`.
+- No new schema migration or persistent school-data change. Automated verification is green for this checkpoint; authenticated School Admin browser sign-off remains outstanding. `main` remains untouched.
+
+---
+
 ## 2026-11-26 final implementation verification — Leave/Substitution pagination
 
 - Reviewed the latest `work` branch implementation at `b164d1b9ffe838e25df9034b39b27340847b522e`. Leave Requests and Substitution History use bounded server-side pagination, filtered totals and stable navigation; leave report CSV export fetches every matching page rather than exporting only the visible page.
