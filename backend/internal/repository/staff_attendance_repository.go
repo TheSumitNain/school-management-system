@@ -236,6 +236,23 @@ func (r *StaffAttendanceRepository) ListMonthlyPage(ctx context.Context, actorID
 	return items, total, nil
 }
 
+// lockActiveStaffProfiles serializes attendance writes with employment inactivation.
+// Locks are acquired in principal-ID order so overlapping bulk batches cannot deadlock.
+func lockActiveStaffProfiles(ctx context.Context, tx pgx.Tx, schoolID int64, staffIDs []int64) error {
+    rows, err := tx.Query(ctx, `
+        SELECT principal_id FROM staff_profiles
+         WHERE school_id=$1 AND principal_id=ANY($2::bigint[]) AND employment_status='active'
+         ORDER BY principal_id FOR SHARE
+    `, schoolID, staffIDs)
+    if err != nil { return fmt.Errorf("lock active staff profiles for attendance: %w", err) }
+    defer rows.Close()
+    locked := 0
+    for rows.Next() { var principalID int64; if err := rows.Scan(&principalID); err != nil { return err }; locked++ }
+    if err := rows.Err(); err != nil { return err }
+    if locked != len(staffIDs) { return ErrStaffAttendanceNotFound }
+    return nil
+}
+
 func (r *StaffAttendanceRepository) Mark(ctx context.Context, actorID, schoolID, staffID int64, day time.Time, status string, remarks *string) (*StaffAttendanceRecord, error) {
     if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 {
         return nil, ErrInvalidStaffAttendance
@@ -262,17 +279,9 @@ func (r *StaffAttendanceRepository) Mark(ctx context.Context, actorID, schoolID,
         if value == "" { remarks = nil } else { remarks = &value }
     }
 
-    var active bool
-    if err := tx.QueryRow(ctx, `
-        SELECT EXISTS (
-            SELECT 1 FROM staff_profiles sp
-            WHERE sp.principal_id = $1 AND sp.school_id = $2
-              AND sp.employment_status = 'active'
-        )
-    `, staffID, schoolID).Scan(&active); err != nil {
-        return nil, fmt.Errorf("check staff attendance target: %w", err)
+    if err := lockActiveStaffProfiles(ctx, tx, schoolID, []int64{staffID}); err != nil {
+        return nil, err
     }
-    if !active { return nil, ErrStaffAttendanceNotFound }
 
     var id int64
     err = tx.QueryRow(ctx, `
@@ -412,18 +421,10 @@ func (r *StaffAttendanceRepository) MarkBulk(ctx context.Context, actorID, schoo
         if value == "" { remarks = nil } else { remarks = &value }
     }
 
+    if err := lockActiveStaffProfiles(ctx, tx, schoolID, staffIDs); err != nil {
+        return 0, err
+    }
     for _, staffID := range staffIDs {
-        var active bool
-        if err := tx.QueryRow(ctx, `
-            SELECT EXISTS (
-                SELECT 1 FROM staff_profiles
-                WHERE principal_id = $1 AND school_id = $2 AND employment_status = 'active'
-            )
-        `, staffID, schoolID).Scan(&active); err != nil {
-            return 0, fmt.Errorf("check bulk staff attendance target: %w", err)
-        }
-        if !active { return 0, ErrStaffAttendanceNotFound }
-
         var id int64
         if err := tx.QueryRow(ctx, `
             INSERT INTO staff_attendance_records
