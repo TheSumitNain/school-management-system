@@ -250,8 +250,9 @@ test("staff leave reports are reachable with leave-only permissions without load
       return;
     }
     if (path === "/school/staff-leave/requests" && request.method() === "GET") {
-      leaveReportRequests.push(url.search);
-      await route.fulfill({ json: { data: [], pagination: { page: 1, page_size: 100, total: 0 } } });
+      const pageSize = Number(url.searchParams.get("page_size") ?? "50");
+      if (pageSize === 100) leaveReportRequests.push(url.search);
+      await route.fulfill({ json: { data: [], pagination: { page: 1, page_size: pageSize, total: 0 } } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
