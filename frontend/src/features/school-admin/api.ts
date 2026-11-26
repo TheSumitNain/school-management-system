@@ -682,6 +682,7 @@ export function markStaffAttendanceBulk(input: { staff_principal_ids: number[]; 
   return api<{ created: number }>("/school/staff-attendance/bulk", { method: "POST", body: JSON.stringify(input) });
 }
 
+export type StaffPageInfo = { page:number; page_size:number; total:number };
 export type StaffLeaveType = { id:number; name:string; is_paid:boolean; requires_approval:boolean; is_active:boolean };
 export type StaffLeaveRequest = {
   id:number; staff_principal_id:number; employee_code?:string; staff_name?:string; leave_type_id:number; leave_type_name?:string;
@@ -694,9 +695,14 @@ export function getStaffLeaveTypes(signal?:AbortSignal){return api<{data:StaffLe
 export function saveStaffLeaveType(input:Omit<StaffLeaveType,"id"> & {id?:number}) {
  const {id,...body}=input;return api<{data:StaffLeaveType}>(id?("/school/staff-leave/types/"+id):"/school/staff-leave/types",{method:id?"PATCH":"POST",body:JSON.stringify(body)});
 }
-export function getStaffLeaveRequests(filters:{status?:string;staffPrincipalID?:number;onDate?:string;fromDate?:string;toDate?:string},signal?:AbortSignal){
- const params=new URLSearchParams();if(filters.status)params.set("status",filters.status);if(filters.staffPrincipalID)params.set("staff_principal_id",String(filters.staffPrincipalID));if(filters.onDate)params.set("on_date",filters.onDate);if(filters.fromDate)params.set("from_date",filters.fromDate);if(filters.toDate)params.set("to_date",filters.toDate);
- return api<{data:StaffLeaveRequest[]}>("/school/staff-leave/requests"+(params.size?"?"+params.toString():""),{signal});
+export function getStaffLeaveRequests(filters:{status?:string;staffPrincipalID?:number;onDate?:string;fromDate?:string;toDate?:string;page?:number;pageSize?:number},signal?:AbortSignal){
+ const params=new URLSearchParams();if(filters.status)params.set("status",filters.status);if(filters.staffPrincipalID)params.set("staff_principal_id",String(filters.staffPrincipalID));if(filters.onDate)params.set("on_date",filters.onDate);if(filters.fromDate)params.set("from_date",filters.fromDate);if(filters.toDate)params.set("to_date",filters.toDate);params.set("page",String(filters.page??1));params.set("page_size",String(filters.pageSize??50));
+ return api<{data:StaffLeaveRequest[];pagination:StaffPageInfo}>("/school/staff-leave/requests?"+params.toString(),{signal});
+}
+export async function getAllStaffLeaveRequests(filters:{status?:string;staffPrincipalID?:number;onDate?:string;fromDate?:string;toDate?:string},signal?:AbortSignal){
+ const rows:StaffLeaveRequest[]=[];let page=1;let total=0;
+ do{const result=await getStaffLeaveRequests({...filters,page,pageSize:100},signal);rows.push(...result.data);total=result.pagination.total;page+=1;}while(rows.length<total&&rows.length>0);
+ return rows;
 }
 export function createStaffLeaveRequest(input:{staff_principal_id:number;leave_type_id:number;start_date:string;end_date:string;duration_type:"full_day"|"half_day";half_day_session?:"first_half"|"second_half";reason:string}){
  return api<{data:StaffLeaveRequest}>("/school/staff-leave/requests",{method:"POST",body:JSON.stringify(input)});
@@ -719,10 +725,10 @@ export type StaffSubstitution = {
   starts_at:string; ends_at:string; room?:string|null; created_by_principal_id:number; created_at:string;
   cancelled_by_principal_id?:number|null; cancelled_at?:string|null;
 };
-export function getStaffSubstitutions(filters:{fromDate:string;toDate:string;staffPrincipalID?:number},signal?:AbortSignal){
-  const params=new URLSearchParams({from_date:filters.fromDate,to_date:filters.toDate});
+export function getStaffSubstitutions(filters:{fromDate:string;toDate:string;staffPrincipalID?:number;page?:number;pageSize?:number},signal?:AbortSignal){
+  const params=new URLSearchParams({from_date:filters.fromDate,to_date:filters.toDate,page:String(filters.page??1),page_size:String(filters.pageSize??50)});
   if(filters.staffPrincipalID)params.set("staff_principal_id",String(filters.staffPrincipalID));
-  return api<{substitutions:StaffSubstitution[]}>(`/school/staff-substitutions?${params.toString()}`,{signal});
+  return api<{substitutions:StaffSubstitution[];pagination:StaffPageInfo}>(`/school/staff-substitutions?${params.toString()}`,{signal});
 }
 export function createStaffSubstitution(input:{
   timetable_entry_id:number; original_teacher_principal_id:number; substitute_teacher_principal_id:number;
