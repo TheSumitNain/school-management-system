@@ -1244,3 +1244,5 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Backend remains authoritative: repository-level protected-target checks continue to reject direct mutation attempts.
 
 - Follow-up hardening: the role-assignment submit handler now rechecks protected School Admin state as well as the caller's live UI permission, so a stale rendered form cannot initiate an assignment after the protected target state is known.
+
+- Expanded RBAC PostgreSQL regressions: deletion of an existing permission override from a protected peer School Admin is rejected without deleting the row; cross-school role revocation and permission-override deletion are also explicitly denied. This closes delete-path gaps alongside existing create/set/read isolation checks.
