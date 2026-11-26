@@ -4000,6 +4000,37 @@ test("staff leave report CSV exports every matching page", async ({ page }) => {
   expect(csv).not.toContain("Export request 205");
 });
 
+test("staff leave report rejects changing totals instead of showing a partial export", async ({ page }) => {
+  const staffRows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.integrity.teacher",
+    employee_code: "EMP-INTEGRITY-01", full_name: "Integrity Teacher", designation: "Teacher",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  const requests = Array.from({ length: 101 }, (_, index) => ({
+    id: index + 1, staff_principal_id: 501, employee_code: "EMP-INTEGRITY-01", staff_name: "Integrity Teacher",
+    leave_type_id: 1, leave_type_name: "Casual Leave", start_date: schoolDateValue(), end_date: schoolDateValue(),
+    duration_type: "full_day", reason: "Integrity check " + (index + 1), status: "approved",
+    created_at: "2026-11-21T00:00:00.000Z",
+  }));
+  await signInAndOpenStaff(page, staffRows, undefined, ["users.read", "staff.leave.read"], undefined, requests);
+  await page.route("**/api/school/staff-leave/requests?**", async route => {
+    const url = new URL(route.request().url());
+    const pageNumber = Number(url.searchParams.get("page") ?? "1");
+    const pageSize = Number(url.searchParams.get("page_size") ?? "100");
+    const data = pageNumber === 1 ? requests.slice(0, pageSize) : requests.slice(pageSize);
+    await route.fulfill({
+      json: {
+        data,
+        pagination: { page: pageNumber, page_size: pageSize, total: pageNumber === 1 ? 101 : 102 },
+      },
+    });
+  });
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Leave requests" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Leave report could not be loaded." })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export leave CSV" })).toHaveCount(0);
+});
+
 test("staff leave requests use bounded pages and show the matching total", async ({ page }) => {
   const staffRows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 501, school_id: 10, username: "leave.page.teacher",
