@@ -994,6 +994,17 @@ func (r *RoleRepository) SetStaffPermissionOverride(
 		  AND target.status = 'active' AND target_principal.status = 'active'
 		  AND target_principal.principal_type = 'staff'
 		  AND p.scope_type = 'school' AND p.is_active = TRUE AND p.is_delegable = TRUE
+		  AND NOT EXISTS (
+		      SELECT 1
+		      FROM principal_roles protected_assignment
+		      JOIN roles protected_role ON protected_role.id = protected_assignment.role_id
+		      WHERE protected_assignment.principal_id = target.principal_id
+		        AND protected_assignment.revoked_at IS NULL
+		        AND protected_role.school_id = $2
+		        AND protected_role.scope_type = 'school'
+		        AND protected_role.principal_type = 'staff'
+		        AND protected_role.role_key = 'school_admin'
+		  )
 		ON CONFLICT (principal_id, school_id, permission_id)
 		DO UPDATE SET effect = EXCLUDED.effect,
 		              reason = EXCLUDED.reason,
@@ -1072,9 +1083,21 @@ func (r *RoleRepository) DeleteStaffPermissionOverride(
 	}
 	tag, err := tx.Exec(ctx, `
 		DELETE FROM user_permission_overrides o
-		USING permissions p
+		USING permissions p, users target
 		WHERE o.permission_id = p.id AND o.school_id = $1
 		  AND o.principal_id = $2 AND p.permission_key = $3
+		  AND target.principal_id = o.principal_id AND target.school_id = o.school_id
+		  AND NOT EXISTS (
+		      SELECT 1
+		      FROM principal_roles protected_assignment
+		      JOIN roles protected_role ON protected_role.id = protected_assignment.role_id
+		      WHERE protected_assignment.principal_id = target.principal_id
+		        AND protected_assignment.revoked_at IS NULL
+		        AND protected_role.school_id = $1
+		        AND protected_role.scope_type = 'school'
+		        AND protected_role.principal_type = 'staff'
+		        AND protected_role.role_key = 'school_admin'
+		  )
 	`, schoolID, targetPrincipalID, permissionKey)
 	if err != nil {
 		return fmt.Errorf("delete staff permission override: %w", err)

@@ -812,3 +812,9 @@ This section supersedes older statements in this audit that describe browser ver
 - Staff role revocation now rejects self-targets and prevents adding/removing non-admin roles on a protected peer School Admin account.
 - Added PostgreSQL regressions for self-revocation and peer School Admin role-mutation denial.
 - Cross-school role reads/writes, DENY-over-ALLOW resolution, delegation revocation and transactional audit coverage remain in the integration suite.
+
+
+## 2026-11-26 follow-up — protected role/override targets and audit timeline
+
+- Permission ALLOW/DENY override writes and deletes now refuse to mutate a protected peer School Admin account.
+- PostgreSQL integration coverage verifies peer-admin override rejection and that staff History & Activity exposes both role-assigned and role-revoked audit events using the principal resource identifier.

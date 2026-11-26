@@ -443,6 +443,23 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	if len(assignments) != 0 {
 		t.Fatalf("revoked staff role remains active: %+v", assignments)
 	}
+	// Role assignment and revocation audit records must be visible in the
+	// target staff member's History & Activity timeline.
+	history, err := NewUserRepository(tx).ListStaffAuditEvents(ctx, actorPrincipalID, schoolID, targetPrincipalID, StaffAuditEventFilter{Limit: 100})
+	if err != nil {
+		t.Fatalf("list staff history after role lifecycle: %v", err)
+	}
+	seenAssigned, seenRevoked := false, false
+	for _, event := range history.Events {
+		if event.ResourceType != "staff_principal" { continue }
+		switch event.Action {
+		case "school.staff.role_assigned": seenAssigned = true
+		case "school.staff.role_revoked": seenRevoked = true
+		}
+	}
+	if !seenAssigned || !seenRevoked {
+		t.Fatalf("staff history missing role lifecycle events: assigned=%v revoked=%v events=%+v", seenAssigned, seenRevoked, history.Events)
+	}
 	if err := repo.AssignStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, schoolAdminRoleID); !errors.Is(err, ErrRoleNotFound) {
 		t.Fatalf("reserved School Admin assignment error = %v, want ErrRoleNotFound", err)
 	}
@@ -467,6 +484,12 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	}
 	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, peerAdminPrincipalID, schoolAdminRoleID); !errors.Is(err, ErrRoleNotFound) {
 		t.Fatalf("revoking peer School Admin role error = %v, want ErrRoleNotFound", err)
+	}
+	if err := repo.SetStaffPermissionOverride(
+		ctx, actorPrincipalID, schoolID, peerAdminPrincipalID, overrideDelegation.ID,
+		"homework.create", "allow", "protected peer admin override test",
+	); !errors.Is(err, ErrDelegationNotFound) {
+		t.Fatalf("setting permission override for peer School Admin error = %v, want ErrDelegationNotFound", err)
 	}
 
 	if err := repo.SetStaffPermissionOverride(
