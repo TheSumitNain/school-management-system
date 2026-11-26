@@ -127,6 +127,61 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
         t.Fatalf("omitted optional email was not represented as empty in API and NULL in storage: is_null=%v email=%q", blankEmailIsNull, blankEmailUser.Email)
     }
 
+    // Account + employee-profile onboarding is one transaction: an audit
+    // failure must not leave either the login account or the profile behind.
+    createFailureUsername := "profile-audit-fail-" + suffix
+    createFailureEmployeeCode := "EMP-AUDIT-FAIL-" + suffix
+    if _, err := tx.Exec(ctx, `
+        CREATE OR REPLACE FUNCTION public.test_staff_profile_create_audit_failure()
+        RETURNS trigger LANGUAGE plpgsql AS $body$
+        BEGIN
+            IF NEW.action = 'staff.account.created' THEN
+                RAISE EXCEPTION 'forced staff profile creation audit failure';
+            END IF;
+            RETURN NEW;
+        END;
+        $body$;
+        CREATE TRIGGER trg_test_staff_profile_create_audit_failure
+        BEFORE INSERT ON public.audit_events
+        FOR EACH ROW EXECUTE FUNCTION public.test_staff_profile_create_audit_failure();
+    `); err != nil {
+        t.Fatalf("install profile creation audit failure trigger: %v", err)
+    }
+    failedCreateProfile := profile
+    failedCreateProfile.EmployeeCode = createFailureEmployeeCode
+    if _, err := repo.CreateStaffAccountWithProfile(ctx, actorPrincipalID, schoolID,
+        createFailureUsername, "profile-audit-failure-password-hash", failedCreateProfile); err == nil {
+        t.Fatal("staff account/profile creation unexpectedly succeeded when its audit insert failed")
+    }
+    if _, err := tx.Exec(ctx, `
+        DROP TRIGGER trg_test_staff_profile_create_audit_failure ON public.audit_events;
+        DROP FUNCTION public.test_staff_profile_create_audit_failure();
+    `); err != nil {
+        t.Fatalf("remove profile creation audit failure trigger: %v", err)
+    }
+    var failedCreateUsers, failedCreateProfiles, failedCreateAudits int
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*) FROM users WHERE school_id=$1 AND username=$2
+    `, schoolID, createFailureUsername).Scan(&failedCreateUsers); err != nil {
+        t.Fatalf("count account after profile creation audit failure: %v", err)
+    }
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*) FROM staff_profiles WHERE school_id=$1 AND employee_code=$2
+    `, schoolID, createFailureEmployeeCode).Scan(&failedCreateProfiles); err != nil {
+        t.Fatalf("count profile after profile creation audit failure: %v", err)
+    }
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*) FROM audit_events
+         WHERE actor_principal_id=$1 AND school_id=$2
+           AND action='staff.account.created' AND metadata->>'username'=$3
+    `, actorPrincipalID, schoolID, createFailureUsername).Scan(&failedCreateAudits); err != nil {
+        t.Fatalf("count audit after profile creation audit failure: %v", err)
+    }
+    if failedCreateUsers != 0 || failedCreateProfiles != 0 || failedCreateAudits != 0 {
+        t.Fatalf("profile creation audit failure left partial state: users=%d profiles=%d audits=%d",
+            failedCreateUsers, failedCreateProfiles, failedCreateAudits)
+    }
+
     // Updating an existing profile to another employee's code must be
     // rejected without partially changing the profile or recording success.
     duplicateCodeUpdate := profile
