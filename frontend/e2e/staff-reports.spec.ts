@@ -101,6 +101,12 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   expect(qualificationRequests.some(url => url.searchParams.get("offset") === "50")).toBeTruthy();
 
   const qualificationSection = page.locator(".staff-operational-report-section").nth(0);
+  const qualificationDownloadPromise = page.waitForEvent("download");
+  await qualificationSection.getByRole("button", { name: "Export all matching CSV" }).click();
+  const qualificationDownload = await qualificationDownloadPromise;
+  expect(qualificationDownload.suggestedFilename()).toBe("staff-qualifications-certifications.csv");
+  expect(qualificationRequests.some(url => url.searchParams.get("offset") === "0" && url.searchParams.get("limit") === "200")).toBeTruthy();
+  expect(qualificationRequests.some(url => url.searchParams.get("offset") === "50" && url.searchParams.get("limit") === "200")).toBeTruthy();
   await qualificationSection.getByLabel("Record type").selectOption("certification");
   await qualificationSection.getByLabel("Verification status").selectOption("pending");
   await expect(page.getByText("First Aid Certificate", { exact: true })).toBeVisible();
@@ -116,6 +122,12 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   await expect(experienceSection.getByText("Older Academy", { exact: true })).toBeVisible();
   await expect(experiencePagination).toContainText("Showing 51–51 of 51");
   expect(experienceRequests.some(url => url.searchParams.get("offset") === "50")).toBeTruthy();
+  const experienceDownloadPromise = page.waitForEvent("download");
+  await experienceSection.getByRole("button", { name: "Export all matching CSV" }).click();
+  const experienceDownload = await experienceDownloadPromise;
+  expect(experienceDownload.suggestedFilename()).toBe("staff-experience-report.csv");
+  expect(experienceRequests.some(url => url.searchParams.get("offset") === "0" && url.searchParams.get("limit") === "200")).toBeTruthy();
+  expect(experienceRequests.some(url => url.searchParams.get("offset") === "50" && url.searchParams.get("limit") === "200")).toBeTruthy();
   await experiencePagination.getByRole("button", { name: "Previous" }).click();
   await expect(experienceSection.getByText("Previous School", { exact: true })).toBeVisible();
   await experienceSection.getByLabel("Experience status").selectOption("current");
