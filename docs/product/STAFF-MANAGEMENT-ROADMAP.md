@@ -1208,3 +1208,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added service tests for self-reset and missing actor/school/target IDs; all reject before repository mutation or password hashing.
 - Added handler regressions for malformed/zero target principal IDs and missing authenticated school scope; invalid requests never reach the reset service.
 - Repository integration coverage continues to enforce same-school target scope, protected School Admin accounts, password/session invalidation and audit rollback. Authenticated School Admin browser acceptance remains outstanding.
+
+
+## 2026-11-26 follow-up — reject empty staff password hashes
+
+- Hardened `ResetStaffPassword` repository validation so a direct repository caller cannot replace a credential with an empty password hash.
+- Added PostgreSQL regression assertions for empty-hash and self-target reset rejection, including preservation of the existing password hash.
+- Added service coverage for an empty reset password; it is rejected before repository mutation.

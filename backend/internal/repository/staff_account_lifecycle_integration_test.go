@@ -303,6 +303,21 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("updated username = %q, want %q", updated.Username, renamedUsername)
 	}
 
+	// Repository callers must never be able to replace a credential with an empty hash.
+	if err := repo.ResetStaffPassword(ctx, actorPrincipalID, schoolID, created.PrincipalID, ""); !errors.Is(err, ErrInvalidUser) {
+		t.Fatalf("empty staff password hash reset error = %v, want ErrInvalidUser", err)
+	}
+	if err := repo.ResetStaffPassword(ctx, actorPrincipalID, schoolID, actorPrincipalID, "self-reset-hash"); !errors.Is(err, ErrInvalidUser) {
+		t.Fatalf("self staff password reset error = %v, want ErrInvalidUser", err)
+	}
+	var unchangedResetHash string
+	if err := tx.QueryRow(ctx, "SELECT password_hash FROM users WHERE principal_id = $1", created.PrincipalID).Scan(&unchangedResetHash); err != nil {
+		t.Fatalf("read password hash after rejected reset attempts: %v", err)
+	}
+	if unchangedResetHash != "integration-test-password-hash" {
+		t.Fatalf("rejected empty/self reset changed target password hash: %q", unchangedResetHash)
+	}
+
 	// A School Admin password reset must atomically replace the credential,
 	// force a password change, invalidate access tokens, revoke refresh sessions,
 	// and record the actor/target audit event.

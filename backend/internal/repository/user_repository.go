@@ -816,7 +816,7 @@ func (r *UserRepository) ResetStaffPassword(
 
 func (r *UserRepository) DisableStaffAccount(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) error {
 	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 ||
-		targetPrincipalID <= 0 || actorPrincipalID == targetPrincipalID {
+		targetPrincipalID <= 0 || actorPrincipalID == targetPrincipalID || newPasswordHash == "" {
 		return ErrInvalidUser
 	}
 	tx, err := r.db.Begin(ctx)

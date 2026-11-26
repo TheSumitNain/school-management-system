@@ -133,6 +133,18 @@ func TestStaffPasswordServiceResetsPasswordAsTemporary(t *testing.T) {
 	}
 }
 
+func TestStaffPasswordServiceRejectsEmptyResetPassword(t *testing.T) {
+	repo := &fakeStaffPasswordRepository{}
+	service, err := NewStaffPasswordService(repo, alwaysClearPasswordChecker{})
+	if err != nil { t.Fatal(err) }
+	if err := service.ResetPassword(context.Background(), 10, 4, 11, ""); !errors.Is(err, ErrInvalidPassword) {
+		t.Fatalf("empty reset password error = %v, want ErrInvalidPassword", err)
+	}
+	if repo.resetCalls != 0 {
+		t.Fatalf("empty reset password reached repository %d times", repo.resetCalls)
+	}
+}
+
 func TestStaffPasswordServiceRejectsSelfResetAndInvalidScopeBeforeRepository(t *testing.T) {
 	repo := &fakeStaffPasswordRepository{}
 	service, err := NewStaffPasswordService(repo, alwaysClearPasswordChecker{})
