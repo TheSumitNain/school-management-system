@@ -336,3 +336,67 @@ test("academic assignment report respects teacher-subject-only permission", asyn
   expect(currentYearRequests).toBeGreaterThan(0);
   expect(classInchargeRequests).toHaveLength(0);
 });
+
+test("academic assignment report respects class-in-charge-only permission", async ({ page }) => {
+  const inchargeOnlyAdmin = {
+    principal_id: 105,
+    principal_type: "staff",
+    status: "active",
+    school_id: 10,
+    username: "incharge-report-admin",
+    permissions: ["class_incharge_assignments.read"],
+  };
+  const subjectRequests: string[] = [];
+  const inchargeRequests: string[] = [];
+  let currentYearRequests = 0;
+
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && request.method() === "POST") {
+      await route.fulfill({ json: { access_token: "staff-incharge-report-only-e2e-token", token_type: "Bearer", principal: inchargeOnlyAdmin } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: inchargeOnlyAdmin });
+      return;
+    }
+    if (path === "/school/timetable/current-year" && request.method() === "GET") {
+      currentYearRequests += 1;
+      await route.fulfill({ json: { academic_year: { id: 2026, name: "2026-27" } } });
+      return;
+    }
+    if (path === "/school/teacher-assignments" && request.method() === "GET") {
+      subjectRequests.push(url.search);
+      await route.fulfill({ json: { assignments: [] } });
+      return;
+    }
+    if (path === "/school/class-incharge-assignments" && request.method() === "GET") {
+      inchargeRequests.push(url.search);
+      await route.fulfill({ json: { assignments: [] } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("incharge-report-admin");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Staff", exact: true }).click();
+
+  await expect(page.getByRole("button", { name: "Reports", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Academic assignments" })).toBeVisible();
+  await expect(page.getByText("Class-in-charge assignments", { exact: true })).toBeVisible();
+  await expect(page.getByText("Subject assignments", { exact: true })).toHaveCount(0);
+  await expect.poll(() => inchargeRequests.length).toBeGreaterThan(0);
+  expect(currentYearRequests).toBeGreaterThan(0);
+  expect(subjectRequests).toHaveLength(0);
+});
