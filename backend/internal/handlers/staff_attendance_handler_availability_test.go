@@ -67,6 +67,7 @@ type nilStaffAttendanceListService struct { StaffAttendanceManagementService }
 func (nilStaffAttendanceListService) ListDaily(context.Context,int64,int64,time.Time)([]repository.StaffAttendanceRecord,error){return nil,nil}
 func (nilStaffAttendanceListService) ListMonthly(context.Context,int64,int64,time.Time)([]repository.StaffAttendanceMonthlySummary,error){return nil,nil}
 func (nilStaffAttendanceListService) ListDailyPage(context.Context,int64,int64,time.Time,int,int)([]repository.StaffAttendanceRecord,int,error){return nil,0,nil}
+func (nilStaffAttendanceListService) ListDailyFilteredPage(context.Context, int64, int64, time.Time, repository.StaffAttendanceDailyFilter, int, int) ([]repository.StaffAttendanceRecord, int, error) { return nil, 0, nil }
 func (nilStaffAttendanceListService) ListMonthlyPage(context.Context,int64,int64,time.Time,int,int)([]repository.StaffAttendanceMonthlySummary,int,error){return nil,0,nil}
 
 func TestStaffAttendanceListHandlersReturnEmptyArrays(t *testing.T) {
@@ -134,3 +135,35 @@ func TestStaffAttendanceWriteHandlersRejectNilSuccessfulResults(t *testing.T) {
 	}
 }
 
+
+type captureStaffAttendanceFilterService struct {
+    nilStaffAttendanceListService
+    filter repository.StaffAttendanceDailyFilter
+    limit int
+    offset int
+}
+func (s *captureStaffAttendanceFilterService) ListDailyFilteredPage(_ context.Context, _, _ int64, _ time.Time, filter repository.StaffAttendanceDailyFilter, limit, offset int) ([]repository.StaffAttendanceRecord, int, error) {
+    s.filter, s.limit, s.offset = filter, limit, offset
+    return []repository.StaffAttendanceRecord{}, 0, nil
+}
+
+func TestStaffAttendanceDailyHandlerPassesGlobalFiltersAndPagination(t *testing.T) {
+    gin.SetMode(gin.TestMode)
+    service := &captureStaffAttendanceFilterService{}
+    handler := NewStaffAttendanceHandler(service)
+    router := gin.New()
+    router.GET("/daily", func(c *gin.Context) {
+        c.Set(middleware.ContextPrincipalIDKey, int64(100))
+        c.Set(middleware.ContextSchoolIDKey, int64(10))
+        handler.ListDaily(c)
+    })
+    recorder := httptest.NewRecorder()
+    request := httptest.NewRequest(http.MethodGet, "/daily?date=2026-11-26&search=Alice&status=unmarked&limit=25&offset=50", nil)
+    router.ServeHTTP(recorder, request)
+    if recorder.Code != http.StatusOK {
+        t.Fatalf("status=%d body=%s want=%d", recorder.Code, recorder.Body.String(), http.StatusOK)
+    }
+    if service.filter.Search != "Alice" || service.filter.Status != "unmarked" || service.limit != 25 || service.offset != 50 {
+        t.Fatalf("filter=%+v limit=%d offset=%d", service.filter, service.limit, service.offset)
+    }
+}
