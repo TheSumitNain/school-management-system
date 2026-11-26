@@ -110,6 +110,20 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 
 	// Exercise the production pagination query against the real PostgreSQL fixture.
 	subRepo := &AcademicRepository{db: tx}
+
+	// A School Admin with substitution permissions in this tenant must not
+	// reuse those permissions by supplying a different school ID.
+	foreignSchoolID := schoolID + 999999
+	if _, crossErr := subRepo.CreateStaffSubstitution(ctx, actorPrincipalID, foreignSchoolID,
+		timetableEntryID, originalID, substituteID, coverDate, nil, "cross-school create"); !errors.Is(crossErr, ErrStaffSubstitutionAccessDenied) {
+		t.Fatalf("authorized home-school actor cross-school create error=%v; want access denied", crossErr)
+	}
+	if crossErr := subRepo.CancelStaffSubstitution(ctx, actorPrincipalID, foreignSchoolID, substitutionID); !errors.Is(crossErr, ErrStaffSubstitutionAccessDenied) {
+		t.Fatalf("authorized home-school actor cross-school cancel error=%v; want access denied", crossErr)
+	}
+	if _, crossErr := subRepo.ListStaffSubstitutions(ctx, actorPrincipalID, foreignSchoolID, coverDate, coverDate, 0); !errors.Is(crossErr, ErrStaffSubstitutionAccessDenied) {
+		t.Fatalf("authorized home-school actor cross-school list error=%v; want access denied", crossErr)
+	}
 	firstPage, pageErr := subRepo.ListStaffSubstitutionsPage(ctx, actorPrincipalID, schoolID, coverDate, coverDate, 0, 1, 1)
 	if pageErr != nil { t.Fatalf("read first substitution page: %v", pageErr) }
 	if firstPage.Total != 2 || len(firstPage.Items) != 1 || firstPage.Items[0].ID != substitutionID || firstPage.Items[0].PeriodNumber != 1 {
