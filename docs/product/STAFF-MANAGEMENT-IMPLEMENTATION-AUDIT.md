@@ -684,3 +684,12 @@ This section supersedes older statements in this audit that describe browser ver
 - Credential Reference and Credential ID now enforce the existing 120-character limit by Unicode code points in the browser, matching backend rune-count validation. Native HTML `maxLength` was removed because it counts UTF-16 code units and truncated emoji inputs prematurely.
 - Playwright regression verifies that entering 121 supplementary-plane emoji retains exactly 120 characters for both fields. Frontend CI [45541856053](https://github.com/TheSumitNain/school-management-system/actions/runs/45541856053) **PASS** and Backend CI [45541856057](https://github.com/TheSumitNain/school-management-system/actions/runs/45541856057) **PASS** on `bfe587984dbc645fbd93ee80584bd82561b5c6fc`.
 - This is a client/backend validation parity correction and regression checkpoint; it adds no new product scope, schema migration or persistent data change. `main` remains untouched. Document/photo storage remains deferred and excluded from the Staff Management completion estimate.
+
+
+## 2026-11-26 follow-up — report refresh and staff onboarding audit atomicity
+
+- Fixed Qualifications and Experience report Refresh so it invalidates the matching cached report query and resets pagination to page one. The Playwright regression verifies that a refreshed total of 50 removes pagination, shows record 50 but not record 51, and requests the first page again.
+- Frontend CI [45757876613](https://github.com/TheSumitNain/school-management-system/actions/runs/45757876613) **PASS** on `88ed91af`: TypeScript, Vite production build and full Playwright browser acceptance suite.
+- Added a PostgreSQL failure-injection regression for staff account + employee-profile creation. If the required `staff.account.created` audit insert fails, neither the login account nor profile nor success audit row may persist. Existing profile-update audit-failure coverage also verifies the profile mutation is rolled back.
+- Backend CI [45758112429](https://github.com/TheSumitNain/school-management-system/actions/runs/45758112429) **PASS** on `8468f1ad`: full migrations, Go tests including PostgreSQL integration tests, and `go vet`.
+- No production behavior change or schema migration in the onboarding test-only commit; the report refresh correction is a frontend cache/UX fix. `main` remains untouched. Authenticated School Admin browser sign-off and previously recorded approval-gated/deferred scope remain outstanding; this checkpoint does not declare Staff Management complete.
