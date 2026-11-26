@@ -716,3 +716,11 @@ This section supersedes older statements in this audit that describe browser ver
 - Added PostgreSQL integration coverage proving a valid School Admin cannot pass a forged foreign school ID to the legacy Staff Account Listing repository operation; the call must return `ErrRolePermissionDenied` and no listing. This complements the paginated Directory and aggregate Summary forged-scope tests.
 - Backend CI [45759426503](https://github.com/TheSumitNain/school-management-system/actions/runs/45759426503) **PASS** on `c87ecdb780083c5c2d4d7a671dadc2d49ad3d831`: full migration chain, complete Go suite including PostgreSQL integration tests, and `go vet`.
 - Test-only defense-in-depth; no production behavior, schema or persistent data changed. Staff Management remains in progress pending authenticated School Admin browser acceptance/sign-off and previously documented approval-gated items. `main` remains untouched.
+
+
+## 2026-11-26 follow-up — Attendance tenant-scope regression
+
+- Added `TestStaffAttendanceOperationsRejectForeignSchoolScopePostgresIntegration`: a valid School Admin's Daily and Monthly attendance reads, single mark, bulk mark, and update of a home-school attendance record are all attempted with a forged foreign school ID and must be denied. The test also verifies no attendance row is written under the foreign school.
+- Backend CI [45759983308](https://github.com/TheSumitNain/school-management-system/actions/runs/45759983308) **PASS** on `88852a78032195283c1ff5297c3fbb5d0ec25620`: full migration chain, complete Go tests including PostgreSQL integration, and `go vet`.
+- Adjacent audit review confirmed existing Leave integration coverage for foreign-school list/cancel/holiday operations and audit-failure rollback of leave type, request creation, decisions, cancellation, and holiday writes; Substitution integration coverage already exercises foreign-school create/cancel/list, authorization-before-validation, and concurrent slot serialization. No duplicate tests added for those already-covered paths.
+- This is regression-test coverage, not a production-code change. Staff Management remains in progress pending authenticated School Admin browser acceptance/sign-off and documented approval-gated scope. `main` remains untouched.
