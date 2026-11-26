@@ -744,3 +744,40 @@ func TestStaffLeaveRequestPaginationPostgresIntegration(t *testing.T) {
 		t.Fatalf("cross-school pagination error=%v, want access denied", err)
 	}
 }
+
+func TestStaffLeaveRequestSerializesWithEmploymentInactivationPostgresIntegration(t *testing.T) {
+    f := newStaffLeaveIntegrationFixture(t)
+    day := time.Now().AddDate(0, 0, 120).Format("2006-01-02")
+    inactivationTx, err := f.pool.Begin(f.ctx)
+    if err != nil { t.Fatalf("begin employment inactivation: %v", err) }
+    defer func() { _ = inactivationTx.Rollback(context.Background()) }()
+    if _, err := inactivationTx.Exec(f.ctx, `UPDATE staff_profiles SET employment_status='inactive',updated_at=NOW() WHERE principal_id=$1 AND school_id=$2`, f.staffPrincipalID, f.schoolID); err != nil {
+        t.Fatalf("lock and inactivate leave applicant: %v", err)
+    }
+    result := make(chan error, 1)
+    started := make(chan struct{})
+    go func() {
+        close(started)
+        _, err := f.repo.CreateRequest(f.ctx, f.adminPrincipalID, f.schoolID, StaffLeaveRequest{
+            StaffPrincipalID: f.staffPrincipalID, LeaveTypeID: f.leaveTypeID,
+            StartDate: day, EndDate: day, DurationType: "full_day", Reason: "Inactivation race test",
+        })
+        result <- err
+    }()
+    <-started
+    select {
+    case err := <-result:
+        t.Fatalf("leave request completed while employment inactivation held the profile row: %v", err)
+    case <-time.After(150 * time.Millisecond):
+    }
+    if err := inactivationTx.Commit(f.ctx); err != nil { t.Fatalf("commit employment inactivation: %v", err) }
+    select {
+    case err := <-result:
+        if !errors.Is(err, ErrStaffLeaveNotFound) { t.Fatalf("leave request after inactivation error=%v; want not found", err) }
+    case <-time.After(5 * time.Second):
+        t.Fatal("leave request did not finish after inactivation committed")
+    }
+    var requests int
+    if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM staff_leave_requests WHERE school_id=$1 AND staff_principal_id=$2 AND start_date=$3::date`, f.schoolID, f.staffPrincipalID, day).Scan(&requests); err != nil { t.Fatalf("count leave requests after inactivation: %v", err) }
+    if requests != 0 { t.Fatalf("leave requests for inactive employee=%d; want 0", requests) }
+}
