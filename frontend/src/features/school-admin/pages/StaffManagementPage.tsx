@@ -64,17 +64,31 @@ async function exportStaffDirectoryCSV(rows:StaffRecord[], filters?:StaffDirecto
   let exportRows = rows;
   if (filters) {
     try {
-      const first = await getSchoolStaffDirectory({ ...filters, offset: 0 });
-      if (typeof first.total === "number") {
-        exportRows = [...first.staff];
-        for (let offset = filters.limit; offset < first.total; offset += filters.limit) {
-          const page = await getSchoolStaffDirectory({ ...filters, offset });
-          if (page.staff.length === 0) break;
-          exportRows.push(...page.staff);
+      const pageSize=filters.limit;
+      if(!Number.isSafeInteger(pageSize)||pageSize<1)throw new Error("Invalid staff export page size.");
+      const first=await getSchoolStaffDirectory({...filters,offset:0});
+      if(!Array.isArray(first.staff)||!Number.isSafeInteger(first.total)||first.total<0||
+        first.limit!==pageSize||first.offset!==0||first.staff.length!==Math.min(pageSize,first.total)){
+        throw new Error("The first staff directory page is incomplete.");
+      }
+      exportRows=[...first.staff];
+      const seenIDs=new Set(exportRows.map(item=>item.principal_id));
+      if(seenIDs.size!==exportRows.length)throw new Error("The staff directory contains duplicate employee IDs.");
+      for(let offset=pageSize;offset<first.total;offset+=pageSize){
+        const page=await getSchoolStaffDirectory({...filters,offset});
+        const expectedCount=Math.min(pageSize,first.total-offset);
+        if(!Array.isArray(page.staff)||page.total!==first.total||page.limit!==pageSize||
+          page.offset!==offset||page.staff.length!==expectedCount){
+          throw new Error("A staff directory page is incomplete or inconsistent.");
+        }
+        for(const item of page.staff){
+          if(seenIDs.has(item.principal_id))throw new Error("The staff directory contains duplicate employee IDs.");
+          seenIDs.add(item.principal_id);exportRows.push(item);
         }
       }
+      if(exportRows.length!==first.total)throw new Error("The staff directory export is incomplete.");
     } catch {
-      throw new Error("Unable to prepare the complete filtered staff export. Please try again.");
+      throw new Error("Unable to prepare the complete filtered staff export. No partial CSV was created; please try again.");
     }
   }
   const headers=["Employee Code","Name","Designation","Employment Status","Login Account","Profile Status"];
