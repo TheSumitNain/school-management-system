@@ -2075,6 +2075,34 @@ test("staff profile history is permission-gated and renders staff audit events",
   await expect(dialog.getByText(expectedIST)).toBeVisible();
 });
 
+test("attendance-only permission opens the attendance workspace without loading the staff directory", async ({ page }) => {
+  const staffDirectoryRequests: string[] = [];
+  page.on("request", request => {
+    const pathname = new URL(request.url()).pathname;
+    if (/^\/api\/school\/staff(?:\/|$)/.test(pathname)) staffDirectoryRequests.push(request.url());
+  });
+  await signInAndOpenStaff(page, [], undefined, ["staff.attendance.read"]);
+  await expect(page.getByRole("heading", { name: "Staff Management" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Staff attendance" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Attendance", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Staff Directory/ })).toHaveCount(0);
+  expect(staffDirectoryRequests).toEqual([]);
+});
+
+test("substitution-history-only permission opens read-only history without loading the staff directory", async ({ page }) => {
+  const staffDirectoryRequests: string[] = [];
+  page.on("request", request => {
+    const pathname = new URL(request.url()).pathname;
+    if (/^\/api\/school\/staff(?:\/|$)/.test(pathname)) staffDirectoryRequests.push(request.url());
+  });
+  await signInAndOpenStaff(page, [], undefined, ["staff.substitutions.read"]);
+  await expect(page.getByRole("heading", { name: "Staff Management" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Substitute Teacher Coverage" })).toBeVisible();
+  await expect(page.getByText("Dated coverage records")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Staff Directory/ })).toHaveCount(0);
+  expect(staffDirectoryRequests).toEqual([]);
+});
+
 test("staff attendance supports search, individual and atomic bulk marking, and monthly summaries", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 512, school_id: 10, username: "teacher.attendance",
