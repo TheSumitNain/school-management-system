@@ -1,3 +1,13 @@
+## 2026-11-26 — Staff Leave/Substitution pagination ordering and filter coverage pass
+
+- Extended real-PostgreSQL Leave Requests coverage to verify inclusive overlapping date-range filters in addition to single-date filters, exact totals, multi-page results, stable newest-first ordering and cross-school denial.
+- Extended real-PostgreSQL Substitution History coverage to two records on one date in different periods, verifying deterministic period ordering across separate pages, exact totals, staff filtering, empty out-of-range pages and cross-school denial. The fixture also cancels both temporary future covers so existing timetable lifecycle checks remain independent.
+- Backend CI [45741181833](https://github.com/TheSumitNain/school-management-system/actions/runs/45741181833) **PASS** on `607576b79d16f933677b8e860759fbe8aebc9ded`: full migrations, complete Go/PostgreSQL integration suite and `go vet`.
+- Frontend source and browser tests were unchanged; the latest frontend CI [45737923385](https://github.com/TheSumitNain/school-management-system/actions/runs/45737923385) remains **PASS** with TypeScript, Vite production build and 132 Playwright tests.
+- No schema migration or persistent school data change. Manual authenticated-school sign-off remains outstanding; approval-gated identity, leave-policy, payroll and private-storage work remains deferred. `main` remains untouched.
+
+---
+
 ## 2026-11-26 — Staff Leave/Substitution pagination PostgreSQL and service regressions pass
 
 - Added real-PostgreSQL repository coverage for Leave Requests pagination: five matching rows across three pages, stable newest-first ordering, exact totals, status/staff filtering, single-date filtering, empty out-of-range pages and cross-school denial.
