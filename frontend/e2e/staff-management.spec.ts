@@ -4587,7 +4587,7 @@ test("protected School Admin staff records expose no ordinary account lifecycle 
   await expect(profile.getByRole("button", { name: "Edit personal details" })).toHaveCount(0);
 });
 
-test("staff directory recovers from a transient server error without losing its filters", async ({ page }) => {
+test("staff directory retries after a transient server error and accepts a subsequent search", async ({ page }) => {
   let attempts = 0;
   await signInAndOpenStaff(page, []);
   await page.route(
