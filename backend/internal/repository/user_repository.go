@@ -265,7 +265,8 @@ func (r *UserRepository) CreateStaffAccountWithProfile(
         if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "ux_staff_profiles_school_employee_code" {
             return nil, ErrEmployeeCodeTaken
         }
-        if errors.As(err, &pgErr) && pgErr.Code == "23514" && pgErr.ConstraintName == "staff_profiles_teacher_assignments_check" {
+        if errors.As(err, &pgErr) && pgErr.Code == "23514" &&
+            strings.Contains(strings.ToLower(pgErr.Message), "active teaching and class in-charge assignments") {
             return nil, ErrStaffProfileHasActiveAssignments
         }
         return nil, fmt.Errorf("insert staff employee profile: %w", err)
