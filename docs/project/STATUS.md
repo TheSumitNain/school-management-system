@@ -1,3 +1,13 @@
+## 2026-11-26 — Staff-specific read-only workspace browser acceptance pass
+
+- Added Playwright coverage for a principal with only `staff.attendance.read`: Attendance opens directly, while Staff Directory and all `/school/staff` directory/profile API requests remain absent.
+- Added Playwright coverage for a principal with only `staff.substitutions.read`: dated substitution history opens read-only, without Staff Directory access or staff-directory API requests.
+- Frontend CI [45744694369](https://github.com/TheSumitNain/school-management-system/actions/runs/45744694369) **PASS** on `185f3e3a2e97f8801a4f7cfc313c293cd235743c`: TypeScript, Vite production build and **134 Playwright tests passed**.
+- Backend CI [45744694365](https://github.com/TheSumitNain/school-management-system/actions/runs/45744694365) **PASS** on the same checkpoint: full migrations, Go/PostgreSQL integration suite and `go vet`.
+- No production code, schema migration or persistent school data change in this E2E-only addition. Manual authenticated-school sign-off and previously documented product approval gates remain outstanding; `main` remains untouched.
+
+---
+
 ## 2026-11-26 — Inactive staff attendance history retention verified
 
 - Added a real-PostgreSQL lifecycle regression: after an employee becomes inactive, the employee disappears from the current daily attendance roster, while the monthly attendance report continues to include their historical attendance within that month.
