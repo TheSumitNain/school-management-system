@@ -309,7 +309,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
           <h3>Approved leave</h3>
           {approvedMonthLeave.isPending && <p role="status">Loading approved leave…</p>}
           {approvedMonthLeave.isError && <p role="status">Approved leave context could not be loaded. Attendance totals remain unchanged.</p>}
-          {approvedMonthLeave.isSuccess && approvedMonthLeave.data.data.length === 0 && <p>No approved leave overlaps this month.</p>}
+          {approvedMonthLeave.isSuccess && approvedMonthLeave.data.length === 0 && <p>No approved leave overlaps this month.</p>}
           {approvedMonthLeave.data?.map(item => <p key={item.id}>{item.staff_name || "Staff"} · {item.leave_type_name || "Leave"} · {item.start_date}{item.end_date !== item.start_date ? ` → ${item.end_date}` : ""}</p>)}
         </div>}
         {canReadHolidayContext && <div>
