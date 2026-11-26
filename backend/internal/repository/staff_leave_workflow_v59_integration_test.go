@@ -645,3 +645,60 @@ func TestStaffLeaveDecisionAndCancellationRaceHasOneAuditedWinnerPostgresIntegra
 		t.Fatalf("cancelled request has inconsistent audit counts: decision=%d cancellation=%d", decisionAudits, cancellationAudits)
 	}
 }
+
+
+func TestStaffLeaveRequestPaginationPostgresIntegration(t *testing.T) {
+	f := newStaffLeaveIntegrationFixture(t)
+	base := time.Now().AddDate(0, 0, 90)
+	for i := 0; i < 5; i++ {
+		start := base.AddDate(0, 0, i*2).Format("2006-01-02")
+		f.request(t, f.staffPrincipalID, start, start)
+	}
+
+	first, err := f.repo.ListRequestsPage(f.ctx, f.adminPrincipalID, f.schoolID, "", 0, "", "", "", 1, 2)
+	if err != nil {
+		t.Fatalf("read first leave request page: %v", err)
+	}
+	if first.Total != 5 || len(first.Items) != 2 {
+		t.Fatalf("first page total=%d rows=%d; want total=5 rows=2", first.Total, len(first.Items))
+	}
+	if first.Items[0].StartDate <= first.Items[1].StartDate {
+		t.Fatalf("leave page ordering is not newest-first: %q then %q", first.Items[0].StartDate, first.Items[1].StartDate)
+	}
+
+	second, err := f.repo.ListRequestsPage(f.ctx, f.adminPrincipalID, f.schoolID, "pending", f.staffPrincipalID, "", "", "", 2, 2)
+	if err != nil {
+		t.Fatalf("read filtered second leave request page: %v", err)
+	}
+	if second.Total != 5 || len(second.Items) != 2 {
+		t.Fatalf("filtered second page total=%d rows=%d; want total=5 rows=2", second.Total, len(second.Items))
+	}
+	third, err := f.repo.ListRequestsPage(f.ctx, f.adminPrincipalID, f.schoolID, "", 0, "", "", "", 3, 2)
+	if err != nil {
+		t.Fatalf("read final leave request page: %v", err)
+	}
+	if third.Total != 5 || len(third.Items) != 1 {
+		t.Fatalf("final page total=%d rows=%d; want total=5 rows=1", third.Total, len(third.Items))
+	}
+	empty, err := f.repo.ListRequestsPage(f.ctx, f.adminPrincipalID, f.schoolID, "", 0, "", "", "", 4, 2)
+	if err != nil {
+		t.Fatalf("read out-of-range leave request page: %v", err)
+	}
+	if empty.Total != 5 || len(empty.Items) != 0 {
+		t.Fatalf("out-of-range page total=%d rows=%d; want total=5 rows=0", empty.Total, len(empty.Items))
+	}
+
+	targetDate := third.Items[0].StartDate
+	byDate, err := f.repo.ListRequestsPage(f.ctx, f.adminPrincipalID, f.schoolID, "", f.staffPrincipalID, targetDate, "", "", 1, 10)
+	if err != nil {
+		t.Fatalf("read leave request single-date filter: %v", err)
+	}
+	if byDate.Total != 1 || len(byDate.Items) != 1 || byDate.Items[0].StartDate != targetDate {
+		t.Fatalf("single-date filter total=%d rows=%d; want exactly the matching request", byDate.Total, len(byDate.Items))
+	}
+
+	crossSchool, err := f.repo.ListRequestsPage(f.ctx, f.adminPrincipalID, f.schoolID+999999, "", 0, "", "", "", 1, 2)
+	if !errors.Is(err, ErrStaffLeaveAccessDenied) {
+		t.Fatalf("cross-school pagination error=%v, want access denied", err)
+	}
+}
