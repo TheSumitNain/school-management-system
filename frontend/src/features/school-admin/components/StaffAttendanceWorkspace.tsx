@@ -89,14 +89,20 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     const total = daily.data?.pagination?.total;
     if (total === undefined) return;
     const lastOffset = total === 0 ? 0 : Math.floor((total - 1) / attendancePageSize) * attendancePageSize;
-    if (dailyOffset > lastOffset) setDailyOffset(lastOffset);
-  }, [daily.data?.pagination?.total, dailyOffset, attendancePageSize]);
+    if (dailyOffset > lastOffset) {
+      void queryClient.invalidateQueries({ queryKey: ["staff-attendance", "daily", date], refetchType: "none" });
+      setDailyOffset(lastOffset);
+    }
+  }, [daily.data?.pagination?.total, dailyOffset, attendancePageSize, queryClient, date]);
   useEffect(() => {
     const total = monthly.data?.pagination?.total;
     if (total === undefined) return;
     const lastOffset = total === 0 ? 0 : Math.floor((total - 1) / attendancePageSize) * attendancePageSize;
-    if (monthlyOffset > lastOffset) setMonthlyOffset(lastOffset);
-  }, [monthly.data?.pagination?.total, monthlyOffset, attendancePageSize]);
+    if (monthlyOffset > lastOffset) {
+      void queryClient.invalidateQueries({ queryKey: ["staff-attendance", "monthly", month], refetchType: "none" });
+      setMonthlyOffset(lastOffset);
+    }
+  }, [monthly.data?.pagination?.total, monthlyOffset, attendancePageSize, queryClient, month]);
   const monthStart = validMonth ? `${month}-01` : "";
   const monthEndDate = new Date(0);
   if (validMonth) monthEndDate.setUTCFullYear(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0);
