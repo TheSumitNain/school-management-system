@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, CheckCircle2, Clock3, Download, Plus, RefreshCw, UserRound, XCircle } from "lucide-react";
 import { ApiError } from "../../../lib/api";
 import { notifyToast } from "../../../shared/notifications";
@@ -78,6 +79,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
   const eligibleLeaveRequests=canManage&&canReadLeave?(leaveQuery.data?.data??[]).filter(item=>item.duration_type==="full_day"&&item.start_date<=coverDate&&item.end_date>=coverDate):[];
   const validRange=Boolean(fromDate&&toDate&&fromDate<=toDate);
   const filtersChanged=fromDate!==range.from||toDate!==range.to||filterStaffID!=="0";
+  const queryClient=useQueryClient();
   const substitutionsQuery=useStaffSubstitutionsQuery({fromDate,toDate,staffPrincipalID:Number(filterStaffID)||undefined,page:substitutionPage,pageSize:substitutionPageSize},canRead&&validRange);
   const create=useCreateStaffSubstitutionMutation();
   const cancel=useCancelStaffSubstitutionMutation();
@@ -86,8 +88,11 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
     const total=substitutionsQuery.data?.pagination?.total;
     if(total===undefined)return;
     const lastPage=Math.max(1,Math.ceil(total/substitutionPageSize));
-    if(substitutionPage>lastPage)setSubstitutionPage(lastPage);
-  },[substitutionsQuery.data?.pagination?.total,substitutionPage,substitutionPageSize]);
+    if(substitutionPage>lastPage){
+      void queryClient.invalidateQueries({queryKey:["school-admin","staff","substitutions"],refetchType:"none"});
+      setSubstitutionPage(lastPage);
+    }
+  },[substitutionsQuery.data?.pagination?.total,substitutionPage,substitutionPageSize,queryClient]);
 
 
   const activeStaff=useMemo(()=>staff.filter(item=>item.employment_status==="active"&&item.status==="active"),[staff]);

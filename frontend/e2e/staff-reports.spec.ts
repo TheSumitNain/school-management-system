@@ -58,7 +58,7 @@ test("staff qualifications and experience reports filter, paginate and retain hi
       }));
       const rows = filtered
         ? [{ record_type: "certification", record_id: 900, staff_principal_id: 201, employee_code: "EMP-201", staff_name: "Active Teacher", record_name: "First Aid Certificate", organization: "Safety Institute", record_date: "2026-01-10", expiry_date: "2028-01-10", verification_status: "pending" }]
-        : allRows.slice(offset, offset + requestedLimit);
+        : allRows.slice(offset, Math.min(offset + requestedLimit, qualificationTotal));
       const counts = filtered
         ? [{ record_type: "certification", verification_status: "pending", count: 1 }]
         : [{ record_type: "qualification", verification_status: "pending", count: qualificationTotal }];
@@ -79,7 +79,7 @@ test("staff qualifications and experience reports filter, paginate and retain hi
         })),
         { record_id: 751, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Older Academy", previous_designation: "Teacher", employment_type: "contract", start_date: "2015-04-01", end_date: "2018-03-31", is_current: false },
       ];
-      const rows = currentOnly ? [allRows[1]] : allRows.slice(offset, offset + requestedLimit);
+      const rows = currentOnly ? [allRows[1]] : allRows.slice(offset, Math.min(offset + requestedLimit, experienceTotal));
       const counts = currentOnly
         ? [{ employment_type: "permanent", is_current: true, count: 1 }]
         : [{ employment_type: "contract", is_current: false, count: 50 }, { employment_type: "permanent", is_current: true, count: 1 }];

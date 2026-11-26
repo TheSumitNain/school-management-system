@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, RefreshCw } from "lucide-react";
 import { getClassInchargeAssignments, getMonthlyStaffAttendance, getAllStaffLeaveRequests, getStaffQualificationsReport, getStaffExperienceReport, getTeacherSubjectAssignments } from "../api";
 import type { ClassInchargeAssignment, TeacherSubjectAssignment } from "../api";
@@ -205,19 +205,23 @@ function QualificationsReport({ permissions }: Props) {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
   const limit = 50;
+  const queryClient = useQueryClient();
   const report = useQuery({
     queryKey: ["staff-operational-report", "qualifications", recordType, verificationStatus, offset],
     queryFn: ({ signal }) => getStaffQualificationsReport({ recordType, verificationStatus: verificationStatus || undefined, limit, offset }, signal),
     enabled: canRead,
   });
-  if (!canRead) return null;
   const page = report.data?.report;
   useEffect(() => {
     const total = page?.total;
     if (total === undefined) return;
     const lastOffset = total === 0 ? 0 : Math.floor((total - 1) / limit) * limit;
-    if (offset > lastOffset) setOffset(lastOffset);
-  }, [page?.total, offset]);
+    if (offset > lastOffset) {
+      void queryClient.invalidateQueries({ queryKey: ["staff-operational-report", "qualifications", recordType, verificationStatus], refetchType: "none" });
+      setOffset(lastOffset);
+    }
+  }, [page?.total, offset, queryClient, recordType, verificationStatus]);
+  if (!canRead) return null;
   const exportRows = (rows: StaffQualificationReportRow[]) => exportCSV("staff-qualifications-certifications.csv", [
     ["Record type", "Employee code", "Staff name", "Record", "Institution / issuing organization", "Completion / issue date", "Expiry date", "Verification status"],
     ...rows.map(row => [row.record_type, row.employee_code, row.staff_name, row.record_name, row.organization, row.record_date, row.expiry_date, row.verification_status]),
@@ -298,19 +302,23 @@ function ExperienceReport({ permissions }: Props) {
   const [exporting,setExporting]=useState(false);
   const [exportError,setExportError]=useState("");
   const limit=50;
+  const queryClient=useQueryClient();
   const report=useQuery({
     queryKey:["staff-operational-report","experience",employmentType,currentOnly,offset],
     queryFn:({signal})=>getStaffExperienceReport({employmentType:employmentType||undefined,currentOnly,limit,offset},signal),
     enabled:canRead,
   });
-  if(!canRead)return null;
   const page=report.data?.report;
   useEffect(()=>{
     const total=page?.total;
     if(total===undefined)return;
     const lastOffset=total===0?0:Math.floor((total-1)/limit)*limit;
-    if(offset>lastOffset)setOffset(lastOffset);
-  },[page?.total,offset]);
+    if(offset>lastOffset){
+      void queryClient.invalidateQueries({queryKey:["staff-operational-report","experience",employmentType,currentOnly],refetchType:"none"});
+      setOffset(lastOffset);
+    }
+  },[page?.total,offset,queryClient,employmentType,currentOnly]);
+  if(!canRead)return null;
   const current=(page?.counts??[]).filter(item=>item.is_current).reduce((sum,item)=>sum+item.count,0);
   const previous=(page?.counts??[]).filter(item=>!item.is_current).reduce((sum,item)=>sum+item.count,0);
   const exportRows=(rows:StaffExperienceReportRow[])=>exportCSV("staff-experience-report.csv",[
