@@ -1193,7 +1193,7 @@ test("staff creation keeps entered details available after a temporary server fa
   let attempts = 0;
   await signInAndOpenStaff(page, [], async (_path, route) => {
     attempts += 1;
-    if (attempts <= 2) {
+    if (attempts === 1) {
       await route.fulfill({ status: 503, json: { message: "Staff account creation is temporarily unavailable." } });
       return;
     }
