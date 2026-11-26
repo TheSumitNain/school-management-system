@@ -75,7 +75,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
   const busy = save.isPending || remove.isPending;
   const loading = permissionsQuery.isPending || delegationsQuery.isPending || targetRolesQuery.isPending || overridesQuery.isPending;
   const error = permissionsQuery.error ?? delegationsQuery.error ?? targetRolesQuery.error ?? overridesQuery.error;
-  function submitOverride(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const errors:Record<string,string>={}; if(!permissionKey||!selectedDelegation)errors.permissionKey="Choose a permission delegated for individual overrides."; if(!reason.trim())errors.reason="Explain why this permission exception is needed."; setFieldErrors(errors); if(Object.keys(errors).length)return;setFeedback("");save.mutate(); }
+  function submitOverride(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (protectedSchoolAdmin) { setFieldErrors({}); setOverrideToRemove(null); return; } const errors:Record<string,string>={}; if(!permissionKey||!selectedDelegation)errors.permissionKey="Choose a permission delegated for individual overrides."; if(!reason.trim())errors.reason="Explain why this permission exception is needed."; setFieldErrors(errors); if(Object.keys(errors).length)return;setFeedback("");save.mutate(); }
 
   return (
     <section className="staff-override-panel" aria-label={`Permission overrides for ${staff.username}`}>
@@ -106,7 +106,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
         {save.isError ? (save.error instanceof Error ? save.error.message : "Unable to save permission override.")
           : remove.isError ? (remove.error instanceof Error ? remove.error.message : "Unable to remove permission override.") : feedback}
       </p>}
-      <ConfirmDialog open={overrideToRemove !== null} title="Remove permission override?" description={overrideToRemove ? `Remove the ${overrideToRemove.effect.toUpperCase()} override for ${overrideToRemove.key} from ${staff.username}? Effective access will be recalculated on the next protected request.` : ""} confirmLabel="Remove override" pending={remove.isPending} error={remove.isError?(remove.error instanceof Error?remove.error.message:"Unable to remove this override. Please try again."):undefined} onCancel={() => setOverrideToRemove(null)} onConfirm={() => {if(overrideToRemove){setFeedback("");remove.mutate(overrideToRemove.key);}}}/>
+      <ConfirmDialog open={overrideToRemove !== null} title="Remove permission override?" description={overrideToRemove ? `Remove the ${overrideToRemove.effect.toUpperCase()} override for ${overrideToRemove.key} from ${staff.username}? Effective access will be recalculated on the next protected request.` : ""} confirmLabel="Remove override" pending={remove.isPending} error={remove.isError?(remove.error instanceof Error?remove.error.message:"Unable to remove this override. Please try again."):undefined} onCancel={() => setOverrideToRemove(null)} onConfirm={() => {if(!protectedSchoolAdmin && overrideToRemove){setFeedback("");remove.mutate(overrideToRemove.key);}}}/>
     </section>
   );
 }

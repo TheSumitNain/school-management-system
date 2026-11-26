@@ -18,7 +18,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
   const [roleToRevoke, setRoleToRevoke] = useState<{id:number;name:string}|null>(null);
   const [roleError, setRoleError] = useState("");
   useEffect(() => {
-    if (!canAssign) {
+    if (!canAssign || protectedSchoolAdmin) {
       setRoleID("");
       setRoleError("");
       setRoleToRevoke(null);
@@ -107,7 +107,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
           : revoke.isError ? (revoke.error instanceof Error ? revoke.error.message : "Unable to remove role.") : feedback}
       </p>}
       {!canAssign && <p className="staff-role-message">You can view assigned roles but cannot change them.</p>}
-      <ConfirmDialog open={roleToRevoke !== null} title="Remove staff role?" description={roleToRevoke ? `Remove the ${roleToRevoke.name} role from ${staff.username}? Their effective permissions will update on the next protected request.` : ""} confirmLabel="Remove role" pending={revoke.isPending} error={revoke.isError?(revoke.error instanceof Error?revoke.error.message:"Unable to remove this role. Please try again."):undefined} onCancel={() => setRoleToRevoke(null)} onConfirm={() => {if(canAssign && roleToRevoke){setFeedback("");revoke.mutate(roleToRevoke.id);}}}/>
+      <ConfirmDialog open={roleToRevoke !== null} title="Remove staff role?" description={roleToRevoke ? `Remove the ${roleToRevoke.name} role from ${staff.username}? Their effective permissions will update on the next protected request.` : ""} confirmLabel="Remove role" pending={revoke.isPending} error={revoke.isError?(revoke.error instanceof Error?revoke.error.message:"Unable to remove this role. Please try again."):undefined} onCancel={() => setRoleToRevoke(null)} onConfirm={() => {if(canAssign && !protectedSchoolAdmin && roleToRevoke){setFeedback("");revoke.mutate(roleToRevoke.id);}}}/>
     </section>
   );
 }
