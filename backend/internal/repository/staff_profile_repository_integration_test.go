@@ -109,6 +109,24 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
         t.Fatalf("cross-school profile update changed employee data: name=%q", nameAfterCrossSchoolAttempt)
     }
 
+    // A School Admin cannot create a staff account by supplying another
+    // school's ID, even when the target school exists and the caller has a
+    // valid users.create permission in their own school.
+    forgedSchoolUsername := "staff-forged-school-" + suffix
+    forgedSchoolProfile := profile
+    forgedSchoolProfile.EmployeeCode = "EMP-FORGED-" + suffix
+    if _, err := repo.CreateStaffAccountWithProfile(ctx, actorPrincipalID, schoolID+1,
+        forgedSchoolUsername, "integration-test-password-hash", forgedSchoolProfile); !errors.Is(err, ErrRolePermissionDenied) {
+        t.Fatalf("cross-school staff account/profile creation error = %v, want ErrRolePermissionDenied", err)
+    }
+    var forgedSchoolUserCount int
+    if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE username=$1", forgedSchoolUsername).Scan(&forgedSchoolUserCount); err != nil {
+        t.Fatalf("count account after forged-school creation attempt: %v", err)
+    }
+    if forgedSchoolUserCount != 0 {
+        t.Fatalf("forged-school account creation left %d login accounts", forgedSchoolUserCount)
+    }
+
     // Optional email may be omitted during initial onboarding as well as cleared later.
     blankEmailProfile := profile
     blankEmailProfile.EmployeeCode = "EMP-BLANK-" + suffix
