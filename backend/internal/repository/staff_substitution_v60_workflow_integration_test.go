@@ -215,6 +215,7 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	// Exercise the production cancellation workflow, including its atomic audit write.
 	// Cancellation audit rows intentionally omit teacher IDs from metadata.
 	if err=(&AcademicRepository{db:tx}).CancelStaffSubstitution(ctx,actorPrincipalID,schoolID,substitutionID);err!=nil{t.Fatalf("cancel dated substitution through repository workflow: %v",err)}
+	if err=(&AcademicRepository{db:tx}).CancelStaffSubstitution(ctx,actorPrincipalID,schoolID,secondSubstitutionID);err!=nil{t.Fatalf("cancel second-period pagination fixture substitution: %v",err)}
 	historyRepo:=NewUserRepository(tx)
 	for _,teacherID:=range []int64{originalID,substituteID}{
 		history,historyErr:=historyRepo.ListStaffAuditEvents(ctx,actorPrincipalID,schoolID,teacherID,StaffAuditEventFilter{Limit:100,Offset:0})
