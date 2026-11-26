@@ -166,6 +166,27 @@ func TestStaffRecordsHandlerReturnsStructuredFieldValidationErrors(t *testing.T)
 	}
 }
 
+func TestStaffAuditHandlerRejectsInvalidPagination(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := NewStaffRecordsHandler(nilStaffRecordsResultService{})
+	auth := func(c *gin.Context) {
+		c.Set(middleware.ContextPrincipalIDKey, int64(100))
+		c.Set(middleware.ContextSchoolIDKey, int64(10))
+		c.Next()
+	}
+	for _, query := range []string{"limit=abc", "limit=0", "limit=101", "offset=abc", "offset=-1", "offset=1000001"} {
+		t.Run(query, func(t *testing.T) {
+			router := gin.New()
+			router.GET("/school/staff/:principalID/audit-events", auth, handler.ListAuditEvents)
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/school/staff/42/audit-events?"+query, nil))
+			if recorder.Code != http.StatusBadRequest {
+				t.Fatalf("invalid audit pagination %q status=%d want=%d body=%s", query, recorder.Code, http.StatusBadRequest, recorder.Body.String())
+			}
+		})
+	}
+}
+
 func TestStaffReportHandlersRejectMalformedPaginationAndFilters(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	handler := NewStaffRecordsHandler(nilStaffRecordsResultService{})

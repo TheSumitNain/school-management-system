@@ -1197,3 +1197,7 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Fixed Staff History target verification so account audit history is available to same-school legacy staff accounts even when no `staff_profiles` row exists.
 - Kept live `school.audit.read` permission resolution and strict staff-principal/school membership checks; qualification/certification/experience record access continues to require its employee profile target.
 - Added PostgreSQL regression coverage for a profile-incomplete staff account and its `staff.account.created` event. Backend CI must pass before this fix is considered verified.
+
+
+- Follow-up CI caught an overlong legacy-account fixture username; shortened the test fixture to comply with the database's 3–32 character rule.
+- Added handler-level regression coverage for malformed, zero, oversized and out-of-range Staff History pagination parameters.
