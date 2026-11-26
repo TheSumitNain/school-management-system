@@ -257,6 +257,7 @@ func TestStaffLeaveServiceForwardsHolidayCalendarScope(t *testing.T) {
 	}
 }
 
+// Reject an offset that cannot be represented before it reaches PostgreSQL.
 func TestStaffLeavePaginationRejectsOffsetOverflowBeforeRepository(t *testing.T) {
 	repo := &staffLeaveRepositoryStub{}
 	service := NewStaffLeaveService(repo)
