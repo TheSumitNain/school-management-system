@@ -7,7 +7,7 @@ import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { schoolDateValue } from "../../../shared/date/schoolDate";
 import {
   getDailyStaffAttendance, getMonthlyStaffAttendance, markStaffAttendance, markStaffAttendanceBulk, updateStaffAttendance,
-  getStaffLeaveRequests, getSchoolHolidays,
+  getAllStaffLeaveRequests, getSchoolHolidays,
   type StaffAttendanceRecord, type StaffLeaveRequest,
 } from "../api";
 
@@ -65,7 +65,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const canReadHolidayContext = permissions.includes("staff.holidays.read");
   const approvedLeaveContext = useQuery({
     queryKey: ["staff-leave-context", date],
-    queryFn: ({ signal }) => getStaffLeaveRequests({ status: "approved", onDate: date }, signal),
+    queryFn: ({ signal }) => getAllStaffLeaveRequests({ status: "approved", onDate: date }, signal),
     enabled: canRead && canReadLeaveContext && view === "daily",
     staleTime: 10_000,
   });
@@ -87,7 +87,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const monthEnd = validMonth ? monthEndDate.toISOString().slice(0, 10) : "";
   const approvedMonthLeave = useQuery({
     queryKey: ["staff-leave-report", "approved", month],
-    queryFn: ({ signal }) => getStaffLeaveRequests({ status: "approved", fromDate: monthStart, toDate: monthEnd }, signal),
+    queryFn: ({ signal }) => getAllStaffLeaveRequests({ status: "approved", fromDate: monthStart, toDate: monthEnd }, signal),
     enabled: canRead && canReadLeaveContext && view === "monthly" && validMonth,
     staleTime: 10_000,
   });
@@ -136,7 +136,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const approvedLeaveByStaff = useMemo(() => {
     const grouped = new Map<number, StaffLeaveRequest[]>();
     if (canReadLeaveContext) {
-      for (const item of approvedLeaveContext.data?.data ?? []) {
+      for (const item of approvedLeaveContext.data ?? []) {
         const current = grouped.get(item.staff_principal_id) ?? [];
         current.push(item);
         grouped.set(item.staff_principal_id, current);
@@ -176,7 +176,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       }
     }
 
-    if (canReadLeaveContext) for (const leave of approvedMonthLeave.data?.data ?? []) {
+    if (canReadLeaveContext) for (const leave of approvedMonthLeave.data ?? []) {
       rows.push([
         "Approved leave", leave.staff_name ?? "Staff", leave.employee_code, "",
         "", "", "", "", "", "", "", leave.leave_type_name ?? "Leave",
@@ -310,7 +310,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
           {approvedMonthLeave.isPending && <p role="status">Loading approved leave…</p>}
           {approvedMonthLeave.isError && <p role="status">Approved leave context could not be loaded. Attendance totals remain unchanged.</p>}
           {approvedMonthLeave.isSuccess && approvedMonthLeave.data.data.length === 0 && <p>No approved leave overlaps this month.</p>}
-          {approvedMonthLeave.data?.data.map(item => <p key={item.id}>{item.staff_name || "Staff"} · {item.leave_type_name || "Leave"} · {item.start_date}{item.end_date !== item.start_date ? ` → ${item.end_date}` : ""}</p>)}
+          {approvedMonthLeave.data?.map(item => <p key={item.id}>{item.staff_name || "Staff"} · {item.leave_type_name || "Leave"} · {item.start_date}{item.end_date !== item.start_date ? ` → ${item.end_date}` : ""}</p>)}
         </div>}
         {canReadHolidayContext && <div>
           <h3>School holidays</h3>
