@@ -1,3 +1,12 @@
+## 2026-11-26 — Inactive staff attendance history retention verified
+
+- Added a real-PostgreSQL lifecycle regression: after an employee becomes inactive, the employee disappears from the current daily attendance roster, while the monthly attendance report continues to include their historical attendance within that month.
+- Backend CI [45744221945](https://github.com/TheSumitNain/school-management-system/actions/runs/45744221945) **PASS** on `dc825e94b33c3535097a562205b33bdd1e1d5dfd`: full migration chain, complete Go/PostgreSQL integration suite and `go vet`.
+- The same passing backend suite includes single attendance audit-failure rollback, update rollback preserving old values, daily/monthly read permission enforcement, cross-school read denial, and existing bulk atomicity/concurrency coverage.
+- No schema migration or persistent school data change. Frontend source unchanged; latest Frontend CI [45737923385](https://github.com/TheSumitNain/school-management-system/actions/runs/45737923385) remains **PASS** with 132 Playwright tests. Manual authenticated-school sign-off and product approval gates remain outstanding; `main` remains untouched.
+
+---
+
 ## 2026-11-26 — Staff Attendance single-write rollback and read authorization pass
 
 - Added real-PostgreSQL regression coverage proving a failed audit insert rolls back a single attendance mark (no attendance row and no success audit event).
