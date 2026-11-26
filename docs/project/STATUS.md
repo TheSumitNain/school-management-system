@@ -1,3 +1,12 @@
+## 2026-11-26 — Timetable and workload reports restricted to active Teaching staff
+
+- Teacher-filtered timetable reads now require the selected same-school staff profile to be explicitly classified as Teaching and have active employment; this prevents legacy timetable rows from being exposed for Non-teaching, Unclassified, or inactive employees.
+- The School Admin Teacher Workload report now includes only same-school active Teaching profiles. Non-teaching, Unclassified (NULL Staff Type), and inactive-employment profiles are excluded rather than appearing as zero-period “teachers”.
+- Extended the PostgreSQL workload integration fixture with Non-teaching, Unclassified, and inactive Teaching profiles; the existing expected report remains limited to the two eligible Teaching employees.
+- Changes are on the existing `work` branch. Repository-side tests/CI have not yet been executed for this checkpoint; do not treat this batch as verified until backend integration and CI pass. No migration or persistent school data change.
+
+---
+
 ## 2026-11-26 — Teaching assignment eligibility enforced by Staff Type and employment status
 
 - Teacher subject and class in-charge assignment writes now require a same-school staff profile explicitly classified as Teaching with active employment, in addition to the existing active principal, Teacher role, School Admin permission and tenant checks.
