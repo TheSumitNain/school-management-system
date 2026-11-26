@@ -3196,6 +3196,35 @@ test("staff directory CSV export is filtered, UTF-8 compatible and safe from spr
 });
 
 
+test("staff directory export refuses a changed total instead of downloading partial rows", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = Array.from({ length: 51 }, (_, index) => ({
+    id: index + 1, principal_id: 501 + index, school_id: 10, username: "directory." + (index + 1),
+    employee_code: "EMP-DIR-" + String(index + 1).padStart(3, "0"), full_name: "Directory Teacher " + (index + 1),
+    designation: "Teacher", employment_status: "active", profile_complete: true, status: "active",
+    must_change_password: false,
+  }));
+  await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
+  await page.getByRole("button", { name: "Staff Directory", exact: true }).click();
+  await expect(page.getByText("Directory Teacher 1", { exact: true })).toBeVisible();
+  await page.route("**/api/school/staff?**", async route => {
+    const url = new URL(route.request().url());
+    const limit = Number(url.searchParams.get("limit") ?? "50");
+    const offset = Number(url.searchParams.get("offset") ?? "0");
+    await route.fulfill({
+      json: {
+        staff: rows.slice(offset, offset + limit),
+        total: offset === 0 ? 51 : 52,
+        limit,
+        offset,
+      },
+    });
+  });
+  const noDownload = page.waitForEvent("download", { timeout: 1000 }).catch(() => null);
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "No partial CSV was created" })).toBeVisible();
+  expect(await noDownload).toBeNull();
+});
+
 test("staff qualifications report uses one paginated aggregate endpoint and exports approved fields only", async ({ page }) => {
   const staffRows: Array<Record<string, unknown>> = [
     { id: 1, principal_id: 501, school_id: 10, username: "teacher.active", employee_code: "EMP-ACTIVE", full_name: "Active Teacher", designation: "Mathematics Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
