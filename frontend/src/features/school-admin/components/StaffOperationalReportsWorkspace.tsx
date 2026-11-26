@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, RefreshCw } from "lucide-react";
-import { getClassInchargeAssignments, getMonthlyStaffAttendance, getStaffLeaveRequests, getStaffQualificationsReport, getStaffExperienceReport, getTeacherSubjectAssignments } from "../api";
+import { getClassInchargeAssignments, getMonthlyStaffAttendance, getAllStaffLeaveRequests, getStaffQualificationsReport, getStaffExperienceReport, getTeacherSubjectAssignments } from "../api";
 import type { ClassInchargeAssignment, TeacherSubjectAssignment } from "../api";
 import { useStaffSubstitutionTimetableYearQuery } from "../queries";
 import type { StaffAttendanceMonthlySummary, StaffLeaveRequest, StaffQualificationReportRow, StaffExperienceReportRow } from "../api";
@@ -303,7 +303,7 @@ export function StaffOperationalReportsWorkspace({ permissions }: Props) {
   });
   const leave = useQuery({
     queryKey: ["staff-operational-report", "leave", month],
-    queryFn: ({ signal }) => getStaffLeaveRequests({ fromDate: bounds.from, toDate: bounds.to }, signal),
+    queryFn: ({ signal }) => getAllStaffLeaveRequests({ fromDate: bounds.from, toDate: bounds.to }, signal),
     enabled: canReadLeave && validMonth,
   });
 
