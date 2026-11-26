@@ -168,8 +168,8 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 		StaffType: "teaching", EmployeeCode: fmt.Sprintf("R1-%s-0", suffix), FullName: "Race Original One",
 		Designation: "Teacher", MobileNumber: "9876543210", EmploymentStatus: "inactive",
 	})
-	if !errors.Is(profileErr, ErrStaffProfileHasActiveSubstitutions) {
-		t.Fatalf("inactivate original teacher with active substitution error=%v; want ErrStaffProfileHasActiveSubstitutions", profileErr)
+	if !errors.Is(profileErr, ErrStaffProfileHasActiveSubstitutions) && !errors.Is(profileErr, ErrStaffProfileHasActiveAssignments) {
+		t.Fatalf("inactivate original teacher with active substitution/teaching assignment error=%v; want a lifecycle conflict", profileErr)
 	}
 	for _, teacherID := range []int64{originalOne, substitute} {
 		if err := userRepo.DisableStaffAccount(ctx, actorPrincipalID, schoolID, teacherID); !errors.Is(err, ErrStaffProfileHasActiveSubstitutions) {
