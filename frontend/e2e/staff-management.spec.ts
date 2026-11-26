@@ -2132,6 +2132,44 @@ test("attendance-only permission opens the attendance workspace without loading 
   expect(staffDirectoryRequests).toEqual([]);
 });
 
+test("staff substitution history exports every matching page", async ({ page }) => {
+  const rows = Array.from({ length: 51 }, (_, index) => ({
+    id: index + 1, timetable_entry_id: 700 + index, cover_date: "2026-11-16",
+    original_teacher_principal_id: 501, original_teacher_name: "Original Teacher",
+    substitute_teacher_principal_id: 502, substitute_teacher_name: "Substitute Teacher",
+    approved_leave_request_id: null, reason: "Private reason must not be exported", status: "active",
+    section_name: "A", class_name: "Class 6", subject_name: "Mathematics",
+    period_number: 2, period_name: "Period 2", starts_at: "09:40", ends_at: "10:20",
+    room: "Room 12", created_by_principal_id: 101, created_at: "2026-11-15T10:00:00.000Z",
+  }));
+  const requestedPages: number[] = [];
+  await signInAndOpenStaff(page, [], undefined, ["staff.substitutions.read"]);
+  await page.route("**/api/school/staff-substitutions?*", async route => {
+    const url = new URL(route.request().url());
+    const pageNumber = Number(url.searchParams.get("page") ?? 1);
+    const pageSize = Number(url.searchParams.get("page_size") ?? 50);
+    requestedPages.push(pageNumber);
+    await route.fulfill({ json: {
+      substitutions: rows.slice((pageNumber - 1) * pageSize, pageNumber * pageSize),
+      pagination: { page: pageNumber, page_size: pageSize, total: 51 },
+    } });
+  });
+  await page.getByRole("button", { name: "Substitutions" }).click();
+  await expect(page.getByText("Showing 1–50 of 51")).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export all CSV" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("staff-substitution-history.csv");
+  const path = await download.path();
+  expect(path).toBeTruthy();
+  const csv = await readFile(path!, "utf8");
+  expect(csv.startsWith("\uFEFF")).toBe(true);
+  expect(csv.split(/\\r?\\n/)).toHaveLength(52);
+  expect(csv).toContain("Substitute Teacher");
+  expect(csv).not.toContain("Private reason");
+  expect(requestedPages).toContain(2);
+});
+
 test("substitution-history-only permission opens read-only history without loading the staff directory", async ({ page }) => {
   const staffDirectoryRequests: string[] = [];
   page.on("request", request => {
