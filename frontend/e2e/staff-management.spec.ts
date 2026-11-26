@@ -4594,7 +4594,7 @@ test("staff directory retries after a transient server error and accepts a subse
     url => url.pathname === "/api/school/staff" && url.searchParams.has("limit"),
     async route => {
       attempts += 1;
-      if (attempts === 1) {
+      if (attempts <= 2) {
         await route.fulfill({ status: 503, json: { message: "Staff directory is temporarily unavailable." } });
         return;
       }
