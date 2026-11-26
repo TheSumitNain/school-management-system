@@ -277,6 +277,18 @@ func TestStaffAttendanceDailyAndMonthlyReadsAreSchoolScopedPostgresIntegration(t
     if err != nil || dailyTotal2 != dailyTotal || len(dailyPage2) != 1 || dailyPage1[0].StaffPrincipalID == dailyPage2[0].StaffPrincipalID {
         t.Fatalf("daily second page rows=%d total=%d first=%d err=%v; expected distinct row and stable total",len(dailyPage2),dailyTotal2,dailyPage1[0].StaffPrincipalID,err)
     }
+    filteredDaily, filteredTotal, err := f.repo.ListDailyFilteredPage(f.ctx, f.actorID, f.schoolID, day,
+        StaffAttendanceDailyFilter{Search: "Attendance Staff 1", Status: "unmarked"}, 10, 0)
+    if err != nil || filteredTotal != 1 || len(filteredDaily) != 1 ||
+        filteredDaily[0].StaffPrincipalID != f.staffIDs[1] || filteredDaily[0].Status != nil {
+        t.Fatalf("search + unmarked daily filter rows=%+v total=%d err=%v; want only the matching unmarked staff", filteredDaily, filteredTotal, err)
+    }
+    markedDaily, markedTotal, err := f.repo.ListDailyFilteredPage(f.ctx, f.actorID, f.schoolID, day,
+        StaffAttendanceDailyFilter{Status: "present"}, 10, 0)
+    if err != nil || markedTotal != 1 || len(markedDaily) != 1 ||
+        markedDaily[0].StaffPrincipalID != f.staffIDs[0] || markedDaily[0].Status == nil || *markedDaily[0].Status != "present" {
+        t.Fatalf("present daily filter rows=%+v total=%d err=%v; want only the marked-present staff", markedDaily, markedTotal, err)
+    }
 
 	monthly, err := f.repo.ListMonthly(f.ctx, f.actorID, f.schoolID, day)
 	if err != nil {
