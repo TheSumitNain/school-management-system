@@ -2797,3 +2797,13 @@ This update supersedes older status bullets that listed the following database-b
 - The main Dashboard staff metric was also migrated from `GET /school/staff` to the aggregate summary endpoint; this removed the hidden unbounded staff fetch that still occurred before opening Staff Management. Added backend service/handler/route-permission/PostgreSQL count-consistency tests and Playwright coverage asserting overview and directory do not issue unbounded list requests.
 - Backend CI [45644907855](https://github.com/TheSumitNain/school-management-system/actions/runs/45644907855) **PASS** and Frontend CI [45644907743](https://github.com/TheSumitNain/school-management-system/actions/runs/45644907743) **PASS** on `5c3584666626115c76983cf933e52c9936edfb34`. Backend verification includes full ephemeral migration chain, Go/PostgreSQL integration tests and `go vet`; frontend verification includes TypeScript, Vite production build and **130 Playwright tests**.
 - No schema migration or persistent school-data change. Legacy full-list consumers remain available but are no longer invoked by Dashboard, overview or paginated Directory. `main` remains untouched.
+
+
+
+## 2026-11-26 — Staff read-only workspaces and substitution tenant isolation
+
+- Added permission-specific Playwright coverage for users who have only `staff.leave.read` or `staff.holidays.read`. These users can open the relevant read-only workspace, do not load the Staff Directory APIs, and do not see create/approve/reject or holiday mutation controls.
+- Frontend CI [45745435651](https://github.com/TheSumitNain/school-management-system/actions/runs/45745435651) **PASS**: TypeScript, Vite production build and the complete Playwright suite. Backend CI [45745435658](https://github.com/TheSumitNain/school-management-system/actions/runs/45745435658) **PASS** on the same frontend-test checkpoint.
+- Added PostgreSQL regressions proving a School Admin with substitution permissions in their own school cannot create, cancel or list substitutions by supplying a different school ID. Added a focused foreign-school authorization-order regression as well.
+- Backend CI [45746067897](https://github.com/TheSumitNain/school-management-system/actions/runs/45746067897) **PASS** on `48bafd0ce56777d207725a9a047471cb832c2b1d`: full migration chain, complete Go/PostgreSQL integration suite and `go vet`.
+- Test-only hardening; no production behavior, schema migration or persistent school-data change. Current work remains on `work`; `main` remains untouched.
