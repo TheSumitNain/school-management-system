@@ -1121,3 +1121,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Backend CI [45759038621](https://github.com/TheSumitNain/school-management-system/actions/runs/45759038621) **PASS** on `5aeb16784a5f31ea5fa96a9c7f737ef7e9ff0bb6`: full migration chain, complete Go suite including PostgreSQL integration tests, and `go vet`.
 - These are test-only defense-in-depth checks. Staff HTTP handlers obtain school scope from authenticated middleware context rather than client-supplied school IDs; repository tests protect against future internal callers passing a forged scope. No schema or persistent data change. `main` remains untouched.
 - Staff Management remains in progress: authenticated School Admin browser acceptance/sign-off is still required, along with the previously documented approval-gated items. This checkpoint does not declare the module complete.
+
+
+## 2026-11-26 follow-up — Staff Account listing cross-school regression
+
+- Added PostgreSQL integration coverage proving a valid School Admin cannot pass a forged foreign school ID to the legacy Staff Account Listing repository operation; the call must return `ErrRolePermissionDenied` and no listing. This complements the paginated Directory and aggregate Summary forged-scope tests.
+- Backend CI [45759426503](https://github.com/TheSumitNain/school-management-system/actions/runs/45759426503) **PASS** on `c87ecdb780083c5c2d4d7a671dadc2d49ad3d831`: full migration chain, complete Go suite including PostgreSQL integration tests, and `go vet`.
+- Test-only defense-in-depth; no production behavior, schema or persistent data changed. Staff Management remains in progress pending authenticated School Admin browser acceptance/sign-off and previously documented approval-gated items. `main` remains untouched.
