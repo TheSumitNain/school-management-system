@@ -306,6 +306,16 @@ func (r *UserRepository) UpdateStaffProfile(ctx context.Context, actorPrincipalI
     if err != nil { return nil, fmt.Errorf("begin staff profile update: %w", err) }
     defer func() { _ = tx.Rollback(ctx) }()
 
+    // Acquire the same principal lock used by refresh rotation before locking
+    // auth_principals below. This preserves a single lock order and prevents a
+    // profile-inactivation trigger from deadlocking against refresh issuance.
+    if _, err := tx.Exec(ctx,
+        `SELECT pg_advisory_xact_lock(hashtextextended('refresh-principal:' || $1::bigint::text,0))`,
+        targetPrincipalID,
+    ); err != nil {
+        return nil, fmt.Errorf("lock target staff profile update: %w", err)
+    }
+
     var targetUserID int64
     err = tx.QueryRow(ctx, `
         SELECT target.id
