@@ -1,13 +1,15 @@
-## 2026-11-26 — Staff Attendance pagination and complete monthly exports verified
+## 2026-11-26 — Staff Attendance pagination, page recovery and complete exports verified
 
-- Staff Attendance Daily and Monthly read APIs now support bounded `limit`/`offset` pagination (default 50, maximum 100) and return exact school-scoped totals. Daily reads retain the active-employment roster; monthly reads continue to retain inactive employees who have attendance history in the selected month.
-- The Attendance workspace now has Previous/Next navigation for both registers. Search, status filters, attendance totals and bulk marking apply to the currently loaded daily page; bulk marking remains atomic and the UI states that only visible, unmarked staff are included.
-- Monthly CSV export fetches every attendance page, checks page offsets/totals/row counts and duplicate staff identities, and refuses to download a partial report if the pages cannot be verified. Free-text attendance remarks and leave reasons remain excluded. The separate Staff Operational Reports attendance view also loads all monthly pages rather than silently showing only the first page.
-- PostgreSQL integration tests verify daily/monthly page ordering, distinct records across pages and stable exact totals; service/handler tests cover pagination bounds and invalid query parameters. Frontend Playwright coverage exercises 101 monthly staff across pages and confirms the final staff row is present in the complete CSV.
-- Backend CI [45816841281](https://github.com/TheSumitNain/school-management-system/actions/runs/45816841281) **PASS** on `10caf50cd3e9a2f9ebd77531ecd5d82ceeb80d51`: full migration chain, Go/PostgreSQL integration suite and `go vet`. Frontend CI [45816840999](https://github.com/TheSumitNain/school-management-system/actions/runs/45816840999) **PASS** on the same commit: TypeScript, Vite production build and **153 Playwright tests passed**.
+- Staff Attendance Daily and Monthly APIs now support bounded `limit`/`offset` pagination (default 50, maximum 100) with exact school-scoped totals. Daily reads retain the active-employment roster; monthly reads retain inactive employees with attendance history in the selected month.
+- The workspace provides Previous/Next navigation for both registers. Search, status filters and displayed attendance totals are explicitly scoped to the loaded daily page; bulk marking applies only to visible, unmarked staff and remains atomic.
+- If roster changes make the selected page invalid, the workspace returns to the last valid page and invalidates cached attendance pages so an old cached total cannot remain visible after the reset.
+- Monthly CSV export fetches every attendance page, validates offsets, totals, row counts and unique staff identities, and refuses to download a partial report if pagination cannot be verified. Free-text attendance remarks and leave reasons remain excluded. The Staff Operational Reports attendance view also loads all monthly pages.
+- PostgreSQL integration tests verify daily/monthly page ordering, distinct rows across pages and exact totals; service/handler tests cover bounds and invalid query parameters. Playwright covers 101 staff across multiple pages, complete CSV export through the final staff record, and recovery when the roster shrinks while page 2 is open.
+- Backend CI [45818884079](https://github.com/TheSumitNain/school-management-system/actions/runs/45818884079) **PASS** on `a105ebd50c6e32c2160750c39743059c02786d7d`: full migration chain, Go/PostgreSQL integration suite and `go vet`. Frontend CI [45818884034](https://github.com/TheSumitNain/school-management-system/actions/runs/45818884034) **PASS** on the same commit: TypeScript, Vite production build and **153 Playwright tests passed**.
 - No schema migration or persistent school data change. Changes remain on `work`; `main` remains untouched.
 
 ---
+
 
 ## 2026-11-26 — Staff Type enforced across teacher assignment, reads and substitution
 
