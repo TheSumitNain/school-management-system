@@ -60,7 +60,7 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	repo:=NewUserRepository(tx)
 	suffix:=fmt.Sprintf("%d",time.Now().UnixNano())
 	staff,err:=repo.CreateStaffAccountWithProfile(ctx,actorID,schoolID,"staffrecord-"+suffix,"integration-test-password-hash",models.StaffProfile{
-		EmployeeCode:"SR-"+suffix,FullName:"Staff Record Integration",Designation:"Teacher",MobileNumber:"9876543210",EmploymentStatus:"active",
+		StaffType:"teaching",EmployeeCode:"SR-"+suffix,FullName:"Staff Record Integration",Designation:"Teacher",MobileNumber:"9876543210",EmploymentStatus:"active",
 	})
 	if err!=nil{t.Fatalf("create staff profile fixture: %v",err)}
 

@@ -131,6 +131,7 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 	// back the newly inserted user/principal as well as the profile row.
 	duplicateEmployeeUsername := "dup-" + suffix[len(suffix)-12:]
 	duplicateEmployeeProfile := models.StaffProfile{
+		StaffType: "teaching",
 		EmployeeCode: "LIFE-" + suffix,
 		FullName: "Duplicate Employee Code",
 		Designation: "Teacher",

@@ -68,7 +68,7 @@ export function useCreateSchoolStaffMutation() {
   return useStaffMutation(createSchoolStaff);
 }
 export function useUpdateSchoolStaffMutation() {
-  return useStaffMutation(({ principalID, ...input }: { principalID: number; username: string; employee_code: string; full_name: string; designation: string; mobile_number: string; email?: string; joining_date?: string; employment_status: "active" | "inactive" }) => updateSchoolStaff(principalID, input), input => input.principalID);
+  return useStaffMutation(({ principalID, ...input }: { principalID: number; username: string; employee_code: string; full_name: string; designation: string; staff_type: "teaching" | "non_teaching"; mobile_number: string; email?: string; joining_date?: string; employment_status: "active" | "inactive" }) => updateSchoolStaff(principalID, input), input => input.principalID);
 }
 export function useDisableSchoolStaffMutation() {
   return useStaffMutation(disableSchoolStaff, principalID => principalID);

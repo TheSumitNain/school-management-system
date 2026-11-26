@@ -29,6 +29,7 @@ func TestStaffAccountServiceCreatesProfileAndAccountTogether(t *testing.T) {
     repo := &fakeStaffProfileRepository{fakeStaffAccountRepository: &fakeStaffAccountRepository{}}
     service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
     user, err := service.CreateWithProfile(context.Background(), 31, 8, "teacher.one", "A-Strong-Initial-Pass-123", models.StaffProfile{
+        StaffType: "teaching",
         EmployeeCode: "EMP-001",
         FullName: "Rahul Sharma",
         Designation: "Mathematics Teacher",
@@ -57,6 +58,7 @@ func (f *fakeStaffProfileRepository) UpdateStaffProfile(_ context.Context, actor
 func validStaffProfileForUpdate() models.StaffProfile {
     joiningDate := time.Date(2024, time.April, 1, 0, 0, 0, 0, time.UTC)
     return models.StaffProfile{
+        StaffType: "teaching",
         EmployeeCode: "EMP-001", FullName: "Teacher One", Designation: "Class Teacher",
         MobileNumber: "+919876543210", Email: "teacher@example.com",
         JoiningDate: &joiningDate, EmploymentStatus: "active",
@@ -138,7 +140,7 @@ func TestStaffAccountServiceUpdateProfileRejectsInvalidActorAndTargetScope(t *te
 func TestStaffAccountServiceRejectsInvalidEmployeeProfile(t *testing.T) {
     repo := &fakeStaffProfileRepository{fakeStaffAccountRepository: &fakeStaffAccountRepository{}}
     service := NewStaffAccountService(repo, alwaysClearPasswordChecker{})
-    profile := models.StaffProfile{EmployeeCode: "EMP-001", FullName: "Teacher", Designation: "Teacher", MobileNumber: "9876543210"}
+    profile := models.StaffProfile{StaffType: "teaching", EmployeeCode: "EMP-001", FullName: "Teacher", Designation: "Teacher", MobileNumber: "9876543210"}
     profile.MobileNumber = "12345"
     if _, err := service.CreateWithProfile(context.Background(), 31, 8, "teacher.one", "A-Strong-Initial-Pass-123", profile); err != ErrInvalidStaffAccount {
         t.Fatalf("invalid mobile error = %v, want ErrInvalidStaffAccount", err)
