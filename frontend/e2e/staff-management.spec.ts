@@ -2435,7 +2435,16 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
     }
     if (request.method() === "GET") {
       for (const item of dailyRecords) item.attendance_date = url.searchParams.get("date") ?? "";
-      await route.fulfill({ json: { date: url.searchParams.get("date"), data: dailyRecords } });
+      const search = (url.searchParams.get("search") ?? "").toLocaleLowerCase();
+      const status = url.searchParams.get("status") ?? "all";
+      const filtered = dailyRecords.filter(item => {
+        const matchesSearch = !search || [item.full_name, item.employee_code, item.designation].some(value => String(value ?? "").toLocaleLowerCase().includes(search));
+        const matchesStatus = status === "all" || (status === "unmarked" ? !item.status : item.status === status);
+        return matchesSearch && matchesStatus;
+      });
+      const limit = Number(url.searchParams.get("limit") ?? 50);
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      await route.fulfill({ json: { date: url.searchParams.get("date"), data: filtered.slice(offset, offset + limit), pagination: { limit, offset, total: filtered.length } } });
       return;
     }
     if (request.method() === "POST" && url.pathname.endsWith("/bulk")) {
@@ -3937,6 +3946,49 @@ test("leave request managers see an empty-state gate when no eligible staff exis
   await expect(workspace.getByRole("heading", { name: "New leave request" })).toHaveCount(0);
 });
 
+test("staff daily attendance search and status filters apply across the full roster before pagination", async ({ page }) => {
+  const directoryRows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 590, school_id: 10, username: "attendance.search.admin",
+    employee_code: "EMP-ATT-SEARCH-ADMIN", full_name: "Attendance Search Admin", designation: "Administrator",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, directoryRows, undefined, ["users.read", "staff.attendance.read"]);
+  const all = Array.from({ length: 121 }, (_, index) => ({
+    id: index === 0 ? 900 : null,
+    school_id: 10,
+    staff_principal_id: 600 + index,
+    employee_code: `EMP-ATT-${String(index + 1).padStart(3, "0")}`,
+    full_name: `Attendance Staff ${String(index + 1).padStart(3, "0")}`,
+    designation: "Teacher",
+    attendance_date: "2026-11-26",
+    status: index === 0 ? "present" : null,
+  }));
+  await page.route("**/api/school/staff-attendance?*", async route => {
+    const url = new URL(route.request().url());
+    const search = (url.searchParams.get("search") ?? "").toLocaleLowerCase();
+    const status = url.searchParams.get("status") ?? "all";
+    const filtered = all.filter(item => {
+      const matchesSearch = !search || [item.full_name, item.employee_code, item.designation].some(value => value.toLocaleLowerCase().includes(search));
+      const matchesStatus = status === "all" || (status === "unmarked" ? !item.status : item.status === status);
+      return matchesSearch && matchesStatus;
+    });
+    const limit = Number(url.searchParams.get("limit") ?? 50);
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    await route.fulfill({ json: { date: url.searchParams.get("date"), data: filtered.slice(offset, offset + limit), pagination: { limit, offset, total: filtered.length } } });
+  });
+  await page.getByRole("button", { name: "Attendance", exact: true }).click();
+  await expect(page.getByText("Showing 1–50 of 121 staff matching filters")).toBeVisible();
+  await page.getByLabel("Search staff attendance").fill("Attendance Staff 120");
+  await expect(page.getByRole("row").filter({ hasText: "Attendance Staff 120" })).toBeVisible();
+  await expect(page.getByText("Showing 1–1 of 1 staff matching filters")).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "Attendance Staff 001" })).toHaveCount(0);
+  await page.getByLabel("Filter staff attendance status").selectOption("present");
+  await expect(page.getByText("No staff match these filters.")).toBeVisible();
+  await page.getByLabel("Filter staff attendance status").selectOption("unmarked");
+  await expect(page.getByRole("row").filter({ hasText: "Attendance Staff 120" })).toBeVisible();
+  await expect(page.getByText("Showing 1–1 of 1 staff matching filters")).toBeVisible();
+});
+
 test("staff attendance workspace remains usable on mobile, tablet and desktop", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
     { id: 1, principal_id: 521, school_id: 10, username: "attendance.responsive", employee_code: "EMP-RESP-ATT-01", full_name: "Responsive Attendance Teacher", designation: "Science Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
@@ -3947,11 +3999,16 @@ test("staff attendance workspace remains usable on mobile, tablet and desktop", 
   ]);
   await page.route("**/api/school/staff-attendance?*", async route => {
     const url = new URL(route.request().url());
-    await route.fulfill({ json: { date: url.searchParams.get("date"), data: rows.map(row => ({
+    const all = rows.map(row => ({
       id: null, school_id: 10, staff_principal_id: row.principal_id,
       employee_code: row.employee_code, full_name: row.full_name, designation: row.designation,
       attendance_date: url.searchParams.get("date"), status: null,
-    })) } });
+    }));
+    const search = (url.searchParams.get("search") ?? "").toLocaleLowerCase();
+    const filtered = all.filter(item => !search || [item.full_name, item.employee_code, item.designation].some(value => value.toLocaleLowerCase().includes(search)));
+    const limit = Number(url.searchParams.get("limit") ?? 50);
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    await route.fulfill({ json: { date: url.searchParams.get("date"), data: filtered.slice(offset, offset + limit), pagination: { limit, offset, total: filtered.length } } });
   });
   await page.getByRole("button", { name: "Attendance", exact: true }).click();
   const workspace = page.locator(".staff-attendance-panel");
