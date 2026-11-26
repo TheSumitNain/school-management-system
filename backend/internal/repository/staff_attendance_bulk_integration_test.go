@@ -158,3 +158,89 @@ func TestStaffAttendanceConcurrentBulkMarksSerializeThroughUniqueConstraintPostg
 		t.Fatalf("records=%d audits=%d want=%d each; losing transaction must leave no partial rows", records, audits, len(f.staffIDs))
 	}
 }
+
+func installStaffAttendanceAuditFailure(t *testing.T, f *staffAttendanceIntegrationFixture, action string) {
+	t.Helper()
+	triggerName := fmt.Sprintf("reject_attendance_audit_%d", time.Now().UnixNano())
+	functionName := triggerName + "_fn"
+	if _, err := f.pool.Exec(f.ctx, fmt.Sprintf(`
+		CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $attendance_audit_failure$
+		BEGIN
+			IF NEW.action = %q THEN RAISE EXCEPTION 'forced attendance audit failure'; END IF;
+			RETURN NEW;
+		END;
+		$attendance_audit_failure$;
+	`, functionName, action)); err != nil {
+		t.Fatalf("create attendance audit failure function for %s: %v", action, err)
+	}
+	if _, err := f.pool.Exec(f.ctx, fmt.Sprintf("CREATE TRIGGER %s BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION %s()", triggerName, functionName)); err != nil {
+		t.Fatalf("create attendance audit failure trigger for %s: %v", action, err)
+	}
+	t.Cleanup(func() {
+		_, _ = f.pool.Exec(context.Background(), fmt.Sprintf("DROP TRIGGER IF EXISTS %s ON audit_events", triggerName))
+		_, _ = f.pool.Exec(context.Background(), fmt.Sprintf("DROP FUNCTION IF EXISTS %s()", functionName))
+	})
+}
+
+func TestStaffAttendanceSingleMarkRollsBackWhenAuditFailsPostgresIntegration(t *testing.T) {
+	f := newStaffAttendanceIntegrationFixture(t)
+	day, err := time.Parse("2006-01-02", schooltime.TodayDate())
+	if err != nil {
+		t.Fatalf("parse school date: %v", err)
+	}
+	installStaffAttendanceAuditFailure(t, f, "school.staff_attendance.marked")
+
+	_, err = f.repo.Mark(f.ctx, f.actorID, f.schoolID, f.staffIDs[0], day, "present", nil)
+	if err == nil {
+		t.Fatal("single attendance mark succeeded despite forced audit failure")
+	}
+	var records, audits int
+	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM staff_attendance_records WHERE school_id=$1 AND staff_principal_id=$2 AND attendance_date=$3::date`, f.schoolID, f.staffIDs[0], schooltime.TodayDate()).Scan(&records); err != nil {
+		t.Fatalf("count attendance rows after failed mark: %v", err)
+	}
+	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.staff_attendance.marked' AND resource_type='staff_attendance_record'`, f.schoolID, f.actorID).Scan(&audits); err != nil {
+		t.Fatalf("count attendance audits after failed mark: %v", err)
+	}
+	if records != 0 || audits != 0 {
+		t.Fatalf("failed single mark left records=%d audits=%d; want both zero", records, audits)
+	}
+}
+
+func TestStaffAttendanceUpdateRollsBackWhenAuditFailsPostgresIntegration(t *testing.T) {
+	f := newStaffAttendanceIntegrationFixture(t)
+	day, err := time.Parse("2006-01-02", schooltime.TodayDate())
+	if err != nil {
+		t.Fatalf("parse school date: %v", err)
+	}
+	remarks := "original attendance remark"
+	created, err := f.repo.Mark(f.ctx, f.actorID, f.schoolID, f.staffIDs[0], day, "present", &remarks)
+	if err != nil {
+		t.Fatalf("create baseline attendance record: %v", err)
+	}
+	if created == nil || created.ID == nil {
+		t.Fatal("baseline attendance mark returned no record ID")
+	}
+	installStaffAttendanceAuditFailure(t, f, "school.staff_attendance.updated")
+
+	updatedRemarks := "attempted correction"
+	_, err = f.repo.Update(f.ctx, f.actorID, f.schoolID, *created.ID, "absent", &updatedRemarks)
+	if err == nil {
+		t.Fatal("attendance update succeeded despite forced audit failure")
+	}
+	var status string
+	var persistedRemarks *string
+	if err := f.pool.QueryRow(f.ctx, `SELECT status, remarks FROM staff_attendance_records WHERE id=$1 AND school_id=$2`, *created.ID, f.schoolID).Scan(&status, &persistedRemarks); err != nil {
+		t.Fatalf("read attendance row after failed update: %v", err)
+	}
+	if status != "present" || persistedRemarks == nil || *persistedRemarks != remarks {
+		t.Fatalf("failed update changed attendance row: status=%q remarks=%v; want status=present and original remark", status, persistedRemarks)
+	}
+	var audits int
+	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM audit_events WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.staff_attendance.updated' AND resource_id=$3`, f.schoolID, f.actorID, fmt.Sprint(*created.ID)).Scan(&audits); err != nil {
+		t.Fatalf("count update audit events after failed update: %v", err)
+	}
+	if audits != 0 {
+		t.Fatalf("failed update wrote %d audit events; want zero", audits)
+	}
+}
+
