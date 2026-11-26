@@ -86,6 +86,36 @@ func TestResetStaffPasswordHandlerUsesAuthenticatedSchoolScope(t *testing.T) {
 	}
 }
 
+func TestResetStaffPasswordHandlerRejectsInvalidTargetAndMissingSchoolScope(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, tc := range []struct {
+		name, path string
+		setScope func(*gin.Context)
+		wantStatus int
+	}{
+		{"malformed target", "/school/staff/not-a-number/password/reset", func(c *gin.Context) { c.Set("auth_principal_id", int64(31)); c.Set("auth_school_id", int64(8)) }, http.StatusBadRequest},
+		{"zero target", "/school/staff/0/password/reset", func(c *gin.Context) { c.Set("auth_principal_id", int64(31)); c.Set("auth_school_id", int64(8)) }, http.StatusBadRequest},
+		{"missing school scope", "/school/staff/44/password/reset", func(c *gin.Context) { c.Set("auth_principal_id", int64(31)) }, http.StatusUnauthorized},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			service := &fakeStaffPasswordService{}
+			h := &AuthHandler{staffPasswordService: service}
+			router := gin.New()
+			router.POST("/school/staff/:principalID/password/reset", func(c *gin.Context) { tc.setScope(c); c.Next() }, h.ResetStaffPassword)
+			req := httptest.NewRequest(http.MethodPost, tc.path, strings.NewReader(`{"new_password":"Temporary!Password123"}`))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+			if rec.Code != tc.wantStatus {
+				t.Fatalf("status=%d want=%d body=%s", rec.Code, tc.wantStatus, rec.Body.String())
+			}
+			if service.resetActorID != 0 || service.resetSchoolID != 0 || service.resetTargetID != 0 {
+				t.Fatalf("invalid reset request reached service: %+v", service)
+			}
+		})
+	}
+}
+
 func TestResetStaffPasswordHandlerHidesUnexpectedRepositoryError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	service := &fakeStaffPasswordService{resetErr: errors.New("not found")}

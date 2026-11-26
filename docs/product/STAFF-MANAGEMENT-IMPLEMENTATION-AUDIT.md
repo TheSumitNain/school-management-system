@@ -790,3 +790,10 @@ This section supersedes older statements in this audit that describe browser ver
 
 - Follow-up CI caught an overlong legacy-account fixture username; shortened the test fixture to comply with the database's 3–32 character rule.
 - Added handler-level regression coverage for malformed, zero, oversized and out-of-range Staff History pagination parameters.
+
+
+## 2026-11-26 follow-up — staff password reset scope guards
+
+- Added service tests for self-reset and missing actor/school/target IDs; all reject before repository mutation or password hashing.
+- Added handler regressions for malformed/zero target principal IDs and missing authenticated school scope; invalid requests never reach the reset service.
+- Repository integration coverage continues to enforce same-school target scope, protected School Admin accounts, password/session invalidation and audit rollback. Authenticated School Admin browser acceptance remains outstanding.

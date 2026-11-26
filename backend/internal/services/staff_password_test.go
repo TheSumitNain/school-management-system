@@ -133,6 +133,31 @@ func TestStaffPasswordServiceResetsPasswordAsTemporary(t *testing.T) {
 	}
 }
 
+func TestStaffPasswordServiceRejectsSelfResetAndInvalidScopeBeforeRepository(t *testing.T) {
+	repo := &fakeStaffPasswordRepository{}
+	service, err := NewStaffPasswordService(repo, alwaysClearPasswordChecker{})
+	if err != nil { t.Fatal(err) }
+	cases := []struct {
+		name string
+		actor, school, target int64
+	}{
+		{"missing actor", 0, 4, 11},
+		{"missing school", 10, 0, 11},
+		{"missing target", 10, 4, 0},
+		{"self reset", 10, 4, 10},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := service.ResetPassword(context.Background(), tc.actor, tc.school, tc.target, "Temporary!Password123"); !errors.Is(err, ErrInvalidRegistration) {
+				t.Fatalf("ResetPassword error = %v, want ErrInvalidRegistration", err)
+			}
+		})
+	}
+	if repo.resetCalls != 0 {
+		t.Fatalf("invalid or self-reset requests reached repository %d times", repo.resetCalls)
+	}
+}
+
 func TestStaffPasswordServiceRejectsWeakResetPassword(t *testing.T) {
 	repo := &fakeStaffPasswordRepository{}
 	service, _ := NewStaffPasswordService(repo, alwaysClearPasswordChecker{})
