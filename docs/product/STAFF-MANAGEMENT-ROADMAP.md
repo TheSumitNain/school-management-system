@@ -1294,3 +1294,9 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Hardened the shared modal focus trap to ignore hidden wizard-step controls and wrap keyboard focus correctly when the dialog container itself has initial focus.
 - Added browser acceptance for Shift+Tab/Tab containment, Escape close and trigger focus restoration. Frontend CI verification is required before treating this accessibility regression as closed.
 - No backend or database changes. Authenticated School Admin sign-off and the previously recorded approval gates remain outstanding.
+
+## 2026-11-26 follow-up — workload scope and browser acceptance
+
+- Clarified and regression-verified the distinction between School Admin and Teacher workload visibility: School Admin sees every same-school staff profile in the school-wide report, while Teacher-role workload reads remain self-only and require an active Teaching profile. Teacher-specific timetable filters reject Non-teaching, Unclassified and inactive targets.
+- Added PostgreSQL fixtures and Playwright coverage for Non-teaching, Unclassified and inactive employees, active-only report filtering, and filtered CSV export. Full Backend CI [45803817474](https://github.com/TheSumitNain/school-management-system/actions/runs/45803817474) and Frontend CI [45803817695](https://github.com/TheSumitNain/school-management-system/actions/runs/45803817695) **PASS** on 71f64e6, including the complete Playwright suite.
+- This closes the workload visibility/filter/export acceptance item for the implemented scope; it does not close authenticated School Admin sign-off or the documented approval gates. No persistent migration or school-data change; main remains untouched.
