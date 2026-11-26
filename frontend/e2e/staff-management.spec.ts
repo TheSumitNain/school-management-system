@@ -521,7 +521,7 @@ test("staff directory returns to the last valid page after disabling the final a
   await page.getByRole("dialog",{name:"Disable staff account?"}).getByRole("button",{name:"Disable account"}).click();
   await expect(page.getByText("1–50 of 50 staff members")).toBeVisible();
   await expect(page.getByText("Page 1 of 1")).toHaveCount(0);
-  await expect(page.getByRole("button",{name:"Directory Disable 1"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Directory Disable 1",exact:true})).toBeVisible();
   await expect(page.getByRole("button",{name:"Previous"})).toHaveCount(0);
 });
 
@@ -2348,7 +2348,7 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   await expect(page.getByText("View daily entries (3)")).toBeVisible();
   await expect(page.getByText("Calendar context · not included in attendance totals")).toBeVisible();
   await expect(page.getByText("Approved leave", { exact: true })).toBeVisible();
-  await expect(page.getByText(/Attendance Teacher · Casual Leave/)).toBeVisible();
+  await expect(page.getByText(/Attendance Teacher · Casual Leave/).first()).toBeVisible();
   await expect(page.getByText("School holidays", { exact: true })).toBeVisible();
   await expect(page.getByText(/School Foundation Day/)).toBeVisible();
   const monthlyDownloadPromise = page.waitForEvent("download");
@@ -2392,7 +2392,8 @@ test("leave decisions refresh approved-leave context when attendance is reopened
   await requestRow.getByRole("button",{name:"Approve"}).click();
   const decision=page.getByRole("dialog",{name:"Approve leave request"});
   await decision.getByRole("button",{name:"Confirm approval"}).click();
-  await expect(requestRow.getByText("approved")).toBeVisible();
+  await expect(page.getByText("Leave request approved.")).toBeVisible();
+  await expect(requestRow).toHaveCount(0);
   await page.getByRole("button",{name:"Attendance",exact:true}).click();
   await expect.poll(()=>approvedContextReads).toBeGreaterThan(initialReads);
 });
@@ -3356,7 +3357,8 @@ test("staff directory filters stay locked while the complete CSV is being prepar
   }));
   await signInAndOpenStaff(page,rows,undefined,["users.read"]);
   await page.getByRole("button",{name:"Staff Directory",exact:true}).click();
-  await page.getByLabel("Filter by employment status").selectOption("active");
+  await page.getByLabel("Filter by employment status").click();
+  await page.getByRole("option",{name:"Active",exact:true}).click();
   await page.route("**/api/school/staff?**",async route=>{
     const url=new URL(route.request().url());
     const limit=Number(url.searchParams.get("limit")??50);
