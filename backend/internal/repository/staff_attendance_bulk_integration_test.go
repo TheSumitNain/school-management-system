@@ -295,6 +295,29 @@ func TestStaffAttendanceDailyAndMonthlyReadsAreSchoolScopedPostgresIntegration(t
 	if _, err := f.repo.ListMonthly(f.ctx, f.actorID, otherSchoolID, day); !errors.Is(err, ErrStaffAttendanceAccessDenied) {
 		t.Fatalf("cross-school monthly read error=%v want ErrStaffAttendanceAccessDenied", err)
 	}
+
+	// Read isolation alone is insufficient: a caller with legitimate
+	// home-school permissions must not forge another school ID on writes.
+	if _, err := f.repo.Mark(f.ctx, f.actorID, otherSchoolID, f.staffIDs[1], day, "absent", nil); !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+		t.Fatalf("cross-school single mark error=%v want access denied", err)
+	}
+	if count, err := f.repo.MarkBulk(f.ctx, f.actorID, otherSchoolID, f.staffIDs, day.AddDate(0, 0, -1), "absent", nil); !errors.Is(err, ErrStaffAttendanceAccessDenied) || count != 0 {
+		t.Fatalf("cross-school bulk mark count=%d error=%v want zero and access denied", count, err)
+	}
+	var attendanceID int64
+	if err := f.pool.QueryRow(f.ctx, `SELECT id FROM staff_attendance_records WHERE school_id=$1 AND staff_principal_id=$2 AND attendance_date=$3::date`, f.schoolID, f.staffIDs[0], day.Format("2006-01-02")).Scan(&attendanceID); err != nil {
+		t.Fatalf("load existing attendance for cross-school update: %v", err)
+	}
+	if _, err := f.repo.Update(f.ctx, f.actorID, otherSchoolID, attendanceID, "absent", nil); !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+		t.Fatalf("cross-school attendance update error=%v want access denied", err)
+	}
+	var forgedWriteCount int
+	if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM staff_attendance_records WHERE school_id=$1 AND attendance_date=$2::date AND status='absent'`, f.schoolID, day.AddDate(0, 0, -1).Format("2006-01-02")).Scan(&forgedWriteCount); err != nil {
+		t.Fatalf("count records after rejected cross-school writes: %v", err)
+	}
+	if forgedWriteCount != 0 {
+		t.Fatalf("cross-school bulk mark created %d attendance records", forgedWriteCount)
+	}
 }
 
 func TestStaffAttendanceMonthlyRetainsInactiveStaffHistoryPostgresIntegration(t *testing.T) {
