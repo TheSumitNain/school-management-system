@@ -6,7 +6,7 @@ import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Select } from "../../../shared/components/Select";
 import {
   deleteStaffPermissionOverride, getSchoolPermissionDelegations, getSchoolPermissions,
-  getStaffPermissionOverrides, setStaffPermissionOverride, type StaffRecord,
+  getStaffPermissionOverrides, getStaffRoleAssignments, setStaffPermissionOverride, type StaffRecord,
 } from "../api";
 
 type Props = { staff: StaffRecord };
@@ -29,6 +29,11 @@ export function StaffPermissionOverrides({ staff }: Props) {
     queryFn: ({ signal }) => getSchoolPermissionDelegations(signal),
     staleTime: 30_000,
   });
+  const targetRolesQuery = useQuery({
+    queryKey: ["school-admin", "staff-roles", staff.principal_id],
+    queryFn: ({ signal }) => getStaffRoleAssignments(staff.principal_id, signal),
+    staleTime: 15_000,
+  });
   const overridesQuery = useQuery({
     queryKey: ["school-admin", "staff-overrides", staff.principal_id],
     queryFn: ({ signal }) => getStaffPermissionOverrides(staff.principal_id, signal),
@@ -40,6 +45,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
     return (permissionsQuery.data?.permissions ?? []).filter(item => item.is_delegable && delegated.has(item.permission_key));
   }, [permissionsQuery.data?.permissions, activeDelegations]);
   const overrides = overridesQuery.data?.overrides ?? [];
+  const protectedSchoolAdmin = (targetRolesQuery.data?.roles ?? []).some(item => item.role_key === "school_admin");
   const selectedDelegation = activeDelegations.find(item => item.permission_key === permissionKey && item.can_override_users);
   const save = useMutation({
     mutationFn: () => setStaffPermissionOverride(staff.principal_id, {
@@ -67,8 +73,8 @@ export function StaffPermissionOverrides({ staff }: Props) {
     },
   });
   const busy = save.isPending || remove.isPending;
-  const loading = permissionsQuery.isPending || delegationsQuery.isPending || overridesQuery.isPending;
-  const error = permissionsQuery.error ?? delegationsQuery.error ?? overridesQuery.error;
+  const loading = permissionsQuery.isPending || delegationsQuery.isPending || targetRolesQuery.isPending || overridesQuery.isPending;
+  const error = permissionsQuery.error ?? delegationsQuery.error ?? targetRolesQuery.error ?? overridesQuery.error;
   function submitOverride(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const errors:Record<string,string>={}; if(!permissionKey||!selectedDelegation)errors.permissionKey="Choose a permission delegated for individual overrides."; if(!reason.trim())errors.reason="Explain why this permission exception is needed."; setFieldErrors(errors); if(Object.keys(errors).length)return;setFeedback("");save.mutate(); }
 
   return (
@@ -81,9 +87,9 @@ export function StaffPermissionOverrides({ staff }: Props) {
         : <>
           {overrides.length ? <ul className="staff-override-list">{overrides.map(item => <li key={item.id}>
             <span><b>{item.permission_key}</b><small className={item.effect === "allow" ? "override-allow" : "override-deny"}>{item.effect.toUpperCase()} · {item.reason}</small></span>
-            <button type="button" disabled={busy} title="Remove override" aria-label={`Remove ${item.permission_key} override`} onClick={() => {remove.reset();setOverrideToRemove({key:item.permission_key,effect:item.effect});}}><Trash2 size={15}/></button>
+            {!protectedSchoolAdmin && <button type="button" disabled={busy} title="Remove override" aria-label={`Remove ${item.permission_key} override`} onClick={() => {remove.reset();setOverrideToRemove({key:item.permission_key,effect:item.effect});}}><Trash2 size={15}/></button>}
           </li>)}</ul> : <p className="staff-override-message">No individual permission overrides are configured.</p>}
-          <form className="staff-override-form" onSubmit={submitOverride} noValidate>
+          {protectedSchoolAdmin ? <p className="staff-override-message">Protected School Admin account: individual permission overrides are disabled.</p> : <form className="staff-override-form" onSubmit={submitOverride} noValidate>
             <label>Delegated permission</label>
             <Select ariaLabel={`Delegated permission override for ${staff.username}`} invalid={Boolean(fieldErrors.permissionKey)} describedBy={fieldErrors.permissionKey?`override-permission-error-${staff.principal_id}`:undefined} value={permissionKey} onChange={value=>{setPermissionKey(value);setFieldErrors(current=>({...current,permissionKey:""}));}} disabled={busy||availablePermissions.length===0} placeholder="Choose a delegated permission" options={availablePermissions.map(item=>({value:item.permission_key,label:item.permission_key+" — "+item.description}))}/>
             {fieldErrors.permissionKey&&<small className="app-field-error" id={`override-permission-error-${staff.principal_id}`} role="alert">{fieldErrors.permissionKey}</small>}
@@ -94,7 +100,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
             {fieldErrors.reason&&<small className="app-field-error" id={`override-reason-error-${staff.principal_id}`} role="alert">{fieldErrors.reason}</small>}
             <button className="primary" type="submit" disabled={busy || availablePermissions.length === 0}>{save.isPending ? "Saving…" : "Save override"}</button>
             {availablePermissions.length === 0 && <small>No permissions have been delegated by the Platform Admin for individual overrides.</small>}
-          </form>
+          </form>}
         </>}
       {(feedback || save.isError || remove.isError) && <p className={`staff-override-feedback ${save.isError || remove.isError ? "error-text" : ""}`}>
         {save.isError ? (save.error instanceof Error ? save.error.message : "Unable to save permission override.")

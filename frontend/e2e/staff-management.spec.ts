@@ -1758,6 +1758,72 @@ test("staff account access keeps role assignments read-only without delegation p
   expect(requests.some(item => (item.method === "POST" || item.method === "DELETE") && item.path.includes("/roles"))).toBe(false);
 });
 
+test("protected peer School Admin account is read-only for role and permission changes", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 517, school_id: 10, username: "teacher.protected-admin",
+    employee_code: "EMP-PROTECTED-ADMIN", full_name: "Protected Admin", designation: "School Admin",
+    mobile_number: "9876543211", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const requests: Array<{ method: string; path: string }> = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    requests.push({ method: request.method(), path: url.pathname.replace(/^\/api/, "") });
+  });
+  await signInAndOpenStaff(page, rows, undefined, [
+    "users.read", "roles.read", "roles.assign", "permissions.override",
+  ]);
+  await page.route("**/api/school/roles", async route => {
+    await route.fulfill({ json: { roles: [
+      { id: 4, role_key: "school_admin", name: "School Admin", is_system: true, created_at: "2026-01-01T00:00:00Z" },
+      { id: 5, role_key: "teacher", name: "Teacher", is_system: true, created_at: "2026-01-01T00:00:00Z" },
+    ] } });
+  });
+  await page.route("**/api/school/staff/517/roles**", async route => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ json: { roles: [
+        { role_id: 4, role_key: "school_admin", name: "School Admin", is_system: true, assigned_at: "2026-01-01T00:00:00Z" },
+      ] } });
+      return;
+    }
+    await route.fulfill({ status: 403, json: { message: "Protected School Admin account." } });
+  });
+  await page.route("**/api/school/permissions", async route => {
+    await route.fulfill({ json: { permissions: [
+      { permission_key: "students.read_basic", description: "Read basic student information", is_delegable: true },
+    ] } });
+  });
+  await page.route("**/api/school/permission-delegations", async route => {
+    await route.fulfill({ json: { delegations: [
+      { id: 31, school_id: 10, permission_key: "students.read_basic", can_assign_to_roles: false, can_override_users: true, granted_by: 2, created_at: "2026-01-01T00:00:00Z" },
+    ] } });
+  });
+  await page.route("**/api/school/staff/517/permission-overrides**", async route => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ json: { overrides: [
+        { id: 71, principal_id: 517, permission_key: "students.read_basic", effect: "deny", reason: "Existing policy", granted_by: 2, delegation_id: 31, created_at: "2026-01-01T00:00:00Z" },
+      ] } });
+      return;
+    }
+    await route.fulfill({ status: 403, json: { message: "Protected School Admin account." } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Protected Admin" }).click();
+  const profile = page.getByRole("dialog", { name: "Protected Admin" });
+  await profile.getByRole("button", { name: "Account & Access" }).click();
+  await expect(profile.getByText("Protected School Admin account: role changes are disabled.")).toBeVisible();
+  await expect(profile.getByText("Protected School Admin account: individual permission overrides are disabled.")).toBeVisible();
+  await expect(profile.getByRole("button", { name: "Assign", exact: true })).toHaveCount(0);
+  await expect(profile.getByRole("button", { name: /Remove .* role/ })).toHaveCount(0);
+  await expect(profile.getByRole("button", { name: "Save override" })).toHaveCount(0);
+  await expect(profile.getByRole("button", { name: /Remove .* override/ })).toHaveCount(0);
+  expect(requests.some(item =>
+    (item.method === "POST" || item.method === "DELETE") &&
+    (item.path.includes("/roles") || item.path.includes("permission-overrides")),
+  )).toBe(false);
+});
+
 test("staff role assignment and removal require the delegated permission and explicit confirmation", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 514, school_id: 10, username: "teacher.role-admin",
