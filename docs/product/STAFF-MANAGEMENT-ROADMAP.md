@@ -1,3 +1,12 @@
+## 2026-11-26 — Add Staff role-assignment contract gap
+
+- The Add Staff creation transaction creates a user and profile but does not assign any role. The wizard has no Staff Type or role-selection step; role assignment remains a separate Account & Access operation requiring its own permission.
+- The roadmap's target Step 3 says a role is required when login is enabled and specifies Teacher by default for teaching staff. That target is not implemented. Because Staff Type is not currently persisted, automatically assigning Teacher would be unsafe for non-teaching employees.
+- Keep role assignment separate until the Staff Type classification, role mapping and atomicity requirements are approved. Do not create implicit role grants or change the current authorization/delegation rules.
+- This is a documented onboarding gap, not a claim that the current role-assignment workflow is broken. No production code or schema changed.
+
+---
+
 ## 2026-11-26 — Staff modal keyboard focus containment verified
 
 - Corrected the shared modal focus trap to ignore non-rendered, hidden, `aria-hidden` and `inert` controls. Tab and Shift+Tab now wrap correctly when focus begins on the dialog container as well as at the first/last visible control.
@@ -246,7 +255,7 @@ Open from Overview → Add Staff or Staff Directory → Add Staff. Use the share
 
 Show this step for Teaching staff by default, and for any non-teaching employee when Create login account is selected.
 
-**Current implementation gap:** the existing Add Staff wizard still requires a username and initial password for every employee because `staff_profiles` is currently coupled to `users`. The optional profile-only path described below is a target product behavior, not yet implemented. Do not generate hidden credentials or create placeholder accounts; profile-only onboarding (single or bulk) remains blocked pending the approved identity-schema redesign in [Staff Bulk Import Architecture Gate](../backend/STAFF-BULK-IMPORT-DESIGN.md).
+**Current implementation gaps:** the existing Add Staff wizard still requires a username and initial password for every employee because `staff_profiles` is currently coupled to `users`. The optional profile-only path described below is a target product behavior, not yet implemented. Do not generate hidden credentials or create placeholder accounts; profile-only onboarding (single or bulk) remains blocked pending the approved identity-schema redesign in [Staff Bulk Import Architecture Gate](../backend/STAFF-BULK-IMPORT-DESIGN.md). In addition, the wizard does not collect Staff Type or assign a role: `CreateStaffAccountWithProfile` creates the account/profile but does not insert a `principal_roles` row. Role assignment is currently a separate, permission-gated action in Account & Access. The required-role/default-Teacher behavior in this target form is therefore not implemented; do not auto-assign Teacher until Staff Type and the teaching/non-teaching role mapping are approved.
 
 | Field | Required? | Rules / behavior |
 |---|---|---|
@@ -571,7 +580,7 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 6. Add audit events and profile completeness indicators.
 7. Support non-teaching staff in same foundation without Teacher access by default.
 
-**Exit gate: PARTIALLY MET.** The implemented login-backed staff profile, account lifecycle, role/override, qualification/experience and audit workflows are browser-verified. Profile-only employee creation (and any dependent bulk onboarding) remains blocked until the identity/profile schema proposal is explicitly approved and migrated. Confirm teaching/non-teaching staff-type support against the approved schema before declaring this phase complete.
+**Exit gate: PARTIALLY MET.** The implemented login-backed staff profile, account lifecycle, separately managed role/override, qualification/experience and audit workflows are browser-verified. The Add Staff wizard does not yet capture Staff Type or assign a required role during login provisioning; new accounts are created without a `principal_roles` assignment and must be assigned later through the permission-gated Account & Access workflow. Do not auto-assign Teacher until the Staff Type and role-mapping contract is approved. Profile-only employee creation (and any dependent bulk onboarding) remains blocked until the identity/profile schema proposal is explicitly approved and migrated. These onboarding gates must be resolved before declaring this phase complete.
 
 ### Phase 2 — Teacher Academic Assignments (P0)
 

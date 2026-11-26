@@ -7,6 +7,16 @@
 
 This audit records what exists in the repository today. It is not an implementation-completion claim. The approved [Staff Management Roadmap](./STAFF-MANAGEMENT-ROADMAP.md) remains the product source of truth.
 
+## 2026-11-26 — Add Staff role-assignment contract gap
+
+- Repository review confirms `CreateStaffAccountWithProfile` creates the login account and employee profile but does not create a `principal_roles` assignment. The Add Staff wizard also has no role selector or role-assignment step.
+- Role assignment is currently a separate, post-creation operation in the employee's Account & Access workspace, subject to the separate live role-assignment permission and delegation rules.
+- This differs from Roadmap Form A, Step 3, which says a role is required when login is enabled and specifies Teacher as the default for teaching staff. The current schema/UI also has no persisted Staff Type, so assigning Teacher automatically would misclassify non-teaching employees.
+- **Do not auto-assign Teacher or another role as a workaround.** Keep the existing separately authorized role workflow until Staff Type, allowed role mapping, and whether role assignment must be part of atomic account creation are explicitly approved. Until then, the Add Staff login-provisioning phase is not fully met.
+- No production code, schema, or database was changed for this finding. Authenticated School Admin browser sign-off remains outstanding.
+
+---
+
 ## 2026-11-26 — Staff modal keyboard focus containment verified
 
 - Corrected the shared modal focus trap to ignore non-rendered, hidden, `aria-hidden` and `inert` controls. Tab and Shift+Tab now wrap correctly when focus begins on the dialog container as well as at the first/last visible control.
