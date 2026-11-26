@@ -46,10 +46,10 @@ const staffUser = {
   school_id: 10,
 };
 
-async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>, onStaffMutation?: (path: string, route: Route) => Promise<void>, permissions = ["users.read", "users.create", "users.update"], onStaffRecordMutation?: (collection: string, route: Route) => Promise<void>) {
+async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>, onStaffMutation?: (path: string, route: Route) => Promise<void>, permissions = ["users.read", "users.create", "users.update"], onStaffRecordMutation?: (collection: string, route: Route) => Promise<void>, leaveRequestRows?: Array<Record<string, unknown>>) {
   const staffRecords: Record<string, Array<Record<string, unknown>>> = { qualifications: [], certifications: [], experience: [] };
   const leaveTypes: Array<Record<string, unknown>> = [{ id: 1, name: "Casual Leave", is_paid: true, requires_approval: true, is_active: true }];
-  const leaveRequests: Array<Record<string, unknown>> = [{
+  const leaveRequests: Array<Record<string, unknown>> = leaveRequestRows ?? [{
     id: 21, staff_principal_id: 501, employee_code: "EMP-LEAVE-01", staff_name: "Leave Teacher",
     leave_type_id: 1, leave_type_name: "Casual Leave", start_date: schoolDateValue(), end_date: schoolDateValue(),
     duration_type: "full_day", reason: "Family commitment", status: "pending", created_at: "2026-11-21T00:00:00.000Z",
@@ -144,13 +144,16 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       const staffID = Number(url.searchParams.get("staff_principal_id") ?? 0);
       const fromDate = url.searchParams.get("from_date") ?? "";
       const toDate = url.searchParams.get("to_date") ?? "";
-      const data = leaveRequests.filter(item => {
+      const matching = leaveRequests.filter(item => {
         const startsOn = String(item.start_date ?? "");
         const endsOn = String(item.end_date ?? "");
         const overlapsDateRange = (!fromDate || endsOn >= fromDate) && (!toDate || startsOn <= toDate);
         return (!status || item.status === status) && (!staffID || item.staff_principal_id === staffID) && overlapsDateRange;
       });
-      await route.fulfill({ json: { data } });
+      const page = Number(url.searchParams.get("page") ?? 1);
+      const pageSize = Number(url.searchParams.get("page_size") ?? 50);
+      const data = matching.slice((page - 1) * pageSize, page * pageSize);
+      await route.fulfill({ json: { data, pagination: { page, page_size: pageSize, total: matching.length } } });
       return;
     }
     if (path === "/school/staff-leave/requests" && method === "POST") {
@@ -183,9 +186,12 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       const from = url.searchParams.get("from_date") ?? "";
       const to = url.searchParams.get("to_date") ?? "";
       const staffID = Number(url.searchParams.get("staff_principal_id") ?? 0);
-      const data = substitutions.filter(item => String(item.cover_date) >= from && String(item.cover_date) <= to &&
+      const matching = substitutions.filter(item => String(item.cover_date) >= from && String(item.cover_date) <= to &&
         (!staffID || item.original_teacher_principal_id === staffID || item.substitute_teacher_principal_id === staffID));
-      await route.fulfill({ json: { substitutions: data } });
+      const page = Number(url.searchParams.get("page") ?? 1);
+      const pageSize = Number(url.searchParams.get("page_size") ?? 50);
+      const data = matching.slice((page - 1) * pageSize, page * pageSize);
+      await route.fulfill({ json: { substitutions: data, pagination: { page, page_size: pageSize, total: matching.length } } });
       return;
     }
     if (path === "/school/staff-substitutions" && method === "POST") {
@@ -3882,4 +3888,30 @@ test("closing and reopening the same staff profile reloads audit history instead
   await dialog.getByRole("button", { name: "History & Activity" }).click();
   await expect(dialog.getByText("Profile updated")).toBeVisible();
   await expect.poll(() => auditRequests).toBeGreaterThan(firstAuditReadCount);
+});
+
+
+test("staff leave requests use bounded pages and show the matching total", async ({ page }) => {
+  const staffRows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.page.teacher",
+    employee_code: "EMP-PAGE-01", full_name: "Pagination Teacher", designation: "Teacher",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  const requests = Array.from({ length: 55 }, (_, index) => ({
+    id: index + 1, staff_principal_id: 501, employee_code: "EMP-PAGE-01", staff_name: "Pagination Teacher",
+    leave_type_id: 1, leave_type_name: "Casual Leave", start_date: schoolDateValue(), end_date: schoolDateValue(),
+    duration_type: "full_day", reason: "Leave request " + (index + 1), status: "pending",
+    created_at: "2026-11-21T00:00:00.000Z",
+  }));
+  await signInAndOpenStaff(page, staffRows, undefined,
+    ["users.read", "staff.leave.read"], undefined, requests);
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await expect(page.getByText("Leave request 1", { exact: true })).toBeVisible();
+  await expect(page.getByText("Leave request 51", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Showing 1–50 of 55")).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Leave request 51", { exact: true })).toBeVisible();
+  await expect(page.getByText("Showing 51–55 of 55")).toBeVisible();
+  await page.getByRole("button", { name: "Previous" }).click();
+  await expect(page.getByText("Leave request 1", { exact: true })).toBeVisible();
 });
