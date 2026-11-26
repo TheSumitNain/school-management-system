@@ -156,6 +156,8 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 		}
 	}
 	if successes!=1||conflicts!=1 { t.Fatalf("race results successes=%d conflicts=%d; want exactly one of each",successes,conflicts) }
+	winningOriginalID := originalOne
+	if successfulEntryID == entries[1] { winningOriginalID = originalTwo }
 	var activeCount int
 	if err:=pool.QueryRow(ctx,`SELECT count(*) FROM staff_substitutions WHERE school_id=$1 AND substitute_teacher_principal_id=$2 AND cover_date=$3::date AND period_id=$4 AND status='active'`,schoolID,substitute,coverDate,periodID).Scan(&activeCount);err!=nil { t.Fatalf("count active substitute assignments: %v",err) }
 	if activeCount!=1 { t.Fatalf("race left %d active assignments; want 1",activeCount) }
@@ -171,7 +173,7 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 	if !errors.Is(profileErr, ErrStaffProfileHasActiveSubstitutions) && !errors.Is(profileErr, ErrStaffProfileHasActiveAssignments) {
 		t.Fatalf("inactivate original teacher with active substitution/teaching assignment error=%v; want a lifecycle conflict", profileErr)
 	}
-	for _, teacherID := range []int64{originalOne, substitute} {
+	for _, teacherID := range []int64{winningOriginalID, substitute} {
 		if err := userRepo.DisableStaffAccount(ctx, actorPrincipalID, schoolID, teacherID); !errors.Is(err, ErrStaffProfileHasActiveSubstitutions) {
 			t.Fatalf("disable teacher %d with active substitution error=%v; want ErrStaffProfileHasActiveSubstitutions", teacherID, err)
 		}
