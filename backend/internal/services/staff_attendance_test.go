@@ -185,7 +185,7 @@ func TestStaffAttendanceServicePaginationBoundsAndDelegation(t *testing.T) {
     day:=time.Date(2026,11,22,0,0,0,0,time.UTC)
     if _,total,err:=service.ListDailyPage(context.Background(),1,2,day,50,100);err!=nil||total!=0||fake.listDailyPageCalls!=1||fake.lastOffset!=100 { t.Fatalf("daily pagination total=%d calls=%d offset=%d err=%v",total,fake.listDailyPageCalls,fake.lastOffset,err) }
     if _,total,err:=service.ListMonthlyPage(context.Background(),1,2,day,100,200);err!=nil||total!=0||fake.listMonthlyPageCalls!=1||fake.lastLimit!=100 { t.Fatalf("monthly pagination total=%d calls=%d limit=%d err=%v",total,fake.listMonthlyPageCalls,fake.lastLimit,err) }
-    for _,v:=range [][2]int{{0,0},{101,0},{50,-1}} {
+    for _,v:=range [][2]int{{0,0},{101,0},{50,-1},{50,1_000_001}} {
         if _,_,err:=service.ListDailyPage(context.Background(),1,2,day,v[0],v[1]);!errors.Is(err,ErrInvalidStaffAttendance){t.Fatalf("daily invalid pagination %v: %v",v,err)}
         if _,_,err:=service.ListMonthlyPage(context.Background(),1,2,day,v[0],v[1]);!errors.Is(err,ErrInvalidStaffAttendance){t.Fatalf("monthly invalid pagination %v: %v",v,err)}
     }

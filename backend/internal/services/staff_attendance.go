@@ -34,12 +34,12 @@ func (s *StaffAttendanceService) ListDaily(ctx context.Context, actor, school in
 }
 
 func (s *StaffAttendanceService) ListDailyPage(ctx context.Context, actor, school int64, day time.Time, limit, offset int) ([]repository.StaffAttendanceRecord, int, error) {
-    if s == nil || s.repository == nil || actor <= 0 || school <= 0 || day.Year() < 1 || limit < 1 || limit > 100 || offset < 0 { return nil, 0, ErrInvalidStaffAttendance }
+    if s == nil || s.repository == nil || actor <= 0 || school <= 0 || day.Year() < 1 || limit < 1 || limit > 100 || offset < 0 || offset > 1_000_000 { return nil, 0, ErrInvalidStaffAttendance }
     return s.repository.ListDailyPage(ctx, actor, school, day, limit, offset)
 }
 
 func (s *StaffAttendanceService) ListDailyFilteredPage(ctx context.Context, actor, school int64, day time.Time, filter repository.StaffAttendanceDailyFilter, limit, offset int) ([]repository.StaffAttendanceRecord, int, error) {
-    if s == nil || s.repository == nil || actor <= 0 || school <= 0 || day.Year() < 1 || limit < 1 || limit > 100 || offset < 0 {
+    if s == nil || s.repository == nil || actor <= 0 || school <= 0 || day.Year() < 1 || limit < 1 || limit > 100 || offset < 0 || offset > 1_000_000 {
         return nil, 0, ErrInvalidStaffAttendance
     }
     filter.Search = strings.TrimSpace(filter.Search)
@@ -58,7 +58,7 @@ func (s *StaffAttendanceService) ListMonthly(ctx context.Context, actor, school 
 }
 
 func (s *StaffAttendanceService) ListMonthlyPage(ctx context.Context, actor, school int64, month time.Time, limit, offset int) ([]repository.StaffAttendanceMonthlySummary, int, error) {
-    if s == nil || s.repository == nil || actor <= 0 || school <= 0 || month.Year() < 1 || limit < 1 || limit > 100 || offset < 0 { return nil, 0, ErrInvalidStaffAttendance }
+    if s == nil || s.repository == nil || actor <= 0 || school <= 0 || month.Year() < 1 || limit < 1 || limit > 100 || offset < 0 || offset > 1_000_000 { return nil, 0, ErrInvalidStaffAttendance }
     return s.repository.ListMonthlyPage(ctx, actor, school, month, limit, offset)
 }
 
