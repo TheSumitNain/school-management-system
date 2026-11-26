@@ -2415,11 +2415,21 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
     const request = route.request();
     const url = new URL(request.url());
     if (request.method() === "GET" && url.pathname.endsWith("/month")) {
-      await route.fulfill({ json: { month: url.searchParams.get("month"), data: [{
-        staff_principal_id: 512, employee_code: "EMP-ATT-01", full_name: "Attendance Teacher",
-        designation: "Science Teacher", present_days: 1, absent_days: 1, late_days: 1, half_days: 0,
-        records: [{ id: 7, date: "2026-11-03", status: "present", remarks: "PRIVATE_ATTENDANCE_REMARK" }, { id: 8, date: "2026-11-04", status: "late" }, { id: 9, date: "2026-11-05", status: "absent" }],
-      }] } });
+      const limit = Number(url.searchParams.get("limit") ?? 50);
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      const allMonthly = Array.from({ length: 101 }, (_, index) => ({
+        staff_principal_id: 512 + index,
+        employee_code: `EMP-ATT-${String(index + 1).padStart(2, "0")}`,
+        full_name: index === 0 ? "Attendance Teacher" : `Monthly Teacher ${index + 1}`,
+        designation: "Science Teacher", present_days: index === 0 ? 1 : 0,
+        absent_days: index === 0 ? 1 : 0, late_days: index === 0 ? 1 : 0, half_days: 0,
+        records: index === 0 ? [{ id: 7, date: "2026-11-03", status: "present", remarks: "PRIVATE_ATTENDANCE_REMARK" }, { id: 8, date: "2026-11-04", status: "late" }, { id: 9, date: "2026-11-05", status: "absent" }] : [],
+      }));
+      await route.fulfill({ json: {
+        month: url.searchParams.get("month"),
+        data: allMonthly.slice(offset, offset + limit),
+        pagination: { limit, offset, total: allMonthly.length },
+      } });
       return;
     }
     if (request.method() === "GET") {
@@ -2471,19 +2481,25 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   await page.getByRole("button", { name: "Monthly summary" }).click();
   await expect(page.getByText("Attendance Teacher").first()).toBeVisible();
   await expect(page.getByText("View daily entries (3)")).toBeVisible();
+  await expect(page.getByText("Showing 1–50 of 101 staff")).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).last().click();
+  await expect(page.getByText("Monthly Teacher 51")).toBeVisible();
+  await page.getByRole("button", { name: "Previous" }).last().click();
+  await expect(page.getByText("Attendance Teacher").first()).toBeVisible();
   await expect(page.getByText("Calendar context · not included in attendance totals")).toBeVisible();
   await expect(page.getByText("Approved leave", { exact: true })).toBeVisible();
   await expect(page.getByText(/Attendance Teacher · Casual Leave/).first()).toBeVisible();
   await expect(page.getByText("School holidays", { exact: true })).toBeVisible();
   await expect(page.getByText(/School Foundation Day/)).toBeVisible();
   const monthlyDownloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download monthly report" }).click();
+  await page.getByRole("button", { name: "Download complete monthly report" }).click();
   const monthlyDownload = await monthlyDownloadPromise;
   const monthlyPath = await monthlyDownload.path();
   expect(monthlyPath).toBeTruthy();
   const monthlyCSV = await readFile(monthlyPath!, "utf8");
   expect(monthlyCSV.startsWith("\uFEFF")).toBe(true);
   expect(monthlyCSV).toContain("EMP-ATT-01");
+  expect(monthlyCSV).toContain("EMP-ATT-101");
   expect(monthlyCSV).not.toContain("PRIVATE_ATTENDANCE_REMARK");
   expect(monthlyCSV).not.toContain("PRIVATE_LEAVE_REASON");
   expect(monthlyCSV).toContain("Leave 101");
