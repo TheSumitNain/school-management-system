@@ -194,7 +194,7 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
         t.Fatalf("correct historical staff attendance: %v", err)
     }
     secondStaff, err := repo.CreateStaffAccountWithProfile(ctx, actorID, schoolID, "staffbulk-"+suffix, "integration-test-password-hash", models.StaffProfile{
-        EmployeeCode:"SB-"+suffix, FullName:"Bulk Staff Integration", Designation:"Teacher", MobileNumber:"9876543211", EmploymentStatus:"active",
+        StaffType:"teaching", EmployeeCode:"SB-"+suffix, FullName:"Bulk Staff Integration", Designation:"Teacher", MobileNumber:"9876543211", EmploymentStatus:"active",
     })
     if err != nil { t.Fatalf("create second staff for bulk attendance: %v", err) }
 

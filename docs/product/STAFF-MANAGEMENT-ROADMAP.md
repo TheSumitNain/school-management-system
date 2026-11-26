@@ -1,9 +1,10 @@
-## 2026-11-26 — Add Staff role-assignment contract gap
+## 2026-11-26 — Add Staff classification implemented; role-assignment contract gap remains
 
-- The Add Staff creation transaction creates a user and profile but does not assign any role. The wizard has no Staff Type or role-selection step; role assignment remains a separate Account & Access operation requiring its own permission.
-- The roadmap's target Step 3 says a role is required when login is enabled and specifies Teacher by default for teaching staff. That target is not implemented. Because Staff Type is not currently persisted, automatically assigning Teacher would be unsafe for non-teaching employees.
-- Keep role assignment separate until the Staff Type classification, role mapping and atomicity requirements are approved. Do not create implicit role grants or change the current authorization/delegation rules.
-- This is a documented onboarding gap, not a claim that the current role-assignment workflow is broken. No production code or schema changed.
+- Add Staff and Edit Staff now require an explicit Teaching / Non-teaching classification in Step 1. The value is persisted in `staff_profiles.staff_type`, included in audit metadata, and shown in the directory, profile and CSV export.
+- Existing staff profiles remain unclassified (`NULL`) until a School Admin explicitly chooses a type; no historical type is inferred.
+- The wizard still creates a login for every employee and does not assign a role. The target Step 3 says login is conditional and a role is required when login is enabled, with Teacher as the default for teaching staff. Profile-only onboarding remains blocked by the identity-schema approval gate.
+- Keep role assignment separate until the role-mapping, authorization and atomicity contract is approved. Do not create implicit role grants or change the current permission/delegation rules. Teaching classification alone does not grant Teacher access.
+- The current role-assignment workflow is not claimed to be broken; this is a remaining Add Staff onboarding gap.
 
 ---
 
@@ -255,7 +256,7 @@ Open from Overview → Add Staff or Staff Directory → Add Staff. Use the share
 
 Show this step for Teaching staff by default, and for any non-teaching employee when Create login account is selected.
 
-**Current implementation gaps:** the existing Add Staff wizard still requires a username and initial password for every employee because `staff_profiles` is currently coupled to `users`. The optional profile-only path described below is a target product behavior, not yet implemented. Do not generate hidden credentials or create placeholder accounts; profile-only onboarding (single or bulk) remains blocked pending the approved identity-schema redesign in [Staff Bulk Import Architecture Gate](../backend/STAFF-BULK-IMPORT-DESIGN.md). In addition, the wizard does not collect Staff Type or assign a role: `CreateStaffAccountWithProfile` creates the account/profile but does not insert a `principal_roles` row. Role assignment is currently a separate, permission-gated action in Account & Access. The required-role/default-Teacher behavior in this target form is therefore not implemented; do not auto-assign Teacher until Staff Type and the teaching/non-teaching role mapping are approved.
+**Current implementation gaps:** the existing Add Staff wizard still requires a username and initial password for every employee because `staff_profiles` is currently coupled to `users`. The optional profile-only path described below is a target product behavior, not yet implemented. Do not generate hidden credentials or create placeholder accounts; profile-only onboarding (single or bulk) remains blocked pending the approved identity-schema redesign in [Staff Bulk Import Architecture Gate](../backend/STAFF-BULK-IMPORT-DESIGN.md). Staff Type is now collected and persisted in Step 1, but `CreateStaffAccountWithProfile` still creates the account/profile without inserting a `principal_roles` row. Role assignment remains a separate, permission-gated action in Account & Access. The required-role/default-Teacher behavior in this target form is not implemented; do not auto-assign Teacher until the teaching/non-teaching role mapping and assignment transaction are approved.
 
 | Field | Required? | Rules / behavior |
 |---|---|---|
@@ -580,7 +581,7 @@ Phases are dependency ordered, not a claim that every listed item is absent. Ins
 6. Add audit events and profile completeness indicators.
 7. Support non-teaching staff in same foundation without Teacher access by default.
 
-**Exit gate: PARTIALLY MET.** The implemented login-backed staff profile, account lifecycle, separately managed role/override, qualification/experience and audit workflows are browser-verified. The Add Staff wizard does not yet capture Staff Type or assign a required role during login provisioning; new accounts are created without a `principal_roles` assignment and must be assigned later through the permission-gated Account & Access workflow. Do not auto-assign Teacher until the Staff Type and role-mapping contract is approved. Profile-only employee creation (and any dependent bulk onboarding) remains blocked until the identity/profile schema proposal is explicitly approved and migrated. These onboarding gates must be resolved before declaring this phase complete.
+**Exit gate: PARTIALLY MET.** The implemented login-backed staff profile, account lifecycle, separately managed role/override, qualification/experience and audit workflows are browser-verified. The Add Staff wizard now captures and persists Staff Type, but does not assign a required role during login provisioning; new accounts are created without a `principal_roles` assignment and must be assigned later through the permission-gated Account & Access workflow. Do not auto-assign Teacher until the role-mapping contract is approved. Profile-only employee creation (and any dependent bulk onboarding) remains blocked until the identity/profile schema proposal is explicitly approved and migrated. These onboarding gates must be resolved before declaring this phase complete.
 
 ### Phase 2 — Teacher Academic Assignments (P0)
 

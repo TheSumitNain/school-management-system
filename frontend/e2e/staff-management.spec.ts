@@ -905,10 +905,10 @@ test("add staff wizard validates each step before allowing progress", async ({ p
   await dialog.getByLabel("Employee code").fill("EMP-VAL-01");
   await dialog.getByLabel("Mobile number").fill("9876543219");
   await dialog.getByRole("button", { name: "Continue" }).click();
-  await dialog.getByRole("button", { name: "Continue" }).click();
   await expect(dialog.getByText("Choose Teaching or Non-teaching staff.")).toBeVisible();
   await dialog.getByRole("button", { name: "Staff type" }).click();
   await dialog.getByRole("option", { name: "Teaching", exact: true }).click();
+  await dialog.getByRole("button", { name: "Continue" }).click();
   await dialog.getByRole("button", { name: "Continue" }).click();
   await expect(dialog.getByText("Enter a designation (up to 100 characters).")).toBeVisible();
 
@@ -977,6 +977,8 @@ test("staff profile email validation rejects malformed address components", asyn
     await expect(dialog.getByText("Enter a valid email address.")).toBeVisible();
   }
   await email.fill("a@b.c");
+  await dialog.getByRole("button", { name: "Staff type" }).click();
+  await dialog.getByRole("option", { name: "Teaching", exact: true }).click();
   await dialog.getByRole("button", { name: "Continue" }).click();
   await expect(dialog.getByText("Enter a valid email address.")).toHaveCount(0);
   await expect(dialog.getByLabel("Designation")).toBeVisible();
@@ -1021,10 +1023,9 @@ test("staff profile creation accepts Unicode names and designations at database 
   await fullNameInput.fill(fullName);
   await dialog.getByLabel("Employee code").fill("EMP-UNICODE");
   await dialog.getByLabel("Mobile number").fill("9876543210");
-  await dialog.getByRole("button", { name: "Continue" }).click();
-
   await dialog.getByRole("button", { name: "Staff type" }).click();
   await dialog.getByRole("option", { name: "Teaching", exact: true }).click();
+  await dialog.getByRole("button", { name: "Continue" }).click();
   const designationInput = dialog.getByLabel("Designation");
   await designationInput.fill("📚".repeat(101));
   await expect(designationInput).toHaveValue(designation);
@@ -1095,10 +1096,9 @@ test("staff creation uses the shared IST date picker and clears the credential h
   await dialog.getByLabel("Full name").fill("Teacher One");
   await dialog.getByLabel("Employee code").fill("EMP-001");
   await dialog.getByLabel("Mobile number").fill("9876543210");
-  await dialog.getByRole("button", { name: "Continue" }).click();
-
   await dialog.getByRole("button", { name: "Staff type" }).click();
   await dialog.getByRole("option", { name: "Teaching", exact: true }).click();
+  await dialog.getByRole("button", { name: "Continue" }).click();
 
   await dialog.getByLabel("Designation").fill("Class Teacher");
   await dialog.getByRole("button", { name: "Joining date" }).click();
@@ -1148,9 +1148,9 @@ test("staff creation uses the shared IST date picker and clears the credential h
   await secondDialog.getByLabel("Full name").fill("Teacher Two");
   await secondDialog.getByLabel("Employee code").fill("EMP-002");
   await secondDialog.getByLabel("Mobile number").fill("9876543212");
-  await secondDialog.getByRole("button", { name: "Continue" }).click();
   await secondDialog.getByRole("button", { name: "Staff type" }).click();
   await secondDialog.getByRole("option", { name: "Non-teaching", exact: true }).click();
+  await secondDialog.getByRole("button", { name: "Continue" }).click();
   await secondDialog.getByLabel("Designation").fill("Science Teacher");
   await secondDialog.getByRole("button", { name: "Continue" }).click();
   await secondDialog.getByLabel("Login username").fill("teacher.two");
@@ -1189,9 +1189,9 @@ test("staff creation keeps entered details available after a temporary server fa
   await dialog.getByLabel("Full name").fill("Retry Teacher");
   await dialog.getByLabel("Employee code").fill("EMP-RETRY-01");
   await dialog.getByLabel("Mobile number").fill("9876543211");
-  await dialog.getByRole("button", { name: "Continue" }).click();
   await dialog.getByRole("button", { name: "Staff type" }).click();
   await dialog.getByRole("option", { name: "Teaching", exact: true }).click();
+  await dialog.getByRole("button", { name: "Continue" }).click();
   await dialog.getByLabel("Designation").fill("English Teacher");
   await dialog.getByRole("button", { name: "Continue" }).click();
   await dialog.getByLabel("Login username").fill("retry.teacher");
@@ -1366,7 +1366,7 @@ test("staff profile edit uses the shared employment-status select and sends the 
     id: 1, principal_id: 301, school_id: 10, username: "teacher.two",
     employee_code: "EMP-002", full_name: "Teacher Two", designation: "Science Teacher",
     mobile_number: "9876543211", email: "teacher.two@example.com", joining_date: "2026-04-01",
-    employment_status: "active", profile_complete: true, status: "active",
+    employment_status: "active", staff_type: "teaching", profile_complete: true, status: "active",
     must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
   }];
   const browser = page.context().browser();
