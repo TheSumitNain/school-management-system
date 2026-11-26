@@ -545,3 +545,39 @@ func TestStaffHandlerProfileUpdateRejectsActiveTeachingAssignmentConflict(t *tes
 		t.Fatalf("expected actionable assignment conflict, got status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestStaffHandlerMapsActiveSubstitutionConflictsForDisableAndProfileInactivation(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	auth := func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}
+	for _, operation := range []string{"disable", "profile"} {
+		t.Run(operation, func(t *testing.T) {
+			service := &fakeStaffAccountService{err: repository.ErrStaffProfileHasActiveSubstitutions}
+			router := gin.New()
+			handler := NewStaffHandler(service)
+			if operation == "disable" {
+				router.DELETE("/school/staff/:principalID", auth, handler.Disable)
+				rec := httptest.NewRecorder()
+				router.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/school/staff/42", nil))
+				if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "staff_has_active_substitutions") ||
+					!strings.Contains(rec.Body.String(), "Cancel or reassign") {
+					t.Fatalf("disable active-substitution response status=%d body=%s", rec.Code, rec.Body.String())
+				}
+				return
+			}
+			router.PATCH("/school/staff/:principalID", auth, handler.Update)
+			body := `{"employee_code":"EMP-042","full_name":"Substitute Teacher","designation":"Teacher","mobile_number":"9876543210","staff_type":"teaching","employment_status":"inactive","joining_date":"2026-04-01"}`
+			req := httptest.NewRequest(http.MethodPatch, "/school/staff/42", strings.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+			if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "staff_has_active_substitutions") ||
+				!strings.Contains(rec.Body.String(), "Cancel or reassign") {
+				t.Fatalf("profile inactivation active-substitution response status=%d body=%s", rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
