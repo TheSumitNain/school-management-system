@@ -166,7 +166,7 @@ func installStaffAttendanceAuditFailure(t *testing.T, f *staffAttendanceIntegrat
 	if _, err := f.pool.Exec(f.ctx, fmt.Sprintf(`
 		CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $attendance_audit_failure$
 		BEGIN
-			IF NEW.action = %q THEN RAISE EXCEPTION 'forced attendance audit failure'; END IF;
+			IF NEW.action = '%s' THEN RAISE EXCEPTION 'forced attendance audit failure'; END IF;
 			RETURN NEW;
 		END;
 		$attendance_audit_failure$;
