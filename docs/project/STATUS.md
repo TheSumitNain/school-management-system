@@ -2866,3 +2866,12 @@ This update supersedes older status bullets that listed the following database-b
 - Backend CI verification is pending for V67 and its integration test. No existing attendance, leave or substitution records are rewritten. Current work remains on `work`; `main` remains untouched.
 
 - V67 verification completed: Backend CI [45809288242](https://github.com/TheSumitNain/school-management-system/actions/runs/45809288242) **PASS** on `fe6c7ae67d96e1767471b1af9282d3f3b16946c0`; the ephemeral database applied the full migration chain, PostgreSQL integration tests passed (including the new V67 guard-definition regression), and `go vet` passed.
+
+
+## 2026-11-26 — Staff profile inactivation and refresh-session serialization
+
+- V68 adds the shared `refresh-principal:{principal_id}` transaction lock to the database trigger that disables a staff login when the profile becomes inactive. The profile lifecycle integration test now also verifies token-version increment and revocation of an existing refresh session.
+- Concurrency review identified a second-order lock-order hazard for direct SQL profile updates: the profile row is already held when its AFTER trigger runs. V69 therefore uses `pg_try_advisory_xact_lock`; if another authentication lifecycle operation owns the principal lock, the profile update fails atomically with retryable SQLSTATE `40001` instead of waiting while holding the profile row.
+- Added a real PostgreSQL regression that holds the refresh-principal lock in one transaction, attempts profile inactivation in another, and verifies the update fails fast without changing either employment or login state. The V68 lock-contract test was aligned to the final V69 non-blocking lock.
+- Backend CI [45811037214](https://github.com/TheSumitNain/school-management-system/actions/runs/45811037214) **PASS** on `87de3be8f5110ebfaa4d78fb72c76b3a23ef9a18`: V68/V69 full migration chain, complete Go/PostgreSQL integration suite and `go vet`.
+- No existing school data is rewritten. Current work remains on `work`; `main` remains untouched.
