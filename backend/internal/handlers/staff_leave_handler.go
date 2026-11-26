@@ -65,7 +65,7 @@ func(h *StaffLeaveHandler) ListRequests(c *gin.Context){
 		if result.Items==nil{result.Items=[]repository.StaffLeaveRequest{}}
 		c.JSON(200,gin.H{"status":"success","data":result.Items,"pagination":gin.H{"page":page,"page_size":size,"total":result.Total}});return
 	}
-	items,e:=h.service.ListRequests(c,a,s,status,staff,onDate,fromDate,toDate);if e!=nil{h.fail(c,e);return}
+	items,e:=h.service.ListRequests(c,a,s,status,staff,onDate,fromDate,toDate);if e!=nil{h.fail(c,e);return};if items==nil{items=[]repository.StaffLeaveRequest{}}
 	total:=len(items);start:=(page-1)*size;if start>total{start=total};end:=start+size;if end>total{end=total}
 	c.JSON(200,gin.H{"status":"success","data":items[start:end],"pagination":gin.H{"page":page,"page_size":size,"total":total}})
 }
