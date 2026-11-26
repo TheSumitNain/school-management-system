@@ -12,7 +12,7 @@ type StaffSubstitutionPage struct {
 
 func (r *AcademicRepository) ListStaffSubstitutionsPage(ctx context.Context, actorID, schoolID int64, fromDate, toDate string, staffID int64, page, pageSize int) (StaffSubstitutionPage, error) {
 	result := StaffSubstitutionPage{Items: []StaffSubstitution{}}
-	if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || staffID < 0 || page < 1 || pageSize < 1 || pageSize > 100 {
+	if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || staffID < 0 || page < 1 || pageSize < 1 || pageSize > 100 || page-1 > int(^uint(0)>>1)/pageSize {
 		return result, ErrInvalidStaffSubstitution
 	}
 	if err := staffSubstitutionAuthorize(ctx, r.db, actorID, schoolID, "staff.substitutions.read"); err != nil {
