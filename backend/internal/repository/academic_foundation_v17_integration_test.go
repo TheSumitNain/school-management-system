@@ -212,8 +212,8 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO staff_profiles
 				(principal_id, school_id, employee_code, full_name, designation, mobile_number, employment_status, staff_type)
-			VALUES ($1, $2, $3, $4, 'Teacher', '9876543213', $5, $6)
-		`, *fixture.principalID, schoolID, fixture.code, fixture.fullName, fixture.employment, fixture.staffType); err != nil {
+			VALUES ($1, $2, $3, $4, 'Teacher', '9876543213', 'active', $5)
+		`, *fixture.principalID, schoolID, fixture.code, fixture.fullName, fixture.staffType); err != nil {
 			t.Fatalf("create %s staff profile: %v", fixture.fullName, err)
 		}
 		if _, err := tx.Exec(ctx, `
@@ -221,6 +221,11 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 			VALUES ($1, $2, $3)
 		`, *fixture.principalID, teacherRoleID, actorPrincipalID); err != nil {
 			t.Fatalf("assign Teacher role to %s fixture: %v", fixture.fullName, err)
+		}
+		if fixture.employment == "inactive" {
+			if _, err := tx.Exec(ctx, `UPDATE staff_profiles SET employment_status='inactive' WHERE principal_id=$1 AND school_id=$2`, *fixture.principalID, schoolID); err != nil {
+				t.Fatalf("mark %s profile inactive after role setup: %v", fixture.fullName, err)
+			}
 		}
 	}
 
