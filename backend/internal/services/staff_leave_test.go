@@ -31,8 +31,9 @@ func (s *staffLeaveRepositoryStub) ListRequests(context.Context, int64, int64, s
 	s.listRequestsCalls++
 	return nil, nil
 }
-func (s *staffLeaveRepositoryStub) ListRequestsPage(context.Context, int64, int64, string, int64, string, string, string, int, int) (repository.StaffLeaveRequestPage, error) {
+func (s *staffLeaveRepositoryStub) ListRequestsPage(_ context.Context, _, _ int64, status string, staffID int64, _, _, _ string, page, size int) (repository.StaffLeaveRequestPage, error) {
 	s.listPageCalls++
+	s.pageStatus, s.pageStaffID, s.pageNumber, s.pageSize = status, staffID, page, size
 	return repository.StaffLeaveRequestPage{Items: []repository.StaffLeaveRequest{}}, nil
 }
 func (s *staffLeaveRepositoryStub) CreateRequest(_ context.Context, _, _ int64, item repository.StaffLeaveRequest) (*repository.StaffLeaveRequest, error) {
@@ -267,5 +268,42 @@ func TestStaffLeavePaginationRejectsOffsetOverflowBeforeRepository(t *testing.T)
 	}
 	if repo.listPageCalls != 0 {
 		t.Fatalf("oversized page reached repository %d times", repo.listPageCalls)
+	}
+}
+
+
+func TestStaffLeavePaginationValidatesFiltersAndForwardsPage(t *testing.T) {
+	repo := &staffLeaveRepositoryStub{}
+	service := NewStaffLeaveService(repo)
+	tests := []struct {
+		name, status, onDate, from, to string
+		staffID int64
+		page, size int
+		wantErr bool
+	}{
+		{name: "valid filtered page", status: "approved", staffID: 17, from: "2026-11-01", to: "2026-11-30", page: 2, size: 25},
+		{name: "unknown status", status: "PENDING", page: 1, size: 50, wantErr: true},
+		{name: "negative staff ID", staffID: -1, page: 1, size: 50, wantErr: true},
+		{name: "mixed date filters", onDate: "2026-11-15", from: "2026-11-01", to: "2026-11-30", page: 1, size: 50, wantErr: true},
+		{name: "invalid calendar date", onDate: "2026-02-30", page: 1, size: 50, wantErr: true},
+		{name: "incomplete range", from: "2026-11-01", page: 1, size: 50, wantErr: true},
+		{name: "range exceeds limit", from: "2026-01-01", to: "2027-01-03", page: 1, size: 50, wantErr: true},
+		{name: "zero page", page: 0, size: 50, wantErr: true},
+		{name: "page size above maximum", page: 1, size: 101, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before := repo.listPageCalls
+			_, err := service.ListRequestsPage(context.Background(), 1, 2, tt.status, tt.staffID, tt.onDate, tt.from, tt.to, tt.page, tt.size)
+			if tt.wantErr {
+				if !errors.Is(err, ErrInvalidStaffLeave) { t.Fatalf("error=%v want ErrInvalidStaffLeave", err) }
+				if repo.listPageCalls != before { t.Fatal("invalid pagination/filter reached repository") }
+				return
+			}
+			if err != nil { t.Fatalf("valid page rejected: %v", err) }
+			if repo.listPageCalls != before+1 || repo.pageStatus != tt.status || repo.pageStaffID != tt.staffID || repo.pageNumber != tt.page || repo.pageSize != tt.size {
+				t.Fatalf("page forwarding mismatch: calls=%d status=%q staff=%d page=%d size=%d", repo.listPageCalls, repo.pageStatus, repo.pageStaffID, repo.pageNumber, repo.pageSize)
+			}
+		})
 	}
 }
