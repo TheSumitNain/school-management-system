@@ -132,7 +132,9 @@ func (h *StaffHandler) Create(c *gin.Context) {
 	case errors.Is(err, services.ErrPasswordBreachCheckUnavailable):
 		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Password safety verification is temporarily unavailable. Try again shortly."})
     case errors.Is(err, repository.ErrEmployeeCodeTaken):
-        c.JSON(http.StatusConflict, gin.H{"status":"error","message":"This employee code is already used in this school"})
+        c.JSON(http.StatusConflict, gin.H{"status":"error","code":"employee_code_taken","message":"This employee code is already used in this school"})
+    case errors.Is(err, repository.ErrStaffProfileHasActiveAssignments):
+        c.JSON(http.StatusConflict, gin.H{"status":"error","code":"staff_has_active_teaching_assignments","message":"Reassign or remove this employee’s active teaching and class in-charge assignments before changing Staff Type to Non-teaching or Employment Status to Inactive."})
 	case errors.Is(err, repository.ErrUsernameTaken):
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "This username is already in use"})
 	case errors.Is(err, repository.ErrRolePermissionDenied):
