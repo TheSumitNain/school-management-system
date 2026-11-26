@@ -324,6 +324,37 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 		QualificationType:"postgraduate",QualificationName:"Cross tenant",Institution:"Denied",
 	});!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school qualification update error=%v",err)}
 
+	// Exercise every staff-record family with the caller's real school
+	// permission but a forged foreign school ID. No read or write may cross it.
+	if _, err := repo.ListStaffCertifications(ctx, actorID, schoolID+1, staff.PrincipalID); !errors.Is(err, ErrStaffRecordAccessDenied) {
+		t.Fatalf("cross-school certification read error=%v want access denied", err)
+	}
+	if _, err := repo.ListStaffExperience(ctx, actorID, schoolID+1, staff.PrincipalID); !errors.Is(err, ErrStaffRecordAccessDenied) {
+		t.Fatalf("cross-school experience read error=%v want access denied", err)
+	}
+	if _, err := repo.CreateStaffQualification(ctx, actorID, schoolID+1, staff.PrincipalID, StaffQualification{QualificationType:"degree", QualificationName:"Foreign", Institution:"Denied"}); !errors.Is(err, ErrStaffRecordAccessDenied) {
+		t.Fatalf("cross-school qualification create error=%v want access denied", err)
+	}
+	if _, err := repo.CreateStaffCertification(ctx, actorID, schoolID+1, staff.PrincipalID, StaffCertification{CertificateName:"Foreign", IssuingOrganization:"Denied"}); !errors.Is(err, ErrStaffRecordAccessDenied) {
+		t.Fatalf("cross-school certification create error=%v want access denied", err)
+	}
+	if _, err := repo.CreateStaffExperience(ctx, actorID, schoolID+1, staff.PrincipalID, StaffExperience{EmployerName:"Foreign", Designation:"Denied", EmploymentType:"permanent", StartDate:"2020-01-01"}); !errors.Is(err, ErrStaffRecordAccessDenied) {
+		t.Fatalf("cross-school experience create error=%v want access denied", err)
+	}
+	if _, err := repo.UpdateStaffCertification(ctx, actorID, schoolID+1, staff.PrincipalID, certification.ID, StaffCertification{CertificateName:"Foreign", IssuingOrganization:"Denied"}); !errors.Is(err, ErrStaffRecordAccessDenied) {
+		t.Fatalf("cross-school certification update error=%v want access denied", err)
+	}
+	if _, err := repo.UpdateStaffExperience(ctx, actorID, schoolID+1, staff.PrincipalID, experience.ID, StaffExperience{EmployerName:"Foreign", Designation:"Denied", EmploymentType:"permanent", StartDate:"2020-01-01"}); !errors.Is(err, ErrStaffRecordAccessDenied) {
+		t.Fatalf("cross-school experience update error=%v want access denied", err)
+	}
+	var qualificationRows, certificationRows, experienceRows int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM staff_qualifications WHERE staff_principal_id=$1`, staff.PrincipalID).Scan(&qualificationRows); err != nil { t.Fatalf("count qualifications after denied writes: %v", err) }
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM staff_certifications WHERE staff_principal_id=$1`, staff.PrincipalID).Scan(&certificationRows); err != nil { t.Fatalf("count certifications after denied writes: %v", err) }
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM staff_experience WHERE staff_principal_id=$1`, staff.PrincipalID).Scan(&experienceRows); err != nil { t.Fatalf("count experience after denied writes: %v", err) }
+	if qualificationRows != 1 || certificationRows != 1 || experienceRows != 1 {
+		t.Fatalf("cross-school staff-record writes changed row counts: qualifications=%d certifications=%d experience=%d", qualificationRows, certificationRows, experienceRows)
+	}
+
 	qualifications,err:=repo.ListStaffQualifications(ctx,actorID,schoolID,staff.PrincipalID)
 	if err!=nil||len(qualifications)!=1||qualifications[0].ID!=qualification.ID{t.Fatalf("list qualifications: items=%+v err=%v",qualifications,err)}
 	certifications,err:=repo.ListStaffCertifications(ctx,actorID,schoolID,staff.PrincipalID)
