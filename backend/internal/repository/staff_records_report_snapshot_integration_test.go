@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"school-management-system/internal/models"
+	"school-management-system/internal/schooltime"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -131,5 +134,35 @@ func TestStaffReportsUsePoolBackedReadOnlySnapshotPostgresIntegration(t *testing
 	}
 	if experienceCount != experience.Total || int64(len(experience.Rows)) > experience.Total || len(experience.Rows) > 1 {
 		t.Fatalf("experience report totals are inconsistent: %+v", experience)
+	}
+
+	// Exercise both production pool-backed attendance snapshot paths with a
+	// real active staff member and a recorded mark.
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	staff, err := repo.CreateStaffAccountWithProfile(ctx, actorID, schoolID, "att-snap-"+suffix, "integration-test-password-hash", models.StaffProfile{
+		StaffType: "teaching", EmployeeCode: "AS-"+suffix, FullName: "Attendance Snapshot Teacher",
+		Designation: "Teacher", MobileNumber: fmt.Sprintf("9%09d", time.Now().UnixNano()%1000000000), EmploymentStatus: "active",
+	})
+	if err != nil {
+		t.Fatalf("create attendance snapshot staff fixture: %v", err)
+	}
+	attendanceRepo := NewStaffAttendanceRepository(pool)
+	today := schooltime.Today()
+	if _, err := attendanceRepo.Mark(ctx, actorID, schoolID, staff.PrincipalID, today, "present", nil); err != nil {
+		t.Fatalf("mark attendance snapshot staff fixture: %v", err)
+	}
+	dailyRows, dailyTotal, err := attendanceRepo.ListDailyFilteredPage(ctx, actorID, schoolID, today, StaffAttendanceDailyFilter{Status: "all"}, 1, 0)
+	if err != nil {
+		t.Fatalf("list pool-backed daily attendance snapshot: %v", err)
+	}
+	if dailyTotal < 1 || len(dailyRows) != 1 {
+		t.Fatalf("daily attendance snapshot total=%d rows=%+v want at least one row", dailyTotal, dailyRows)
+	}
+	monthlyRows, monthlyTotal, err := attendanceRepo.ListMonthlyPage(ctx, actorID, schoolID, today, 1, 0)
+	if err != nil {
+		t.Fatalf("list pool-backed monthly attendance snapshot: %v", err)
+	}
+	if monthlyTotal < 1 || len(monthlyRows) != 1 {
+		t.Fatalf("monthly attendance snapshot total=%d rows=%+v want at least one row", monthlyTotal, monthlyRows)
 	}
 }

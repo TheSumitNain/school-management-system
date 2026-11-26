@@ -93,7 +93,7 @@ func (r *StaffAttendanceRepository) ListDailyPage(ctx context.Context, actorID, 
 func (r *StaffAttendanceRepository) ListDailyFilteredPage(ctx context.Context, actorID, schoolID int64, day time.Time, filter StaffAttendanceDailyFilter, limit, offset int) ([]StaffAttendanceRecord, int, error) {
     filter.Search = strings.TrimSpace(filter.Search)
     if filter.Status == "" { filter.Status = "all" }
-    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || day.Year() < 1 || limit < 1 || limit > 100 || offset < 0 ||
+    if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || day.Year() < 1 || limit < 1 || limit > 100 || offset < 0 || offset > 1000000 ||
         len([]rune(filter.Search)) > 100 ||
         (filter.Status != "all" && filter.Status != "unmarked" && !validStaffAttendanceStatus(filter.Status)) {
         return nil, 0, ErrInvalidStaffAttendance
@@ -161,55 +161,79 @@ func (r *StaffAttendanceRepository) ListMonthly(ctx context.Context, actorID, sc
 }
 
 func (r *StaffAttendanceRepository) ListMonthlyPage(ctx context.Context, actorID, schoolID int64, month time.Time, limit, offset int) ([]StaffAttendanceMonthlySummary, int, error) {
-    if r == nil || r.db == nil || month.Year() < 1 || limit < 1 || limit > 100 || offset < 0 { return nil, 0, ErrInvalidStaffAttendance }
-    if err := authorizeGuardian(ctx, r.db, actorID, schoolID, "staff.attendance.read"); err != nil { return nil, 0, ErrStaffAttendanceAccessDenied }
-    monthStart := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, time.UTC)
-    monthEnd := monthStart.AddDate(0, 1, 0)
-    from, to := monthStart.Format("2006-01-02"), monthEnd.Format("2006-01-02")
-    var total int
-    if err := r.db.QueryRow(ctx, `
-        SELECT COUNT(*)::integer FROM staff_profiles sp
-        WHERE sp.school_id=$1 AND (sp.employment_status='active' OR EXISTS (
-            SELECT 1 FROM staff_attendance_records historic
-            WHERE historic.school_id=sp.school_id AND historic.staff_principal_id=sp.principal_id
-              AND historic.attendance_date >= $2::date AND historic.attendance_date < $3::date
-        ))
-    `, schoolID, from, to).Scan(&total); err != nil {
-        return nil, 0, fmt.Errorf("count monthly staff attendance: %w", err)
-    }
-    rows, err := r.db.Query(ctx, `
-        SELECT sp.principal_id, sp.employee_code, sp.full_name, sp.designation,
-               COUNT(a.id) FILTER (WHERE a.status='present')::integer,
-               COUNT(a.id) FILTER (WHERE a.status='absent')::integer,
-               COUNT(a.id) FILTER (WHERE a.status='late')::integer,
-               COUNT(a.id) FILTER (WHERE a.status='half_day')::integer,
-               COALESCE(jsonb_agg(jsonb_build_object('id',a.id,'date',a.attendance_date,'status',a.status,'remarks',a.remarks)
-                   ORDER BY a.attendance_date) FILTER (WHERE a.id IS NOT NULL), '[]'::jsonb)
-        FROM staff_profiles sp
-        LEFT JOIN staff_attendance_records a ON a.school_id=sp.school_id AND a.staff_principal_id=sp.principal_id
-          AND a.attendance_date >= $2::date AND a.attendance_date < $3::date
-        WHERE sp.school_id=$1 AND (sp.employment_status='active' OR EXISTS (
-            SELECT 1 FROM staff_attendance_records historic
-            WHERE historic.school_id=sp.school_id AND historic.staff_principal_id=sp.principal_id
-              AND historic.attendance_date >= $2::date AND historic.attendance_date < $3::date
-        ))
-        GROUP BY sp.principal_id,sp.employee_code,sp.full_name,sp.designation
-        ORDER BY LOWER(sp.full_name),sp.employee_code,sp.principal_id
-        LIMIT $4 OFFSET $5
-    `, schoolID, from, to, limit, offset)
-    if err != nil { return nil, 0, fmt.Errorf("list monthly staff attendance: %w", err) }
-    defer rows.Close()
-    items := make([]StaffAttendanceMonthlySummary, 0)
-    for rows.Next() {
-        var item StaffAttendanceMonthlySummary
-        if err := rows.Scan(&item.StaffPrincipalID,&item.EmployeeCode,&item.FullName,&item.Designation,
-            &item.PresentDays,&item.AbsentDays,&item.LateDays,&item.HalfDays,&item.Records); err != nil {
-            return nil, 0, fmt.Errorf("scan monthly staff attendance: %w", err)
-        }
-        items=append(items,item)
-    }
-    if err := rows.Err(); err != nil { return nil, 0, fmt.Errorf("iterate monthly staff attendance: %w", err) }
-    return items,total,nil
+	if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || month.Year() < 1 || limit < 1 || limit > 100 || offset < 0 || offset > 1000000 {
+		return nil, 0, ErrInvalidStaffAttendance
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("begin monthly staff attendance snapshot: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, callerOwnsTransaction := r.db.(pgx.Tx); !callerOwnsTransaction {
+		if _, err := tx.Exec(ctx, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"); err != nil {
+			return nil, 0, fmt.Errorf("set monthly staff attendance snapshot: %w", err)
+		}
+	}
+	if err := authorizeGuardian(ctx, tx, actorID, schoolID, "staff.attendance.read"); err != nil {
+		return nil, 0, ErrStaffAttendanceAccessDenied
+	}
+
+	monthStart := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, time.UTC)
+	monthEnd := monthStart.AddDate(0, 1, 0)
+	from, to := monthStart.Format("2006-01-02"), monthEnd.Format("2006-01-02")
+	var total int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::integer FROM staff_profiles sp
+		WHERE sp.school_id=$1 AND (sp.employment_status='active' OR EXISTS (
+			SELECT 1 FROM staff_attendance_records historic
+			WHERE historic.school_id=sp.school_id AND historic.staff_principal_id=sp.principal_id
+			  AND historic.attendance_date >= $2::date AND historic.attendance_date < $3::date
+		))
+	`, schoolID, from, to).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count monthly staff attendance: %w", err)
+	}
+	rows, err := tx.Query(ctx, `
+		SELECT sp.principal_id, sp.employee_code, sp.full_name, sp.designation,
+		       COUNT(a.id) FILTER (WHERE a.status='present')::integer,
+		       COUNT(a.id) FILTER (WHERE a.status='absent')::integer,
+		       COUNT(a.id) FILTER (WHERE a.status='late')::integer,
+		       COUNT(a.id) FILTER (WHERE a.status='half_day')::integer,
+		       COALESCE(jsonb_agg(jsonb_build_object('id',a.id,'date',a.attendance_date,'status',a.status,'remarks',a.remarks)
+		           ORDER BY a.attendance_date) FILTER (WHERE a.id IS NOT NULL), '[]'::jsonb)
+		FROM staff_profiles sp
+		LEFT JOIN staff_attendance_records a ON a.school_id=sp.school_id AND a.staff_principal_id=sp.principal_id
+		  AND a.attendance_date >= $2::date AND a.attendance_date < $3::date
+		WHERE sp.school_id=$1 AND (sp.employment_status='active' OR EXISTS (
+			SELECT 1 FROM staff_attendance_records historic
+			WHERE historic.school_id=sp.school_id AND historic.staff_principal_id=sp.principal_id
+			  AND historic.attendance_date >= $2::date AND historic.attendance_date < $3::date
+		))
+		GROUP BY sp.principal_id,sp.employee_code,sp.full_name,sp.designation
+		ORDER BY LOWER(sp.full_name),sp.employee_code,sp.principal_id
+		LIMIT $4 OFFSET $5
+	`, schoolID, from, to, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list monthly staff attendance: %w", err)
+	}
+	items := make([]StaffAttendanceMonthlySummary, 0)
+	for rows.Next() {
+		var item StaffAttendanceMonthlySummary
+		if err := rows.Scan(&item.StaffPrincipalID, &item.EmployeeCode, &item.FullName, &item.Designation,
+			&item.PresentDays, &item.AbsentDays, &item.LateDays, &item.HalfDays, &item.Records); err != nil {
+			rows.Close()
+			return nil, 0, fmt.Errorf("scan monthly staff attendance: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, 0, fmt.Errorf("iterate monthly staff attendance: %w", err)
+	}
+	rows.Close()
+	if err := tx.Commit(ctx); err != nil {
+		return nil, 0, fmt.Errorf("commit monthly staff attendance snapshot: %w", err)
+	}
+	return items, total, nil
 }
 
 func (r *StaffAttendanceRepository) Mark(ctx context.Context, actorID, schoolID, staffID int64, day time.Time, status string, remarks *string) (*StaffAttendanceRecord, error) {

@@ -61,7 +61,8 @@ func TestParseStaffAttendancePagination(t *testing.T) {
         {name:"oversized limit",limit:"101"},
         {name:"non numeric limit",limit:"many"},
         {name:"negative offset",limit:"50",offset:"-1"},
-        {name:"oversized offset",limit:"50",offset:"1000000001"},
+        {name:"oversized offset",limit:"50",offset:"1000001"},
+        {name:"very oversized offset",limit:"50",offset:"1000000001"},
         {name:"non numeric offset",limit:"50",offset:"next"},
     }
     for _,tt:=range tests { t.Run(tt.name,func(t *testing.T) {

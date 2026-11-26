@@ -62,7 +62,7 @@ func parseStaffAttendancePagination(c *gin.Context) (int, int, bool) {
         n, err := strconv.Atoi(raw); if err != nil || n < 1 || n > 100 { return 0,0,false }; limit=n
     }
     if raw := strings.TrimSpace(c.Query("offset")); raw != "" {
-        n, err := strconv.Atoi(raw); if err != nil || n < 0 || n > 1000000000 { return 0,0,false }; offset=n
+        n, err := strconv.Atoi(raw); if err != nil || n < 0 || n > 1000000 { return 0,0,false }; offset=n
     }
     return limit,offset,true
 }
@@ -76,7 +76,7 @@ func (h *StaffAttendanceHandler) ListDaily(c *gin.Context) {
     day, valid := parseStaffAttendanceDate(raw)
     if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"date must use YYYY-MM-DD"}); return }
     limit, offset, ok := parseStaffAttendancePagination(c)
-    if !ok { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"limit must be 1-100 and offset must be a non-negative integer"}); return }
+    if !ok { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"limit must be 1-100 and offset must be between 0 and 1000000"}); return }
     filter := repository.StaffAttendanceDailyFilter{
         Search: strings.TrimSpace(c.Query("search")),
         Status: strings.TrimSpace(c.Query("status")),
