@@ -389,7 +389,7 @@ export function StaffOperationalReportsWorkspace({ permissions }: Props) {
   const bounds = useMemo(() => monthBounds(safeMonth), [safeMonth]);
   const attendance = useQuery({
     queryKey: ["staff-operational-report", "attendance", month],
-    queryFn: ({ signal }) => getMonthlyStaffAttendance(month, signal),
+    queryFn: async ({ signal }) => ({ month, data: await getAllMonthlyStaffAttendance(month, signal) }),
     enabled: canReadAttendance && validMonth,
   });
   const leave = useQuery({

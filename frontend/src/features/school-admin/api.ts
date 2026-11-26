@@ -680,9 +680,9 @@ export function getMonthlyStaffAttendance(month: string, limit = 50, offset = 0,
   const params = new URLSearchParams({ month, limit: String(limit), offset: String(offset) });
   return api<StaffAttendanceMonthlyPage>(`/school/staff-attendance/month?${params.toString()}`, { signal });
 }
-export async function getAllMonthlyStaffAttendance(month: string): Promise<StaffAttendanceMonthlySummary[]> {
+export async function getAllMonthlyStaffAttendance(month: string, signal?: AbortSignal): Promise<StaffAttendanceMonthlySummary[]> {
   const pageSize = 100;
-  const first = await getMonthlyStaffAttendance(month, pageSize, 0);
+  const first = await getMonthlyStaffAttendance(month, pageSize, 0, signal);
   const total = first.pagination?.total ?? first.data.length;
   const rows = [...first.data];
   if (!first.pagination || rows.length >= total) return rows;
@@ -690,7 +690,7 @@ export async function getAllMonthlyStaffAttendance(month: string): Promise<Staff
     throw new Error("Monthly attendance export returned an incomplete first page.");
   }
   for (let offset = pageSize; offset < total; offset += pageSize) {
-    const page = await getMonthlyStaffAttendance(month, pageSize, offset);
+    const page = await getMonthlyStaffAttendance(month, pageSize, offset, signal);
     if (page.pagination?.total !== total || page.pagination.offset !== offset ||
         page.data.length !== Math.min(pageSize, total - offset)) {
       throw new Error("Monthly attendance changed while exporting. Retry the report.");

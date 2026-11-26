@@ -3996,7 +3996,7 @@ test("staff monthly attendance summary remains contained and readable across vie
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await expect(workspace.getByLabel("Attendance month")).toBeVisible();
-    await expect(workspace.getByRole("button", { name: "Download monthly report" })).toBeVisible();
+    await expect(workspace.getByRole("button", { name: "Download complete monthly report" })).toBeVisible();
     await expect(tableWrap).toBeVisible();
     if (viewport.width <= 768) {
       await expect.poll(() => tableWrap.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);

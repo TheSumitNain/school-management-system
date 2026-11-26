@@ -304,6 +304,11 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
           </tr>;
         })}</tbody>
       </table></div>}
+      {daily.isSuccess && (daily.data.pagination?.total ?? records.length) > 0 && <div className="staff-attendance-toolbar" aria-label="Daily attendance pagination">
+        <span>Showing {dailyOffset + 1}–{dailyOffset + records.length} of {daily.data.pagination?.total ?? records.length} staff · bulk marking applies to this page only</span>
+        <button type="button" className="staff-secondary-button" disabled={dailyOffset === 0 || daily.isFetching} onClick={() => setDailyOffset(Math.max(0, dailyOffset - attendancePageSize))}>Previous</button>
+        <button type="button" className="staff-secondary-button" disabled={dailyOffset + records.length >= (daily.data.pagination?.total ?? records.length) || daily.isFetching} onClick={() => setDailyOffset(dailyOffset + attendancePageSize)}>Next</button>
+      </div>}
     </>}
     {view === "monthly" && <>
       <div className="staff-attendance-toolbar"><label><span>Month</span><input aria-label="Attendance month" type="month" value={month} max={today.slice(0, 7)} onChange={event => { setMonth(event.target.value); setMonthlyOffset(0); }}/></label><button type="button" className="staff-secondary-button" onClick={() => void Promise.all([monthly.refetch(), ...(canReadLeaveContext ? [approvedMonthLeave.refetch()] : []), ...(canReadHolidayContext ? [monthHolidays.refetch()] : [])])} disabled={!validMonth || monthly.isFetching || approvedMonthLeave.isFetching || monthHolidays.isFetching}><RefreshCw size={15}/> Refresh</button><button type="button" className="staff-attendance-save" onClick={exportMonthlyReport} disabled={!monthlyReportReady || monthly.data.data.length === 0 || exportingMonthly}>{exportingMonthly ? "Preparing complete report…" : "Download complete monthly report"}</button></div>
@@ -314,6 +319,11 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       {validMonth && monthly.isSuccess && monthly.data.data.length > 0 && <div className="staff-attendance-table-wrap"><table className="staff-attendance-table"><thead><tr><th>Employee</th><th>Present</th><th>Absent</th><th>Late</th><th>Half day</th><th>Recorded days</th></tr></thead><tbody>
         {monthly.data.data.map(item => <tr key={item.staff_principal_id}><td><strong>{item.full_name}</strong><small>{item.employee_code} · {item.designation}</small><details><summary>View daily entries ({item.records.length})</summary><ul>{item.records.map(record => <li key={record.id}>{record.date}: {statuses.find(status => status.value === record.status)?.label ?? record.status}{record.remarks ? ` — ${record.remarks}` : ""}</li>)}</ul></details></td><td>{item.present_days}</td><td>{item.absent_days}</td><td>{item.late_days}</td><td>{item.half_days}</td><td>{item.present_days + item.absent_days + item.late_days + item.half_days}</td></tr>)}
       </tbody></table></div>}
+       {validMonth && monthly.isSuccess && (monthly.data.pagination?.total ?? monthly.data.data.length) > 0 && <div className="staff-attendance-toolbar" aria-label="Monthly attendance pagination">
+         <span>Showing {monthlyOffset + 1}–{monthlyOffset + monthly.data.data.length} of {monthly.data.pagination?.total ?? monthly.data.data.length} staff</span>
+         <button type="button" className="staff-secondary-button" disabled={monthlyOffset === 0 || monthly.isFetching} onClick={() => setMonthlyOffset(Math.max(0, monthlyOffset - attendancePageSize))}>Previous</button>
+         <button type="button" className="staff-secondary-button" disabled={monthlyOffset + monthly.data.data.length >= (monthly.data.pagination?.total ?? monthly.data.data.length) || monthly.isFetching} onClick={() => setMonthlyOffset(monthlyOffset + attendancePageSize)}>Next</button>
+       </div>}
       {validMonth && (canReadLeaveContext || canReadHolidayContext) && <section className="staff-attendance-calendar-note" aria-label="Monthly leave and holiday context">
         <strong>Calendar context · not included in attendance totals</strong>
         {canReadLeaveContext && <div>
