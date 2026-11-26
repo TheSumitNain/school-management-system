@@ -24,6 +24,7 @@ var (
     ErrStaffProfileInactive = errors.New("staff employee profile is inactive")
     ErrStaffProfileIncomplete = errors.New("staff employee profile is incomplete")
     ErrStaffProfileHasActiveAssignments = errors.New("staff profile has active teaching assignments")
+    ErrStaffProfileHasActiveSubstitutions = errors.New("staff profile has active substitutions")
 )
 
 type UserRepository struct {
@@ -269,6 +270,9 @@ func (r *UserRepository) CreateStaffAccountWithProfile(
             strings.Contains(strings.ToLower(pgErr.Message), "active teaching and class in-charge assignments") {
             return nil, ErrStaffProfileHasActiveAssignments
         }
+        if errors.As(err, &pgErr) && pgErr.Code == "23514" && pgErr.ConstraintName == "staff_principal_active_substitutions_check" {
+            return nil, ErrStaffProfileHasActiveSubstitutions
+        }
         return nil, fmt.Errorf("insert staff employee profile: %w", err)
     }
     user.StaffType = profile.StaffType
@@ -387,6 +391,9 @@ func (r *UserRepository) UpdateStaffProfile(ctx context.Context, actorPrincipalI
         if errors.As(err, &pgErr) && pgErr.Code == "23514" &&
             strings.Contains(strings.ToLower(pgErr.Message), "active teaching and class in-charge assignments") {
             return nil, ErrStaffProfileHasActiveAssignments
+        }
+        if errors.As(err, &pgErr) && pgErr.Code == "23514" && pgErr.ConstraintName == "staff_principal_active_substitutions_check" {
+            return nil, ErrStaffProfileHasActiveSubstitutions
         }
         return nil, fmt.Errorf("upsert staff profile: %w", err)
     }
@@ -927,6 +934,10 @@ func (r *UserRepository) DisableStaffAccount(ctx context.Context, actorPrincipal
 		WHERE id = $1 AND principal_type = 'staff' AND status = 'active'
 	`, targetPrincipalID)
 	if err != nil {
+        var pgErr *pgconn.PgError
+        if errors.As(err, &pgErr) && pgErr.Code == "23514" && pgErr.ConstraintName == "staff_principal_active_substitutions_check" {
+            return ErrStaffProfileHasActiveSubstitutions
+        }
 		return fmt.Errorf("disable staff principal: %w", err)
 	}
 	if tag.RowsAffected() != 1 {
