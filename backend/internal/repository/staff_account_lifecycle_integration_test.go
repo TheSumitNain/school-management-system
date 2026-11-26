@@ -762,6 +762,40 @@ func TestAuthorizedStaffAccountLifecyclePostgresIntegration(t *testing.T) {
 		t.Fatalf("rejected School Admin disable must not create a success audit event; got %d", protectedAuditCount)
 	}
 
+	// A disabled School Admin remains protected from same-school staff
+	// reactivation. Recovery of administrator accounts belongs to the
+	// Platform Admin lifecycle, not the ordinary staff enable endpoint.
+	if _, err := tx.Exec(ctx, `
+		UPDATE auth_principals
+		   SET status = 'disabled', token_version = token_version + 1
+		 WHERE id = $1 AND principal_type = 'staff'
+	`, protectedAdminPrincipalID); err != nil {
+		t.Fatalf("disable protected School Admin fixture for re-enable guard: %v", err)
+	}
+	if err := repo.EnableStaffAccount(
+		ctx, actorPrincipalID, schoolID, protectedAdminPrincipalID,
+		"attempted-peer-admin-reactivation-password-hash",
+	); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("re-enabling a disabled School Admin from a peer account error = %v, want ErrUserNotFound", err)
+	}
+	var protectedReenableUserStatus, protectedReenablePrincipalStatus, protectedReenablePasswordHash string
+	if err := tx.QueryRow(ctx, `
+		SELECT u.status, ap.status, u.password_hash
+		  FROM users u
+		  JOIN auth_principals ap ON ap.id = u.principal_id
+		 WHERE ap.id = $1 AND u.school_id = $2
+	`, protectedAdminPrincipalID, schoolID).Scan(
+		&protectedReenableUserStatus, &protectedReenablePrincipalStatus, &protectedReenablePasswordHash,
+	); err != nil {
+		t.Fatalf("read protected School Admin state after rejected re-enable: %v", err)
+	}
+	if protectedReenableUserStatus != "disabled" || protectedReenablePrincipalStatus != "disabled" ||
+		protectedReenablePasswordHash != "protected-admin-password-hash" {
+		t.Fatalf("rejected peer-admin re-enable changed protected account: user=%q principal=%q password_hash_changed=%v",
+			protectedReenableUserStatus, protectedReenablePrincipalStatus,
+			protectedReenablePasswordHash != "protected-admin-password-hash")
+	}
+
 	// Staff account lifecycle permissions are intentionally non-delegable.
 	// Verify that the platform cannot create user-override ceilings for them;
 	// the DENY checks in the repository remain defense-in-depth, not a way to
