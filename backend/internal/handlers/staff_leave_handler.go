@@ -1,56 +1,74 @@
 package handlers
 
 import (
- "context"
- "errors"
- "net/http"
- "strconv"
- "strings"
+	"context"
+	"errors"
+	"net/http"
+	"strconv"
+	"strings"
 
- "school-management-system/internal/repository"
- "school-management-system/internal/services"
- "github.com/gin-gonic/gin"
+	"school-management-system/internal/repository"
+	"school-management-system/internal/services"
+	"github.com/gin-gonic/gin"
 )
+
 type StaffLeaveManagementService interface {
- ListTypes(context.Context,int64,int64)([]repository.StaffLeaveType,error)
- SaveType(context.Context,int64,int64,int64,repository.StaffLeaveType)(*repository.StaffLeaveType,error)
- ListRequests(context.Context,int64,int64,string,int64,string,string,string)([]repository.StaffLeaveRequest,error)
- CreateRequest(context.Context,int64,int64,repository.StaffLeaveRequest)(*repository.StaffLeaveRequest,error)
- Decide(context.Context,int64,int64,int64,bool,*string)error
- Cancel(context.Context,int64,int64,int64)error
- ListHolidays(context.Context,int64,int64,string,string,bool)([]repository.SchoolHoliday,error)
- SaveHoliday(context.Context,int64,int64,int64,repository.SchoolHoliday)(*repository.SchoolHoliday,error)
+	ListTypes(context.Context,int64,int64)([]repository.StaffLeaveType,error)
+	SaveType(context.Context,int64,int64,int64,repository.StaffLeaveType)(*repository.StaffLeaveType,error)
+	ListRequests(context.Context,int64,int64,string,int64,string,string,string)([]repository.StaffLeaveRequest,error)
+	CreateRequest(context.Context,int64,int64,repository.StaffLeaveRequest)(*repository.StaffLeaveRequest,error)
+	Decide(context.Context,int64,int64,int64,bool,*string)error
+	Cancel(context.Context,int64,int64,int64)error
+	ListHolidays(context.Context,int64,int64,string,string,bool)([]repository.SchoolHoliday,error)
+	SaveHoliday(context.Context,int64,int64,int64,repository.SchoolHoliday)(*repository.SchoolHoliday,error)
+}
+type staffLeavePageService interface {
+	ListRequestsPage(context.Context,int64,int64,string,int64,string,string,string,int,int)(repository.StaffLeaveRequestPage,error)
 }
 type StaffLeaveHandler struct{ service StaffLeaveManagementService }
 func NewStaffLeaveHandler(s StaffLeaveManagementService)*StaffLeaveHandler{return &StaffLeaveHandler{service:s}}
 func(h *StaffLeaveHandler) actor(c *gin.Context)(int64,int64,bool){
- actorID,schoolID,ok:=staffRecordActor(c)
- if !ok{
-  c.JSON(http.StatusUnauthorized,gin.H{"status":"error","message":"School staff authentication required"})
-  return 0,0,false
- }
- if h==nil||h.service==nil{
-  c.JSON(http.StatusServiceUnavailable,gin.H{"status":"error","message":"Staff leave and holiday service is unavailable"})
-  return 0,0,false
- }
- return actorID,schoolID,true
+	actorID,schoolID,ok:=staffRecordActor(c)
+	if !ok { c.JSON(http.StatusUnauthorized,gin.H{"status":"error","message":"School staff authentication required"});return 0,0,false }
+	if h==nil||h.service==nil { c.JSON(http.StatusServiceUnavailable,gin.H{"status":"error","message":"Staff leave and holiday service is unavailable"});return 0,0,false }
+	return actorID,schoolID,true
 }
 func(h *StaffLeaveHandler) fail(c *gin.Context,e error){
- switch{
- case errors.Is(e,repository.ErrStaffLeaveAccessDenied),errors.Is(e,repository.ErrRolePermissionDenied):
-  c.JSON(http.StatusForbidden,gin.H{"status":"error","message":"You are not authorized to manage staff leave or holidays"})
- case errors.Is(e,repository.ErrStaffLeaveNotFound):
-  c.JSON(http.StatusNotFound,gin.H{"status":"error","message":"Staff leave record, leave type or employee not found"})
- case errors.Is(e,repository.ErrStaffLeaveConflict):
-  c.JSON(http.StatusConflict,gin.H{"status":"error","message":"This leave request overlaps another pending or approved request, or the record already exists"})
- case errors.Is(e,repository.ErrInvalidStaffLeave),errors.Is(e,services.ErrInvalidStaffLeave):
-  c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Check the leave or holiday fields"})
- default:c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to process staff leave or holiday"})
- }
+	switch{
+	case errors.Is(e,repository.ErrStaffLeaveAccessDenied),errors.Is(e,repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden,gin.H{"status":"error","message":"You are not authorized to manage staff leave or holidays"})
+	case errors.Is(e,repository.ErrStaffLeaveNotFound):
+		c.JSON(http.StatusNotFound,gin.H{"status":"error","message":"Staff leave record, leave type or employee not found"})
+	case errors.Is(e,repository.ErrStaffLeaveConflict):
+		c.JSON(http.StatusConflict,gin.H{"status":"error","message":"This leave request overlaps another pending or approved request, or the record already exists"})
+	case errors.Is(e,repository.ErrInvalidStaffLeave),errors.Is(e,services.ErrInvalidStaffLeave):
+		c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Check the leave or holiday fields"})
+	default:c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to process staff leave or holiday"})
+	}
 }
 func(h *StaffLeaveHandler) ListTypes(c *gin.Context){a,s,ok:=h.actor(c);if !ok{return};v,e:=h.service.ListTypes(c,a,s);if e!=nil{h.fail(c,e);return};if v==nil{v=[]repository.StaffLeaveType{}};c.JSON(200,gin.H{"status":"success","data":v})}
 func(h *StaffLeaveHandler) SaveType(c *gin.Context){a,s,ok:=h.actor(c);if !ok{return};id:=int64(0);if c.Param("typeID")!=""{v,e:=strconv.ParseInt(c.Param("typeID"),10,64);if e!=nil||v<=0{c.JSON(400,gin.H{"status":"error","message":"Invalid leave type ID"});return};id=v};var x repository.StaffLeaveType;if c.ShouldBindJSON(&x)!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid leave type payload"});return};v,e:=h.service.SaveType(c,a,s,id,x);if e!=nil{h.fail(c,e);return};if v==nil{c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to save staff leave type"});return};c.JSON(200,gin.H{"status":"success","data":v})}
-func(h *StaffLeaveHandler) ListRequests(c *gin.Context){a,s,ok:=h.actor(c);if !ok{return};staff:=int64(0);if raw:=strings.TrimSpace(c.Query("staff_principal_id"));raw!=""{v,e:=strconv.ParseInt(raw,10,64);if e!=nil||v<=0{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return};staff=v};v,e:=h.service.ListRequests(c,a,s,strings.TrimSpace(c.Query("status")),staff,strings.TrimSpace(c.Query("on_date")),strings.TrimSpace(c.Query("from_date")),strings.TrimSpace(c.Query("to_date")));if e!=nil{h.fail(c,e);return};if v==nil{v=[]repository.StaffLeaveRequest{}};c.JSON(200,gin.H{"status":"success","data":v})}
+func parseStaffPage(c *gin.Context)(int,int,bool){
+	page,size:=1,50
+	if raw:=strings.TrimSpace(c.Query("page"));raw!=""{v,e:=strconv.Atoi(raw);if e!=nil||v<1{c.JSON(400,gin.H{"status":"error","message":"Invalid page"});return 0,0,false};page=v}
+	if raw:=strings.TrimSpace(c.Query("page_size"));raw!=""{v,e:=strconv.Atoi(raw);if e!=nil||v<1||v>100{c.JSON(400,gin.H{"status":"error","message":"page_size must be between 1 and 100"});return 0,0,false};size=v}
+	if page-1 > int(^uint(0)>>1)/size { c.JSON(400,gin.H{"status":"error","message":"Page is too large"});return 0,0,false }
+	return page,size,true
+}
+func(h *StaffLeaveHandler) ListRequests(c *gin.Context){
+	a,s,ok:=h.actor(c);if !ok{return}
+	staff:=int64(0);if raw:=strings.TrimSpace(c.Query("staff_principal_id"));raw!=""{v,e:=strconv.ParseInt(raw,10,64);if e!=nil||v<=0{c.JSON(400,gin.H{"status":"error","message":"Invalid staff principal ID"});return};staff=v}
+	page,size,ok:=parseStaffPage(c);if !ok{return}
+	status,onDate,fromDate,toDate:=strings.TrimSpace(c.Query("status")),strings.TrimSpace(c.Query("on_date")),strings.TrimSpace(c.Query("from_date")),strings.TrimSpace(c.Query("to_date"))
+	if svc,ok:=h.service.(staffLeavePageService);ok{
+		result,e:=svc.ListRequestsPage(c,a,s,status,staff,onDate,fromDate,toDate,page,size);if e!=nil{h.fail(c,e);return}
+		if result.Items==nil{result.Items=[]repository.StaffLeaveRequest{}}
+		c.JSON(200,gin.H{"status":"success","data":result.Items,"pagination":gin.H{"page":page,"page_size":size,"total":result.Total}});return
+	}
+	items,e:=h.service.ListRequests(c,a,s,status,staff,onDate,fromDate,toDate);if e!=nil{h.fail(c,e);return}
+	total:=len(items);start:=(page-1)*size;if start>total{start=total};end:=start+size;if end>total{end=total}
+	c.JSON(200,gin.H{"status":"success","data":items[start:end],"pagination":gin.H{"page":page,"page_size":size,"total":total}})
+}
 func(h *StaffLeaveHandler) CreateRequest(c *gin.Context){a,s,ok:=h.actor(c);if !ok{return};var x repository.StaffLeaveRequest;if c.ShouldBindJSON(&x)!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid leave request payload"});return};v,e:=h.service.CreateRequest(c,a,s,x);if e!=nil{h.fail(c,e);return};if v==nil{c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to create staff leave request"});return};c.JSON(201,gin.H{"status":"success","data":v})}
 func(h *StaffLeaveHandler) decision(c *gin.Context,approve bool){a,s,ok:=h.actor(c);if !ok{return};id,e:=strconv.ParseInt(c.Param("requestID"),10,64);if e!=nil||id<=0{c.JSON(400,gin.H{"status":"error","message":"Invalid leave request ID"});return};var body struct{Comment *string `json:"comment"`};if c.Request.ContentLength!=0&&c.ShouldBindJSON(&body)!=nil{c.JSON(400,gin.H{"status":"error","message":"Invalid decision payload"});return};if e=h.service.Decide(c,a,s,id,approve,body.Comment);e!=nil{h.fail(c,e);return};c.JSON(200,gin.H{"status":"success","message":"Leave request decision saved"})}
 func(h *StaffLeaveHandler) Approve(c *gin.Context){h.decision(c,true)}
