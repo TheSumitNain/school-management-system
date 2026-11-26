@@ -68,7 +68,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
   const busy = assign.isPending || revoke.isPending;
   function submitAssign(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canAssign) {
+    if (!canAssign || protectedSchoolAdmin) {
       setRoleID("");
       setRoleError("");
       return;

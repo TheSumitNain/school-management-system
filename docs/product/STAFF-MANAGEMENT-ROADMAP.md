@@ -1242,3 +1242,5 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Staff role assignment and individual permission override panels now detect a target holding the protected `school_admin` role and render existing access as read-only, without assignment, revoke, save, or delete controls.
 - Added Playwright coverage asserting a peer School Admin profile exposes neither role nor permission-override mutation controls and issues no mutation requests.
 - Backend remains authoritative: repository-level protected-target checks continue to reject direct mutation attempts.
+
+- Follow-up hardening: the role-assignment submit handler now rechecks protected School Admin state as well as the caller's live UI permission, so a stale rendered form cannot initiate an assignment after the protected target state is known.
