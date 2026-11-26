@@ -1524,6 +1524,8 @@ test("staff profile creates education, certification and experience records", as
   await expect(certificateNameInput).toHaveValue("C".repeat(180));
   await certificateNameInput.fill("Teacher Training");
   await dialog.locator('input[name="issuing_organization"]').fill("State Board");
+  await certificateNameInput.fill("Teacher Training");
+  await dialog.locator('input[name="issuing_organization"]').fill("State Board");
   await expect(dialog.locator('input[name="credential_id"]')).not.toHaveAttribute("maxLength");
   await dialog.locator('input[name="credential_id"]').fill("🔐".repeat(121));
   await expect(dialog.locator('input[name="credential_id"]')).toHaveValue(unicodeCredential);
