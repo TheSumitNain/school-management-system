@@ -432,6 +432,47 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("revoked delegation grant should remain visible as stale: %+v", staleRolePermissions)
 	}
 
+	// Role revocation and permission override writes must roll back when
+	// their append-only audit event cannot be inserted.
+	auditFailureSuffix := fmt.Sprint(time.Now().UnixNano())
+	auditFailureFunction := "test_role_audit_failure_" + auditFailureSuffix
+	auditFailureTrigger := "trg_test_role_audit_failure_" + auditFailureSuffix
+	if _, err := tx.Exec(ctx, fmt.Sprintf(
+		"CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $role_audit_failure$ BEGIN IF NEW.action IN ('school.staff.role_revoked','school.staff.permission_override.set') THEN RAISE EXCEPTION 'injected role audit failure'; END IF; RETURN NEW; END; $role_audit_failure$; CREATE TRIGGER %s BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION %s();",
+		auditFailureFunction, auditFailureTrigger, auditFailureFunction,
+	)); err != nil {
+		t.Fatalf("install role audit failure trigger: %v", err)
+	}
+	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, customRole.ID); err == nil {
+		t.Fatal("role revocation succeeded despite forced audit failure")
+	}
+	var activeRoleAssignments int
+	if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM principal_roles WHERE principal_id=$1 AND role_id=$2 AND revoked_at IS NULL", targetPrincipalID, customRole.ID).Scan(&activeRoleAssignments); err != nil {
+		t.Fatalf("count role assignments after audit failure: %v", err)
+	}
+	if activeRoleAssignments != 1 {
+		t.Fatalf("role assignment count after failed audited revocation=%d want=1", activeRoleAssignments)
+	}
+	if err := repo.SetStaffPermissionOverride(
+		ctx, actorPrincipalID, schoolID, targetPrincipalID, overrideDelegation.ID,
+		"homework.create", "allow", "audit rollback regression",
+	); err == nil {
+		t.Fatal("permission override succeeded despite forced audit failure")
+	}
+	var failedOverrideCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM user_permission_overrides
+		WHERE principal_id=$1 AND school_id=$2 AND permission_id=(SELECT id FROM permissions WHERE permission_key='homework.create')
+	`, targetPrincipalID, schoolID).Scan(&failedOverrideCount); err != nil {
+		t.Fatalf("count permission overrides after audit failure: %v", err)
+	}
+	if failedOverrideCount != 0 {
+		t.Fatalf("permission overrides after failed audited write=%d want=0", failedOverrideCount)
+	}
+	if _, err := tx.Exec(ctx, fmt.Sprintf("DROP TRIGGER %s ON audit_events; DROP FUNCTION %s();", auditFailureTrigger, auditFailureFunction)); err != nil {
+		t.Fatalf("remove role audit failure trigger: %v", err)
+	}
+
 	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, customRole.ID); err != nil {
 		t.Fatalf("authorized staff role revocation failed: %v", err)
 	}

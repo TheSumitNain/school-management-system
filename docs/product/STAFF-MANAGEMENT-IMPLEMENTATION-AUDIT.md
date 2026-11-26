@@ -818,3 +818,9 @@ This section supersedes older statements in this audit that describe browser ver
 
 - Permission ALLOW/DENY override writes and deletes now refuse to mutate a protected peer School Admin account.
 - PostgreSQL integration coverage verifies peer-admin override rejection and that staff History & Activity exposes both role-assigned and role-revoked audit events using the principal resource identifier.
+
+
+## 2026-11-26 follow-up — role and override audit atomicity
+
+- Added PostgreSQL failure-injection coverage proving staff role revocation and individual permission override writes roll back when their audit event insert fails.
+- The regression checks the role assignment remains active and no permission override row survives the failed transaction.
