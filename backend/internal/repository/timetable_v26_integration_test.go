@@ -163,7 +163,7 @@ func TestTeacherWorkloadReportPostgresIntegration(t *testing.T) {
 
 	report,err:=NewAcademicRepository(tx).ListTeacherWorkloadReport(ctx,actorID,schoolID,yearID)
 	if err!=nil{t.Fatalf("list School Admin workload report: %v",err)}
-	if len(report)!=2{t.Fatalf("School Admin should see both same-school staff profiles, got %d: %+v",len(report),report)}
+	if len(report)!=5{t.Fatalf("School Admin should see all five same-school staff profiles, including Non-teaching, Unclassified and inactive employees, got %d: %+v",len(report),report)}
 	var teacherRow *TeacherWorkloadReportRow
 	for i:=range report{if report[i].TeacherPrincipalID==teacherID{teacherRow=&report[i]}}
 	if teacherRow==nil||teacherRow.TeacherName!="Workload Teacher"||teacherRow.DayOfWeek!=1||teacherRow.ScheduledPeriods!=1||teacherRow.DistinctSections!=1||teacherRow.DistinctSubjects!=1||teacherRow.FirstPeriod==nil||*teacherRow.FirstPeriod!=1||teacherRow.LastPeriod==nil||*teacherRow.LastPeriod!=1{
