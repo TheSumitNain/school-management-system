@@ -700,8 +700,26 @@ export function getStaffLeaveRequests(filters:{status?:string;staffPrincipalID?:
  return api<{data:StaffLeaveRequest[];pagination:StaffPageInfo}>("/school/staff-leave/requests?"+params.toString(),{signal});
 }
 export async function getAllStaffLeaveRequests(filters:{status?:string;staffPrincipalID?:number;onDate?:string;fromDate?:string;toDate?:string},signal?:AbortSignal){
- const rows:StaffLeaveRequest[]=[];let page=1;let total=0;
- do{const result=await getStaffLeaveRequests({...filters,page,pageSize:100},signal);if(!Array.isArray(result.data)||!result.pagination||!Number.isSafeInteger(result.pagination.total)||result.pagination.total<0)throw new Error("Leave report response is missing valid pagination metadata.");rows.push(...result.data);total=result.pagination.total;if(rows.length<total&&result.data.length===0)throw new Error("Leave report pagination ended before all matching records were loaded.");page+=1;}while(rows.length<total);
+ const pageSize=100;const rows:StaffLeaveRequest[]=[];const seenIDs=new Set<number>();let page=1;let total:number|null=null;
+ while(total===null||rows.length<total){
+  const result=await getStaffLeaveRequests({...filters,page,pageSize},signal);
+  const pagination=result.pagination;
+  if(!Array.isArray(result.data)||!pagination||!Number.isSafeInteger(pagination.page)||pagination.page!==page||
+   !Number.isSafeInteger(pagination.page_size)||pagination.page_size!==pageSize||
+   !Number.isSafeInteger(pagination.total)||pagination.total<0){
+   throw new Error("Leave report response is missing valid pagination metadata.");
+  }
+  if(total!==null&&pagination.total!==total)throw new Error("Leave report total changed while records were loading.");
+  total=pagination.total;
+  const expectedCount=Math.min(pageSize,total-rows.length);
+  if(result.data.length!==expectedCount)throw new Error("Leave report page was incomplete. No partial report was loaded.");
+  for(const row of result.data){
+   if(!Number.isSafeInteger(row.id)||row.id<=0||seenIDs.has(row.id))throw new Error("Leave report contains duplicate or invalid record IDs.");
+   seenIDs.add(row.id);rows.push(row);
+  }
+  page+=1;
+ }
+ if(rows.length!==total)throw new Error("Leave report ended before all matching records were loaded.");
  return rows;
 }
 export function createStaffLeaveRequest(input:{staff_principal_id:number;leave_type_id:number;start_date:string;end_date:string;duration_type:"full_day"|"half_day";half_day_session?:"first_half"|"second_half";reason:string}){
