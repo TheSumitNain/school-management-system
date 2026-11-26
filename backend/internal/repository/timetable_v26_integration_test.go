@@ -126,9 +126,10 @@ func TestTeacherWorkloadReportPostgresIntegration(t *testing.T) {
 	if _,err=tx.Exec(ctx,`INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number,staff_type)
 		VALUES($1,$2,$3,'Peer Workload Teacher','Teacher','9876543219','teaching')`,peerID,schoolID,fmt.Sprintf("WP-%d",suffix));err!=nil{t.Fatalf("create peer workload teacher profile: %v",err)}
 
-	// Workload is a Teaching report, not a generic staff directory. Legacy
-	// Unclassified, Non-teaching, and inactive-employment profiles must not
-	// appear even when they have otherwise valid staff principals.
+	// School Admin workload reporting is school-wide and includes every
+	// same-school staff profile, regardless of Staff Type or employment status.
+	// Teacher-role callers are separately restricted to their own active
+	// Teaching profile by the repository authorization boundary.
 	for _, fixture := range []struct {
 		username, code, name, staffType, employment string
 	}{
