@@ -227,7 +227,7 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	_,cancelledReasonErr:=cancelledReason.Exec(ctx,`UPDATE staff_substitutions SET reason='Changed after cancellation' WHERE id=$1`,substitutionID)
 	if rollbackErr:=cancelledReason.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback cancelled history guard savepoint: %v",rollbackErr)}
 	if cancelledReasonErr==nil{t.Fatal("cancelled substitution history was mutable")}
-	if _,err=tx.Exec(ctx,`UPDATE timetable_entries SET room='Changed room',period_id=$2 WHERE id=$1`,timetableEntryID,secondPeriodID);err!=nil{t.Fatalf("recurring timetable entry remained locked after cancellation: %v",err)}
+	if _,err=tx.Exec(ctx,`UPDATE timetable_entries SET room='Changed room',period_id=$2 WHERE id=$1`,timetableEntryID,thirdPeriodID);err!=nil{t.Fatalf("recurring timetable entry remained locked after cancellation: %v",err)}
 	var snapshotRoom,snapshotClass,snapshotSection,snapshotSubject,snapshotPeriod,snapshotOriginal,snapshotSubstitute string
 	if err=tx.QueryRow(ctx,`SELECT room_snapshot,class_name_snapshot,section_name_snapshot,subject_name_snapshot,period_name_snapshot,original_teacher_name_snapshot,substitute_teacher_name_snapshot
 		FROM staff_substitutions WHERE id=$1`,substitutionID).Scan(&snapshotRoom,&snapshotClass,&snapshotSection,&snapshotSubject,&snapshotPeriod,&snapshotOriginal,&snapshotSubstitute);err!=nil{t.Fatalf("read immutable substitution snapshots: %v",err)}
