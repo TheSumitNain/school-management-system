@@ -15,6 +15,10 @@ type staffLeaveRepositoryStub struct {
 	savedHoliday repository.SchoolHoliday
 	listRequestsCalls int
 	listPageCalls int
+	pageStatus string
+	pageStaffID int64
+	pageNumber int
+	pageSize int
 	listHolidaysCalls int
 	listedHolidayFrom string
 	listedHolidayTo string
