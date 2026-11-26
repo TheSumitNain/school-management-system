@@ -486,7 +486,7 @@ export function useSaveSchoolHolidayMutation(){return useStaffLeaveMutation(save
 
 export const staffSubstitutionQueryKeys = {
   all: [...schoolAdminQueryKeys.staff(), "substitutions"] as const,
-  list: (filters:{fromDate:string;toDate:string;staffPrincipalID?:number}) => [...staffSubstitutionQueryKeys.all,filters] as const,
+  list: (filters:{fromDate:string;toDate:string;staffPrincipalID?:number;page?:number;pageSize?:number}) => [...staffSubstitutionQueryKeys.all,filters] as const,
   timetableYear: () => [...staffSubstitutionQueryKeys.all,"timetable-year"] as const,
   timetableEntries: (academicYearID:number) => [...staffSubstitutionQueryKeys.all,"timetable-entries",academicYearID] as const,
 };
