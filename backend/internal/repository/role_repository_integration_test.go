@@ -495,12 +495,9 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	if failedAssignmentCount != 0 { t.Fatalf("role assignments after failed audited create=%d want=0", failedAssignmentCount) }
 
 	// A custom-role permission grant must roll back if its append-only audit event fails.
-	var grantFailureDelegationID int64
-	if err := tx.QueryRow(ctx, `
-		INSERT INTO role_permission_delegations (school_id, permission_id, can_assign_to_roles, can_override_users, granted_by)
-		SELECT $1, id, TRUE, FALSE, $2 FROM permissions WHERE permission_key='homework.create' RETURNING id
-	`, schoolID, platformAdminPrincipalID).Scan(&grantFailureDelegationID); err != nil {
-		t.Fatalf("seed custom-role grant audit-failure delegation: %v", err)
+	grantFailureDelegationID := overrideDelegation.ID
+	if _, err := tx.Exec(ctx, `UPDATE role_permission_delegations SET can_assign_to_roles=TRUE WHERE id=$1 AND school_id=$2 AND revoked_at IS NULL`, grantFailureDelegationID, schoolID); err != nil {
+		t.Fatalf("enable role assignment on existing audit-failure delegation: %v", err)
 	}
 	if err := repo.GrantCustomRolePermission(ctx, actorPrincipalID, schoolID, customRole.ID, grantFailureDelegationID, "homework.create"); err == nil {
 		t.Fatal("custom-role permission grant succeeded despite forced audit failure")
@@ -527,6 +524,9 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("count permission overrides after failed audited deletion: %v", err)
 	}
 	if retainedOverrideCount != 1 { t.Fatalf("permission overrides after failed audited deletion=%d want=1", retainedOverrideCount) }
+	if _, err := tx.Exec(ctx, `DELETE FROM user_permission_overrides WHERE principal_id=$1 AND school_id=$2 AND permission_id=(SELECT id FROM permissions WHERE permission_key='homework.create')`, targetPrincipalID, schoolID); err != nil {
+		t.Fatalf("remove permission override audit-failure fixture: %v", err)
+	}
 
 	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, customRole.ID); err == nil {
 		t.Fatal("role revocation succeeded despite forced audit failure")
