@@ -166,4 +166,8 @@ func TestStaffDirectorySummaryMatchesFilteredCountsAndEnforcesSchoolAdminPostgre
 	if denied, err := repo.GetStaffDirectorySummary(fixture.ctx, fixture.staffPrincipalID, fixture.schoolID); err == nil || denied != nil {
 		t.Fatalf("ordinary staff unexpectedly read directory summary: summary=%+v err=%v", denied, err)
 	}
+
+	if forgedSummary, err := repo.GetStaffDirectorySummary(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID+1); err == nil || forgedSummary != nil {
+		t.Fatalf("School Admin unexpectedly read a forged foreign-school directory summary: summary=%+v err=%v", forgedSummary, err)
+	}
 }
