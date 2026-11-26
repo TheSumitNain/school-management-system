@@ -270,6 +270,7 @@ func academicWriteError(err error) error {
 		case "23P01": return ErrAcademicConflict
 		case "P0001":
 			message := strings.ToLower(pgErr.Message)
+			if strings.Contains(message, "teacher assignment requires an active") { return ErrTeacherProfileIneligible }
 			if strings.Contains(message, "assignment actor") { return ErrAcademicAccessDenied }
 			if strings.Contains(message, "subject choice rules cannot change") ||
 				strings.Contains(message, "optional group limits would invalidate") ||
