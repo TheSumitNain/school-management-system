@@ -327,7 +327,7 @@ export function StaffOperationalReportsWorkspace({ permissions }: Props) {
       <div className="staff-operational-report-panel-heading"><strong>Leave</strong><button type="button" onClick={() => void leave.refetch()} disabled={leave.isFetching}><RefreshCw size={14}/> Refresh</button></div>
       {leave.isLoading && <p role="status">Loading leave report…</p>}
       {leave.isError && <p className="staff-operational-report-error" role="alert">Leave report could not be loaded. <button type="button" onClick={() => void leave.refetch()}>Retry</button></p>}
-      {leave.isSuccess && <LeaveReport rows={leave.data.data} month={month}/>}
+      {leave.isSuccess && <LeaveReport rows={leave.data} month={month}/>}
     </div>}
   </section>;
 }
