@@ -3287,7 +3287,7 @@ test("staff qualifications report uses one paginated aggregate endpoint and expo
       record_date: "2025-04-01", expiry_date: "2027-04-01", verification_status: "pending",
     }];
     await route.fulfill({ json: { report: {
-      rows, limit: 50, offset: Number(url.searchParams.get("offset") ?? 0), total: certificationOnly ? 1 : 2,
+      rows, limit: Number(url.searchParams.get("limit") ?? 50), offset: Number(url.searchParams.get("offset") ?? 0), total: certificationOnly ? 1 : 2,
       counts: certificationOnly ? [{ record_type: "certification", verification_status: "pending", count: 1 }] : [
         { record_type: "qualification", verification_status: "verified", count: 1 },
         { record_type: "certification", verification_status: "pending", count: 1 },
@@ -3320,6 +3320,7 @@ test("staff qualifications report uses one paginated aggregate endpoint and expo
   expect(csv).toContain("'\t=HYPERLINK(");
   expect(csv).not.toContain("credential");
   expect(csv).not.toContain("verification_notes");
+  expect(requests.some(request => request.includes("limit=200") && request.includes("offset=0"))).toBe(true);
 });
 
 
@@ -3342,7 +3343,7 @@ test("staff experience report uses one paginated school aggregate endpoint and e
       record_id:33,staff_principal_id:501,employee_code:"EMP-ACTIVE",staff_name:"Active Teacher",designation:"Mathematics Teacher",employment_status:"active",
       employer_name:"Current School",previous_designation:"Senior Teacher",employment_type:"permanent",start_date:"2024-04-01",end_date:"",is_current:true,
     }];
-    await route.fulfill({json:{report:{rows,limit:50,offset:Number(url.searchParams.get("offset")??0),total:current?1:2,counts:current?[{employment_type:"permanent",is_current:true,count:1}]:[
+    await route.fulfill({json:{report:{rows,limit:Number(url.searchParams.get("limit")??50),offset:Number(url.searchParams.get("offset")??0),total:current?1:2,counts:current?[{employment_type:"permanent",is_current:true,count:1}]:[
       {employment_type:"contract",is_current:false,count:1},{employment_type:"permanent",is_current:true,count:1},
     ]}}});
   });
@@ -3364,6 +3365,7 @@ test("staff experience report uses one paginated school aggregate endpoint and e
   expect(csv.startsWith("\uFEFF")).toBe(true);
   expect(csv).toContain("Current School");
   expect(csv).not.toContain("description");
+  expect(requests.some(request => request.includes("limit=200") && request.includes("offset=0"))).toBe(true);
 });
 
 
