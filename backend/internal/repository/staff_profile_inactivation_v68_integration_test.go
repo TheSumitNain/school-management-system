@@ -21,8 +21,8 @@ func TestStaffProfileInactivationSerializesWithRefreshRotationPostgresIntegratio
         t.Fatalf("read profile-inactivation trigger definition: %v", err)
     }
     normalized := strings.ToLower(strings.Join(strings.Fields(definition), " "))
-    if !strings.Contains(normalized, "pg_advisory_xact_lock") ||
+    if !strings.Contains(normalized, "pg_try_advisory_xact_lock") ||
         !strings.Contains(normalized, "refresh-principal:") {
-        t.Fatalf("profile inactivation must serialize on the refresh-principal lock; definition: %s", definition)
+        t.Fatalf("profile inactivation must acquire the refresh-principal lock without blocking while holding the profile row; definition: %s", definition)
     }
 }
