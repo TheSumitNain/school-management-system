@@ -180,6 +180,7 @@ func (h *StaffHandler) List(c *gin.Context) {
             "employee_code": user.EmployeeCode, "full_name": user.FullName, "designation": user.Designation,
             "mobile_number": user.MobileNumber, "email": user.Email, "joining_date": user.JoiningDate,
             "employment_status": user.EmploymentStatus, "profile_complete": user.ProfileComplete,
+				"protected_school_admin": user.ProtectedSchoolAdmin,
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success", "staff": staff})
@@ -272,6 +273,7 @@ func (h *StaffHandler) ListDirectoryPage(c *gin.Context) {
 				"employee_code": user.EmployeeCode, "full_name": user.FullName, "designation": user.Designation,
 				"mobile_number": user.MobileNumber, "email": user.Email, "joining_date": user.JoiningDate,
 				"employment_status": user.EmploymentStatus, "profile_complete": user.ProfileComplete,
+				"protected_school_admin": user.ProtectedSchoolAdmin,
 			})
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "success", "staff": staff, "total": page.Total, "limit": page.Limit, "offset": page.Offset})
