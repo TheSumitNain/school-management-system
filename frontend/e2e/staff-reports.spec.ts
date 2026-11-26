@@ -71,10 +71,11 @@ test("staff qualifications and experience reports filter, paginate and retain hi
       const allRows = [
         { record_id: 701, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Previous School", previous_designation: "Teacher", employment_type: "contract", start_date: "2018-04-01", end_date: "2022-03-31", is_current: false },
         { record_id: 702, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Current Academy", previous_designation: "Senior Teacher", employment_type: "permanent", start_date: "2022-04-01", end_date: "", is_current: true },
-        ...Array.from({ length: 49 }, (_, index) => ({
+        ...Array.from({ length: 48 }, (_, index) => ({
           record_id: 703 + index, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive",
           employer_name: `Historical School ${index + 1}`, previous_designation: "Teacher", employment_type: "contract", start_date: "2010-04-01", end_date: "2011-03-31", is_current: false,
         })),
+        { record_id: 751, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Older Academy", previous_designation: "Teacher", employment_type: "contract", start_date: "2015-04-01", end_date: "2018-03-31", is_current: false },
       ];
       const rows = currentOnly ? [allRows[1]] : allRows.slice(offset, offset + requestedLimit);
       const counts = currentOnly
