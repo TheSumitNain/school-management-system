@@ -1530,6 +1530,11 @@ test("staff profile creates education, certification and experience records", as
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("Enter a real calendar issue date.")).toBeVisible();
   await expect(dialog.getByText("Teacher Training")).toHaveCount(0);
+  // Discard the deliberately invalid form and retry with a clean form state.
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await dialog.getByRole("button", { name: "Add certification" }).click();
+  await certificateNameInput.fill("Teacher Training");
+  await dialog.locator('input[name="issuing_organization"]').fill("State Board");
   await expect(dialog.locator('input[name="credential_id"]')).not.toHaveAttribute("maxLength");
   await dialog.locator('input[name="credential_id"]').fill("🔐".repeat(121));
   await expect(dialog.locator('input[name="credential_id"]')).toHaveValue(unicodeCredential);
