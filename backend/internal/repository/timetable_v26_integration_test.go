@@ -152,5 +152,26 @@ func TestTeacherWorkloadReportPostgresIntegration(t *testing.T) {
 	if len(teacherReport)!=1||teacherReport[0].TeacherPrincipalID!=teacherID{
 		t.Fatalf("Teacher workload report exposed peer profiles: %+v",teacherReport)
 	}
+
+	// A valid School Admin must not reuse their actor identity with a forged
+	// foreign school ID, and a same-school request must not accept a foreign
+	// academic-year ID.
+	var foreignSchoolID,foreignYearID int64
+	foreignCode:=fmt.Sprintf("TW-%d",suffix%1000000000)
+	if err=tx.QueryRow(ctx,`INSERT INTO schools(name,code,status) VALUES($1,$2,'active') RETURNING id`,
+		fmt.Sprintf("Workload Isolation %d",suffix),foreignCode).Scan(&foreignSchoolID);err!=nil{
+		t.Fatalf("create foreign workload school: %v",err)
+	}
+	if err=tx.QueryRow(ctx,`INSERT INTO academic_years(school_id,name,starts_on,ends_on,status)
+		VALUES($1,$2,DATE '2026-04-01',DATE '2027-03-31','active') RETURNING id`,
+		foreignSchoolID,fmt.Sprintf("foreign-workload-year-%d",suffix)).Scan(&foreignYearID);err!=nil{
+		t.Fatalf("create foreign workload academic year: %v",err)
+	}
+	if _,err=NewAcademicRepository(tx).ListTeacherWorkloadReport(ctx,actorID,foreignSchoolID,yearID);!errors.Is(err,ErrTimetableAccessDenied){
+		t.Fatalf("forged foreign-school workload scope error=%v; want access denied",err)
+	}
+	if _,err=NewAcademicRepository(tx).ListTeacherWorkloadReport(ctx,actorID,schoolID,foreignYearID);!errors.Is(err,ErrTimetableNotFound){
+		t.Fatalf("foreign academic-year workload scope error=%v; want not found",err)
+	}
 }
 
