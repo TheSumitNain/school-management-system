@@ -2875,3 +2875,10 @@ This update supersedes older status bullets that listed the following database-b
 - Added a real PostgreSQL regression that holds the refresh-principal lock in one transaction, attempts profile inactivation in another, and verifies the update fails fast without changing either employment or login state. The V68 lock-contract test was aligned to the final V69 non-blocking lock.
 - Backend CI [45811037214](https://github.com/TheSumitNain/school-management-system/actions/runs/45811037214) **PASS** on `87de3be8f5110ebfaa4d78fb72c76b3a23ef9a18`: V68/V69 full migration chain, complete Go/PostgreSQL integration suite and `go vet`.
 - No existing school data is rewritten. Current work remains on `work`; `main` remains untouched.
+
+
+## 2026-11-26 — Staff create-handler profile forwarding regression
+
+- Strengthened `TestStaffHandlerCreateSuccessDoesNotExposePassword`: the fake service now captures the exact `StaffProfile` passed by the HTTP handler, and the test asserts Staff Type, employee code, full name, designation, mobile, optional email/joining date and active employment status are forwarded correctly. It continues to assert that neither plaintext password nor password hash is exposed in the response.
+- Backend CI [45811766096](https://github.com/TheSumitNain/school-management-system/actions/runs/45811766096) **PASS** on `4762ec3a471525084898bd05db3e0a6959cba3ac`: complete migration chain, Go/PostgreSQL integration suite and `go vet`.
+- This is a test-strengthening change only; no production behavior or database schema changed. Add Staff's mandatory-login/profile-only and role-at-creation gaps remain approval-gated as documented in the Staff Identity design. `main` remains untouched.
