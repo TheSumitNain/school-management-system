@@ -111,6 +111,14 @@ func TestStaffDirectoryPaginationFiltersAndSchoolIsolationPostgresIntegration(t 
 	if err == nil || foreignPage != nil {
 		t.Fatalf("ordinary staff unexpectedly read directory: page=%+v err=%v", foreignPage, err)
 	}
+
+	// A valid School Admin must not be able to change the tenant scope by
+	// supplying another school ID to the repository boundary.
+	forgedSchoolPage, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID+1,
+		models.StaffDirectoryFilter{Limit: 50})
+	if err == nil || forgedSchoolPage != nil {
+		t.Fatalf("School Admin unexpectedly read a forged foreign-school directory: page=%+v err=%v", forgedSchoolPage, err)
+	}
 }
 
 
