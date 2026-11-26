@@ -61,8 +61,8 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const canRead = permissions.includes("staff.attendance.read");
   const daily = useQuery({
-    queryKey: ["staff-attendance", "daily", date, dailyOffset],
-    queryFn: ({ signal }) => getDailyStaffAttendance(date, attendancePageSize, dailyOffset, signal),
+    queryKey: ["staff-attendance", "daily", date, search, statusFilter, dailyOffset],
+    queryFn: ({ signal }) => getDailyStaffAttendance(date, attendancePageSize, dailyOffset, { search, status: statusFilter }, signal),
     enabled: canRead && view === "daily",
   });
   const canReadLeaveContext = permissions.includes("staff.leave.read");
@@ -221,14 +221,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     } finally { setExportingMonthly(false); }
   };
   const records = daily.data?.data ?? [];
-  const visibleRecords = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase();
-    return records.filter(item => {
-      const matchesSearch = !term || [item.full_name, item.employee_code, item.designation].some(value => (value ?? "").toLocaleLowerCase().includes(term));
-      const matchesStatus = statusFilter === "all" || (statusFilter === "unmarked" ? !item.status : item.status === statusFilter);
-      return matchesSearch && matchesStatus;
-    });
-  }, [records, search, statusFilter]);
+  const visibleRecords = records;
   const bulkTargets = visibleRecords.filter(item => !item.id);
   const totals = useMemo(() => records.reduce((acc, item) => {
     if (item.status) acc[item.status] += 1;
@@ -276,8 +269,8 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     {view === "daily" && <>
       <div className="staff-attendance-toolbar">
         <label><span>Attendance date</span><DatePicker value={date} onChange={value => { setDate(value); setDailyOffset(0); }} ariaLabel="Staff attendance date" max={today}/></label>
-        <label><span>Search this page</span><input aria-label="Search staff attendance" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name, employee code or designation"/></label>
-        <label><span>Filter by status</span><select aria-label="Filter staff attendance status" value={statusFilter} onChange={event => setStatusFilter(event.target.value as "all" | "unmarked" | Status)}>
+        <label><span>Search all staff</span><input aria-label="Search staff attendance" value={search} maxLength={100} onChange={event => { setSearch(event.target.value); setDailyOffset(0); }} placeholder="Name, employee code or designation"/></label>
+        <label><span>Filter by status</span><select aria-label="Filter staff attendance status" value={statusFilter} onChange={event => { setStatusFilter(event.target.value as "all" | "unmarked" | Status); setDailyOffset(0); }}>
           <option value="all">All statuses</option><option value="unmarked">Not marked</option>{statuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
         </select></label>
         <button type="button" className="staff-secondary-button" onClick={() => void daily.refetch()} disabled={daily.isFetching}><RefreshCw size={15}/> Refresh</button>
@@ -298,8 +291,9 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       {approvedLeaveContext.isError && <p className="staff-attendance-context-warning" role="status">Approved leave context could not be loaded. Check the leave read permission or retry the register.</p>}
       {daily.isPending && <p role="status" className="staff-attendance-message">Loading staff register…</p>}
       {daily.isError && <div className="staff-attendance-message error" role="alert">Unable to load staff attendance. <button type="button" onClick={() => void daily.refetch()}>Try again</button></div>}
-      {daily.isSuccess && records.length === 0 && <p className="staff-attendance-message">No active staff profiles are available for this school.</p>}
-      {daily.isSuccess && records.length > 0 && visibleRecords.length === 0 && <p className="staff-attendance-message">No staff match this search.</p>}
+      {daily.isSuccess && records.length === 0 && (search.trim() || statusFilter !== "all") && <p className="staff-attendance-message">No staff match these filters.</p>}
+      {daily.isSuccess && records.length === 0 && !search.trim() && statusFilter === "all" && <p className="staff-attendance-message">No active staff profiles are available for this school.</p>}
+      
       {daily.isSuccess && visibleRecords.length > 0 && <div className="staff-attendance-table-wrap"><table className="staff-attendance-table">
         <thead><tr><th>Employee</th><th>Attendance</th><th>Remarks</th><th>Action</th></tr></thead>
         <tbody>{visibleRecords.map(item => {
@@ -323,7 +317,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
         })}</tbody>
       </table></div>}
       {daily.isSuccess && (daily.data.pagination?.total ?? records.length) > 0 && <div className="staff-attendance-toolbar" aria-label="Daily attendance pagination">
-        <span>Showing {dailyOffset + 1}–{dailyOffset + records.length} of {daily.data.pagination?.total ?? records.length} staff · bulk marking applies to this page only</span>
+        <span>Showing {dailyOffset + 1}–{dailyOffset + records.length} of {daily.data.pagination?.total ?? records.length} staff matching filters · bulk marking applies to this page only</span>
         <button type="button" className="staff-secondary-button" disabled={dailyOffset === 0 || daily.isFetching} onClick={() => setDailyOffset(Math.max(0, dailyOffset - attendancePageSize))}>Previous</button>
         <button type="button" className="staff-secondary-button" disabled={dailyOffset + records.length >= (daily.data.pagination?.total ?? records.length) || daily.isFetching} onClick={() => setDailyOffset(dailyOffset + attendancePageSize)}>Next</button>
       </div>}
