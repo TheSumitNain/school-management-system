@@ -759,6 +759,16 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err != nil || len(teacherAssignments) != 1 || teacherAssignments[0].ID != teacherAssignment.ID {
 		t.Fatalf("list teacher subject assignments through repository: items=%+v err=%v", teacherAssignments, err)
 	}
+	if _, err := academicRepo.ListTeacherSubjectAssignments(ctx, actorPrincipalID, otherSchoolID, apiYear.ID, apiSection.ID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("forged foreign-school teacher assignment list error=%v; want access denied", err)
+	}
+	if _, err := academicRepo.CreateTeacherSubjectAssignment(ctx, actorPrincipalID, otherSchoolID,
+		apiYear.ID, apiSection.ID, apiSubject.ID, teacherPrincipalID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("forged foreign-school teacher assignment create error=%v; want access denied", err)
+	}
+	if err := academicRepo.RevokeTeacherSubjectAssignment(ctx, actorPrincipalID, otherSchoolID, teacherAssignment.ID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("forged foreign-school teacher assignment revoke error=%v; want access denied", err)
+	}
 	if err := academicRepo.RevokeTeacherSubjectAssignment(ctx, actorPrincipalID, schoolID, teacherAssignment.ID); err != nil {
 		t.Fatalf("revoke teacher subject assignment through repository: %v", err)
 	}
@@ -770,6 +780,16 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	classIncharges, err := academicRepo.ListClassInchargeAssignments(ctx, actorPrincipalID, schoolID, apiYear.ID)
 	if err != nil || len(classIncharges) != 1 || classIncharges[0].ID != classIncharge.ID {
 		t.Fatalf("list class in-charge assignments through repository: items=%+v err=%v", classIncharges, err)
+	}
+	if _, err := academicRepo.ListClassInchargeAssignments(ctx, actorPrincipalID, otherSchoolID, apiYear.ID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("forged foreign-school class in-charge list error=%v; want access denied", err)
+	}
+	if _, err := academicRepo.CreateClassInchargeAssignment(ctx, actorPrincipalID, otherSchoolID,
+		apiYear.ID, apiSection.ID, teacherPrincipalID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("forged foreign-school class in-charge create error=%v; want access denied", err)
+	}
+	if err := academicRepo.RevokeClassInchargeAssignment(ctx, actorPrincipalID, otherSchoolID, classIncharge.ID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("forged foreign-school class in-charge revoke error=%v; want access denied", err)
 	}
 	if err := academicRepo.RevokeClassInchargeAssignment(ctx, actorPrincipalID, schoolID, classIncharge.ID); err != nil {
 		t.Fatalf("revoke class in-charge assignment through repository: %v", err)
