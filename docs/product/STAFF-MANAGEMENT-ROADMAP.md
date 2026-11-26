@@ -1,3 +1,12 @@
+## 2026-11-26 — Leave, substitution and holiday result-set capacity verification
+
+- Removed the former 1,000-row SQL result cap from Staff Leave Requests and Staff Substitution History; removed the same silent truncation cap from the school-scoped Holiday Calendar query. These endpoints no longer silently omit records solely because a result set exceeds 1,000 rows.
+- Backend CI [45735778800](https://github.com/TheSumitNain/school-management-system/actions/runs/45735778800) **PASS** on `dac260948dafefe8c424ff93cbe79337ed372e39`; the full configured backend workflow completed successfully.
+- This closes the silent-truncation defect only. Bounded pagination with total counts for Leave Requests and Substitution History, plus complete all-record report export, remain open and are not represented as complete.
+- No schema migration or persistent database change. Changes are on `work`; `main` remains untouched.
+
+---
+
 ## 2026-11-25 — Staff Directory aggregate summary and lazy full-list loading
 
 - The overview now loads aggregate counts from `GET /school/staff/summary`; it no longer downloads all staff records. The Dashboard staff metric uses the same summary endpoint instead of the unbounded list API.
