@@ -491,3 +491,65 @@ func TestStaffAttendanceWritesSerializeWithEmploymentInactivationPostgresIntegra
         })
     }
 }
+
+func TestStaffAttendanceBulkMarkSupportsOneThousandRecordsPostgresIntegration(t *testing.T) {
+	f := newStaffAttendanceIntegrationFixture(t)
+	day, err := time.Parse("2006-01-02", schooltime.TodayDate())
+	if err != nil {
+		t.Fatalf("parse school date: %v", err)
+	}
+	suffix := fmt.Sprintf("%08d", time.Now().UnixNano()%100000000)
+	_, err = f.pool.Exec(f.ctx, `
+		WITH created_users AS (
+			INSERT INTO users (school_id, username, password_hash, status)
+			SELECT $1, 'b1000-' || $2 || '-' || lpad(n::text, 4, '0'),
+			       'integration-password-hash', 'active'
+			  FROM generate_series(1, 1000) AS n
+			RETURNING principal_id
+		)
+		INSERT INTO staff_profiles
+			(principal_id, school_id, employee_code, full_name, designation, mobile_number)
+		SELECT principal_id, $1, 'B1000-' || $2 || '-' || lpad(principal_id::text, 10, '0'),
+		       'Bulk Attendance ' || principal_id, 'Teacher', '9876543212'
+		  FROM created_users
+	`, f.schoolID, suffix)
+	if err != nil {
+		t.Fatalf("create 1000 staff profiles for bulk attendance: %v", err)
+	}
+	var staffIDs []int64
+	if err := f.pool.QueryRow(f.ctx, `
+		SELECT array_agg(principal_id ORDER BY principal_id)
+		  FROM staff_profiles
+		 WHERE school_id=$1 AND employee_code LIKE 'B1000-' || $2 || '-%'
+	`, f.schoolID, suffix).Scan(&staffIDs); err != nil {
+		t.Fatalf("load 1000 staff IDs: %v", err)
+	}
+	if len(staffIDs) != 1000 {
+		t.Fatalf("staff fixture count=%d; want 1000", len(staffIDs))
+	}
+	created, err := f.repo.MarkBulk(f.ctx, f.actorID, f.schoolID, staffIDs, day, "present", nil)
+	if err != nil {
+		t.Fatalf("mark attendance for 1000 staff in one batch: %v", err)
+	}
+	if created != 1000 {
+		t.Fatalf("bulk attendance created=%d; want 1000", created)
+	}
+	var records, audits int
+	if err := f.pool.QueryRow(f.ctx, `
+		SELECT COUNT(*) FROM staff_attendance_records
+		 WHERE school_id=$1 AND staff_principal_id=ANY($2::bigint[]) AND attendance_date=$3::date
+	`, f.schoolID, staffIDs, schooltime.TodayDate()).Scan(&records); err != nil {
+		t.Fatalf("count 1000 attendance records: %v", err)
+	}
+	if err := f.pool.QueryRow(f.ctx, `
+		SELECT COUNT(*) FROM audit_events
+		 WHERE school_id=$1 AND actor_principal_id=$2 AND action='school.staff_attendance.marked'
+		   AND resource_type='staff_attendance_record' AND metadata->>'bulk'='true'
+		   AND metadata->>'attendance_date'=$3
+	`, f.schoolID, f.actorID, schooltime.TodayDate()).Scan(&audits); err != nil {
+		t.Fatalf("count 1000 attendance audit events: %v", err)
+	}
+	if records != 1000 || audits != 1000 {
+		t.Fatalf("1000-record batch left records=%d audits=%d; want exactly 1000 each", records, audits)
+	}
+}
