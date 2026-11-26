@@ -2240,12 +2240,14 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
     expect(url.searchParams.get("to_date")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     const page = Number(url.searchParams.get("page") ?? 1);
     const pageSize = Number(url.searchParams.get("page_size") ?? 100);
-    await route.fulfill({ json: { data: [{
-      id: 71, staff_principal_id: 512, staff_name: "Attendance Teacher", employee_code: "EMP-ATT-01",
-      leave_type_id: 1, leave_type_name: "Casual Leave", start_date: url.searchParams.get("from_date"),
-      end_date: url.searchParams.get("from_date"), duration_type: "full_day", reason: "PRIVATE_LEAVE_REASON",
-      status: "approved", created_at: "2026-11-01T00:00:00.000Z",
-    }], pagination: { page, page_size: pageSize, total: 1 } } });
+    const allApproved = Array.from({length:101},(_,index)=>({
+      id:71+index,staff_principal_id:512,staff_name:"Attendance Teacher",employee_code:"EMP-ATT-01",
+      leave_type_id:1,leave_type_name:index===100?"Leave 101":"Casual Leave",
+      start_date:url.searchParams.get("from_date"),end_date:url.searchParams.get("from_date"),
+      duration_type:"full_day",reason:"PRIVATE_LEAVE_REASON",status:"approved",
+      created_at:"2026-11-01T00:00:00.000Z",
+    }));
+    await route.fulfill({json:{data:allApproved.slice((page-1)*pageSize,page*pageSize),pagination:{page,page_size:pageSize,total:allApproved.length}}});
   });
   let savedStatus = "";
   let bulkCreated = 0;
@@ -2328,6 +2330,7 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   expect(monthlyCSV).toContain("EMP-ATT-01");
   expect(monthlyCSV).not.toContain("PRIVATE_ATTENDANCE_REMARK");
   expect(monthlyCSV).not.toContain("PRIVATE_LEAVE_REASON");
+  expect(monthlyCSV).toContain("Leave 101");
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await page.getByRole("button", { name: "Attendance Teacher" }).click();
