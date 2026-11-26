@@ -153,6 +153,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const [accountFilter, setAccountFilter] = useState("all");
   const [profileFilter, setProfileFilter] = useState("all");
   const [directoryPageIndex, setDirectoryPageIndex] = useState(0);
+  const [directoryExporting,setDirectoryExporting]=useState(false);
   const directoryFilters: StaffDirectoryFilters = {
     search,
     employmentStatus: employmentFilter === "all" ? "" : employmentFilter,
@@ -218,6 +219,16 @@ export function StaffManagementPage({ permissions }: Props) {
     });
   }, [directoryQuery.data, staff, search, employmentFilter, accountFilter, profileFilter]);
   const serverDirectory = typeof directoryQuery.data?.total === "number";
+  const runDirectoryExport=async(rows:StaffRecord[],filters?:StaffDirectoryFilters)=>{
+    if(directoryExporting)return;
+    setDirectoryExporting(true);
+    try{
+      await exportStaffDirectoryCSV(rows,filters);
+      notifyToast("success",filters?"Filtered staff directory exported.":"Staff report exported.");
+    }catch(error){
+      notifyToast("error",error instanceof Error?error.message:"Unable to export staff directory.");
+    }finally{setDirectoryExporting(false);}
+  };
   const directoryTotal = directoryQuery.data?.total ?? filtered.length;
 
   function closeProfile() {
@@ -630,7 +641,7 @@ export function StaffManagementPage({ permissions }: Props) {
       {activeTab === "substitutions" && <StaffSubstitutionWorkspace permissions={permissions} staff={staff}/>}
       {activeTab === "workloadReport" && <StaffWorkloadReportWorkspace permissions={permissions}/>}
       {activeTab === "reports" && permissions.includes("users.read") && <section className="staff-reports-workspace">
-        <div className="staff-reports-heading"><div><h2>Staff Reports</h2><p>School-scoped employment, account and profile readiness summary. Sensitive contact and login details are excluded.</p></div><button type="button" className="staff-directory-export" onClick={() => exportStaffDirectoryCSV(staff)} disabled={query.isPending || query.isError || staff.length === 0}><Download size={14}/> Export staff report</button></div>
+        <div className="staff-reports-heading"><div><h2>Staff Reports</h2><p>School-scoped employment, account and profile readiness summary. Sensitive contact and login details are excluded.</p></div><button type="button" className="staff-directory-export" onClick={() => void runDirectoryExport(staff)} disabled={query.isPending || query.isError || staff.length === 0 || directoryExporting}><Download size={14}/> Export staff report</button></div>
         {query.isPending && <p role="status">Loading staff report…</p>}
         {query.isError && <div className="staff-overview-error" role="alert">Unable to load staff report. <button type="button" onClick={() => void query.refetch()}>Retry</button></div>}
         {query.isSuccess && <>
@@ -648,7 +659,7 @@ export function StaffManagementPage({ permissions }: Props) {
       {activeTab === "reports" && permissions.includes("users.read") && <StaffOperationalReportsWorkspace permissions={permissions}/>}
       {activeTab === "idCards" && permissions.includes("users.read") && <StaffIDCardsWorkspace staff={staff}/>}
       {activeTab === "directory" && canReadStaff && <section className="table-panel">
-        <div className="toolbar staff-directory-toolbar"><div><h2>All staff</h2><small>{serverDirectory ? `${filtered.length ? directoryPageIndex * 50 + 1 : 0}–${directoryPageIndex * 50 + filtered.length} of ${directoryTotal}` : `${filtered.length} of ${staff.length}`} staff members</small></div><div className="staff-directory-controls"><button type="button" className="staff-directory-export" onClick={() => void exportStaffDirectoryCSV(filtered, directoryFilters).then(() => notifyToast("success", "Filtered staff directory exported.")).catch(error => notifyToast("error", error instanceof Error ? error.message : "Unable to export staff directory."))} disabled={filtered.length===0 || !permissions.includes("users.read")}><Download size={14}/> Export CSV</button><div className="search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation, mobile or username" aria-label="Search staff by name, code, designation, mobile or username"/></div><div className="staff-directory-filters"><label>Employment<Select value={employmentFilter} onChange={setEmploymentFilter} ariaLabel="Filter by employment status" options={[{value:"all",label:"All employment"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/></label><label>Login account<Select value={accountFilter} onChange={setAccountFilter} ariaLabel="Filter by login account status" options={[{value:"all",label:"All accounts"},{value:"enabled",label:"Enabled"},{value:"disabled",label:"Disabled"}]}/></label><label>Profile<Select value={profileFilter} onChange={setProfileFilter} ariaLabel="Filter by profile completeness" options={[{value:"all",label:"All profiles"},{value:"complete",label:"Complete"},{value:"incomplete",label:"Incomplete"}]}/></label></div>{(search.trim() || employmentFilter !== "all" || accountFilter !== "all" || profileFilter !== "all") && <button type="button" className="staff-clear-filters" onClick={() => {setSearch("");setEmploymentFilter("all");setAccountFilter("all");setProfileFilter("all");}}>Clear filters</button>}</div></div>
+        <div className="toolbar staff-directory-toolbar"><div><h2>All staff</h2><small>{serverDirectory ? `${filtered.length ? directoryPageIndex * 50 + 1 : 0}–${directoryPageIndex * 50 + filtered.length} of ${directoryTotal}` : `${filtered.length} of ${staff.length}`} staff members</small></div><div className="staff-directory-controls"><button type="button" className="staff-directory-export" onClick={() => void runDirectoryExport(filtered, directoryFilters)} disabled={filtered.length===0 || !permissions.includes("users.read") || directoryQuery.isFetching || directoryExporting}><Download size={14}/> Export CSV</button><div className="search"><Search size={16}/><input value={search} disabled={directoryExporting} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation, mobile or username" aria-label="Search staff by name, code, designation, mobile or username"/></div><div className="staff-directory-filters"><label>Employment<Select value={employmentFilter} disabled={directoryExporting} onChange={setEmploymentFilter} ariaLabel="Filter by employment status" options={[{value:"all",label:"All employment"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/></label><label>Login account<Select value={accountFilter} disabled={directoryExporting} onChange={setAccountFilter} ariaLabel="Filter by login account status" options={[{value:"all",label:"All accounts"},{value:"enabled",label:"Enabled"},{value:"disabled",label:"Disabled"}]}/></label><label>Profile<Select value={profileFilter} disabled={directoryExporting} onChange={setProfileFilter} ariaLabel="Filter by profile completeness" options={[{value:"all",label:"All profiles"},{value:"complete",label:"Complete"},{value:"incomplete",label:"Incomplete"}]}/></label></div>{(search.trim() || employmentFilter !== "all" || accountFilter !== "all" || profileFilter !== "all") && <button type="button" className="staff-clear-filters" onClick={() => {setSearch("");setEmploymentFilter("all");setAccountFilter("all");setProfileFilter("all");}} disabled={directoryExporting}>Clear filters</button>}</div></div>
         {(directoryQuery.isPending || (directoryQuery.isFetching && !directoryQuery.data)) ? <div className="table-message" aria-live="polite">Loading staff accounts…</div>
           : directoryQuery.isError ? <div className="table-message error-text">{directoryQuery.error instanceof Error ? directoryQuery.error.message : "Unable to load staff accounts."}<button className="staff-retry-button" type="button" onClick={() => void directoryQuery.refetch()}>Try again</button></div>
           
@@ -664,7 +675,7 @@ export function StaffManagementPage({ permissions }: Props) {
             </div></td></tr>
             </Fragment>)}
           </tbody></table></div>}
-        {serverDirectory && directoryTotal > 50 && <div className="staff-directory-pagination"><button type="button" className="staff-secondary-button" disabled={directoryPageIndex === 0 || directoryQuery.isFetching} onClick={() => setDirectoryPageIndex(value => Math.max(0, value - 1))}>Previous</button><span>Page {directoryPageIndex + 1} of {Math.ceil(directoryTotal / 50)}</span><button type="button" className="staff-secondary-button" disabled={(directoryPageIndex + 1) * 50 >= directoryTotal || directoryQuery.isFetching} onClick={() => setDirectoryPageIndex(value => value + 1)}>Next</button></div>}
+        {serverDirectory && directoryTotal > 50 && <div className="staff-directory-pagination"><button type="button" className="staff-secondary-button" disabled={directoryPageIndex === 0 || directoryQuery.isFetching || directoryExporting} onClick={() => setDirectoryPageIndex(value => Math.max(0, value - 1))}>Previous</button><span>Page {directoryPageIndex + 1} of {Math.ceil(directoryTotal / 50)}</span><button type="button" className="staff-secondary-button" disabled={(directoryPageIndex + 1) * 50 >= directoryTotal || directoryQuery.isFetching || directoryExporting} onClick={() => setDirectoryPageIndex(value => value + 1)}>Next</button></div>}
       </section>}
       {profileFor && canReadStaff && <Modal key={profileFor.principal_id} open title={profileFor.full_name || profileFor.username} description={`Staff profile · ${profileFor.employee_code || "Employee code not set"} · ${profileFor.username}`} onClose={closeProfile}>
         <nav className="staff-profile-tabs" aria-label="Staff profile sections">
