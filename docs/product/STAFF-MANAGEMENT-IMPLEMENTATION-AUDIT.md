@@ -701,3 +701,11 @@ This section supersedes older statements in this audit that describe browser ver
 - Verified repository integration coverage: `TestStaffLeaveRequestPaginationPostgresIntegration` checks page boundaries, totals, filtered pages, empty pages, date/range filters and cross-school denial; substitution workflow integration checks first/second/empty/filtered pages and cross-school denial.
 - Verified handler/service tests cover forwarding filters and pagination metadata, invalid page parameters and offset overflow. The UI uses 50-row pages and clamps the current page when totals shrink. Substitution CSV export fetches and validates every page before producing a file.
 - This corrects the bounded-list-pagination status. Leave Requests also have a complete all-pages CSV export: the browser fetches every matching page in bounded batches, validates pagination metadata and preserves the privacy allowlist (no free-text leave reasons). This was already implemented and browser-verified in the 2026-11-26 Leave/Substitution pagination checkpoint at the top of the roadmap. No schema or persistent data change. `main` remains untouched.
+
+
+## 2026-11-26 follow-up — Staff Directory cross-school read regression
+
+- Added PostgreSQL integration coverage proving a School Admin cannot use a forged foreign school ID to read either a paginated Staff Directory page or its aggregate directory summary. The page test also verifies the denied call returns no page; the summary test verifies no summary is returned.
+- Backend CI [45759038621](https://github.com/TheSumitNain/school-management-system/actions/runs/45759038621) **PASS** on `5aeb16784a5f31ea5fa96a9c7f737ef7e9ff0bb6`: full migration chain, complete Go suite including PostgreSQL integration tests, and `go vet`.
+- These are test-only defense-in-depth checks. Staff HTTP handlers obtain school scope from authenticated middleware context rather than client-supplied school IDs; repository tests protect against future internal callers passing a forged scope. No schema or persistent data change. `main` remains untouched.
+- Staff Management remains in progress: authenticated School Admin browser acceptance/sign-off is still required, along with the previously documented approval-gated items. This checkpoint does not declare the module complete.
