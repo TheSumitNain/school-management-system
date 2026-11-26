@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -43,8 +44,16 @@ func TestStaffReportsUsePoolBackedReadOnlySnapshotPostgresIntegration(t *testing
 			  AND p.permission_key='platform.permissions.delegate' AND p.scope_type='platform' AND p.is_active=TRUE
 			LIMIT 1
 		`).Scan(&platformAdminID)
-		if errors.Is(err, pgx.ErrNoRows) { t.Skip("an active Platform Admin is required for this fixture") }
-		if err != nil { t.Fatalf("load active Platform Admin: %v", err) }
+		if errors.Is(err, pgx.ErrNoRows) {
+			var anyBootstrapExists bool
+			checkQuery := "SELECT EXISTS (SELECT 1 FROM platform_admin_accounts) OR EXISTS (SELECT 1 FROM principal_roles pr JOIN roles r ON r.id=pr.role_id WHERE r.principal_type='platform_admin' AND r.scope_type='platform' AND r.role_key='platform_admin')"
+			if checkErr := tx.QueryRow(ctx, checkQuery).Scan(&anyBootstrapExists); checkErr != nil {
+				t.Fatalf("check Platform Admin bootstrap state: %v", checkErr)
+			}
+			if anyBootstrapExists { t.Skip("Platform Admin bootstrap exists but no active administrator can delegate permissions") }
+			platformAdminID, err = NewPlatformAdminRepository(pool).bootstrapFirstInTx(ctx, tx, fmt.Sprintf("staff-report-snapshot-%d@example.invalid", time.Now().UnixNano()), "integration-test-password-hash")
+		}
+		if err != nil { t.Fatalf("resolve Platform Admin fixture: %v", err) }
 		if err := tx.QueryRow(ctx, `SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff' AND scope_type='school' AND role_key='school_admin' AND is_system=TRUE`, schoolID).Scan(&schoolAdminRoleID); err != nil {
 			t.Fatalf("load School Admin role: %v", err)
 		}
