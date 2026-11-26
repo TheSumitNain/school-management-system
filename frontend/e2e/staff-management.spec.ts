@@ -3221,7 +3221,7 @@ test("staff directory export refuses a changed total instead of downloading part
   });
   const noDownload = page.waitForEvent("download", { timeout: 1000 }).catch(() => null);
   await page.getByRole("button", { name: "Export CSV" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "No partial CSV was created" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "No partial CSV was created" })).toBeVisible();
   expect(await noDownload).toBeNull();
 });
 
