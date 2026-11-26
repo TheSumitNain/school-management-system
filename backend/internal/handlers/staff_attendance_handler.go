@@ -19,6 +19,7 @@ type StaffAttendanceManagementService interface {
     ListDaily(context.Context, int64, int64, time.Time) ([]repository.StaffAttendanceRecord, error)
     ListMonthly(context.Context, int64, int64, time.Time) ([]repository.StaffAttendanceMonthlySummary, error)
     ListDailyPage(context.Context, int64, int64, time.Time, int, int) ([]repository.StaffAttendanceRecord, int, error)
+    ListDailyFilteredPage(context.Context, int64, int64, time.Time, repository.StaffAttendanceDailyFilter, int, int) ([]repository.StaffAttendanceRecord, int, error)
     ListMonthlyPage(context.Context, int64, int64, time.Time, int, int) ([]repository.StaffAttendanceMonthlySummary, int, error)
     Mark(context.Context, int64, int64, int64, time.Time, string, *string) (*repository.StaffAttendanceRecord, error)
     MarkBulk(context.Context, int64, int64, []int64, time.Time, string, *string) (int, error)
@@ -76,7 +77,11 @@ func (h *StaffAttendanceHandler) ListDaily(c *gin.Context) {
     if !valid { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"date must use YYYY-MM-DD"}); return }
     limit, offset, ok := parseStaffAttendancePagination(c)
     if !ok { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"limit must be 1-100 and offset must be a non-negative integer"}); return }
-    items, total, err := h.service.ListDailyPage(c.Request.Context(), actor, school, day, limit, offset)
+    filter := repository.StaffAttendanceDailyFilter{
+        Search: strings.TrimSpace(c.Query("search")),
+        Status: strings.TrimSpace(c.Query("status")),
+    }
+    items, total, err := h.service.ListDailyFilteredPage(c.Request.Context(), actor, school, day, filter, limit, offset)
     if err != nil { writeStaffAttendanceError(c, err); return }
     if items == nil { items = []repository.StaffAttendanceRecord{} }
     c.JSON(http.StatusOK, gin.H{"status":"success","date":raw,"data":items,"pagination":gin.H{"limit":limit,"offset":offset,"total":total}})
