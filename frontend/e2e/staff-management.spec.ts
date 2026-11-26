@@ -556,7 +556,7 @@ test("staff directory filters stay within mobile, tablet and desktop layouts", a
   const controls = page.locator(".staff-directory-controls");
   const filters = controls.locator(".staff-directory-filters");
   const labels = filters.locator("label");
-  await expect(labels).toHaveCount(3);
+  await expect(labels).toHaveCount(4);
 
   for (const viewport of [
     { width: 390, height: 844 },
@@ -565,7 +565,7 @@ test("staff directory filters stay within mobile, tablet and desktop layouts", a
   ]) {
     await page.setViewportSize(viewport);
     await expect(controls).toBeVisible();
-    for (let index = 0; index < 3; index += 1) {
+    for (let index = 0; index < 4; index += 1) {
       await expect(labels.nth(index)).toBeVisible();
       await expect(labels.nth(index).locator("button.app-select-trigger")).toBeVisible();
     }
