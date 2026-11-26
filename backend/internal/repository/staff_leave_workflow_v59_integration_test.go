@@ -697,7 +697,7 @@ func TestStaffLeaveRequestPaginationPostgresIntegration(t *testing.T) {
 		t.Fatalf("single-date filter total=%d rows=%d; want exactly the matching request", byDate.Total, len(byDate.Items))
 	}
 
-	crossSchool, err := f.repo.ListRequestsPage(f.ctx, f.adminPrincipalID, f.schoolID+999999, "", 0, "", "", "", 1, 2)
+	_, err = f.repo.ListRequestsPage(f.ctx, f.adminPrincipalID, f.schoolID+999999, "", 0, "", "", "", 1, 2)
 	if !errors.Is(err, ErrStaffLeaveAccessDenied) {
 		t.Fatalf("cross-school pagination error=%v, want access denied", err)
 	}
