@@ -1,3 +1,13 @@
+## 2026-11-26 — Staff directory and attendance read snapshots hardened
+
+- Staff Directory page counts and page rows now run in one read-only repeatable-read transaction for pool-backed requests. The directory summary's authorization and aggregate query also share one snapshot. Caller-owned transactions retain their existing isolation.
+- Staff Attendance Daily and Monthly totals and rows now use the same read-only repeatable-read pattern for pool-backed requests, preventing page totals from drifting away from returned rows while attendance is being marked or corrected.
+- Backend CI [45826370084](https://github.com/TheSumitNain/school-management-system/actions/runs/45826370084) **PASS** on `34d626dc613cfe1d0d94332c7fedd9a842fdabc5`: full migrations, Go/PostgreSQL integration tests and `go vet`.
+- Frontend CI [45825300711](https://github.com/TheSumitNain/school-management-system/actions/runs/45825300711) **PASS** on the preceding frontend checkpoint: TypeScript, Vite production build and 154 Playwright tests.
+- No schema migration or persistent school-data change. Changes remain on `work`; `main` remains untouched.
+
+---
+
 ## 2026-11-26 — Staff Attendance global filters and consistent pagination verified
 
 - Daily Attendance now applies employee search (name, employee code, designation) and status filters on the server before pagination. Supported status filters are all, unmarked, present, absent, late and half-day; search is trimmed and bounded to 100 Unicode code points.
