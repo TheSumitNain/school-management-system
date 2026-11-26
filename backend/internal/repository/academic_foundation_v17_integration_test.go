@@ -754,13 +754,16 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	// data mutation is rolled back with its mandatory audit event.
 	if _, err := tx.Exec(ctx, `
 		CREATE FUNCTION test_fail_academic_assignment_audit() RETURNS trigger
-		LANGUAGE plpgsql AS $
-		BEGIN
-			IF current_setting('test.fail_academic_assignment_audit', true) = NEW.action THEN
-				RAISE EXCEPTION 'forced academic assignment audit failure';
+		LANGUAGE plpgsql AS 'BEGIN
+			IF current_setting(''test.fail_academic_assignment_audit'', true) = NEW.action THEN
+				RAISE EXCEPTION ''forced academic assignment audit failure'';
 			END IF;
 			RETURN NEW;
-		END $;
+		END;'
+	`); err != nil {
+		t.Fatalf("create academic assignment audit failure function: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
 		CREATE TRIGGER test_fail_academic_assignment_audit
 		BEFORE INSERT ON audit_events FOR EACH ROW
 		EXECUTE FUNCTION test_fail_academic_assignment_audit()
