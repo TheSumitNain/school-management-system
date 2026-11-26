@@ -1,10 +1,11 @@
 ## 2026-11-26 — Staff qualification and experience report consistency hardened
 
+- Qualifications/Certifications and Experience report endpoints now validate supported filter enums, enforce page sizes from 1–200, and cap offsets at 1,000,000 in both handler and repository layers. Backend CI [45824021653](https://github.com/TheSumitNain/school-management-system/actions/runs/45824021653) **PASS** on `e1032f027b5b1e14a000bbe337c760ea6fe60c51`, including full migrations, Go/PostgreSQL integration and `go vet`.
+
 - School-wide Qualifications/Certifications and Experience report reads now execute aggregate count and paginated row queries in one read-only repeatable-read transaction for pool-backed requests. This prevents concurrent record changes from making a response's total/count summary disagree with its returned rows.
 - Existing caller-owned transactions are respected; the repository uses a nested transaction/savepoint and does not attempt to change the caller's isolation level.
 - Backend CI [45821044755](https://github.com/TheSumitNain/school-management-system/actions/runs/45821044755) **PASS** on `dfd88270723ab8e4ab069380c7c66d6a12b97d37`: full migrations, Go tests including PostgreSQL integration, and `go vet`.
 - A dedicated PostgreSQL integration test exercises both report endpoints through the production pool-backed transaction path, including permission resolution and count/page queries under read-only repeatable-read isolation. Backend CI [45823465290](https://github.com/TheSumitNain/school-management-system/actions/runs/45823465290) **PASS** on `e9a4e4d1963053d8d4d9a0718f2037d933fb5f14`.
-- The pool-backed PostgreSQL integration test was rerun with a self-provisioning School Admin fixture and passed without modifying the immutable School Admin permission bundle. Backend CI [45823465290](https://github.com/TheSumitNain/school-management-system/actions/runs/45823465290) **PASS** on `e9a4e4d1963053d8d4d9a0718f2037d933fb5f14`.
 - Frontend CI [45818884034](https://github.com/TheSumitNain/school-management-system/actions/runs/45818884034) **PASS** on `a105ebd50c6e32c2160750c39743059c02786d7d`: TypeScript, Vite production build and 153 Playwright tests, including staff qualification/experience report and complete-export coverage.
 - No schema migration or persistent school data change. Changes remain on `work`; `main` remains untouched.
 
