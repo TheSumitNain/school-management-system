@@ -11,7 +11,7 @@
 
 ## Concurrency guarantees
 
-- New substitution inserts lock both teacher principals in ascending principal-ID order and re-check that both canonical principals remain active staff.
+- New substitution inserts first take the same refresh-principal advisory locks used by account/profile lifecycle operations, in ascending principal-ID order, then lock both canonical principal rows in that order. They re-check that both canonical principals remain active staff before the V60 profile/assignment validators run. This preserves the established advisory → principal → profile lock order and prevents profile-inactivation deadlocks.
 - Disabling a principal takes the same database row lock. If substitution creation wins, the disable trigger sees the committed active substitution and rejects the disable; if disable wins, the later substitution insert sees the disabled principal and is rejected.
 - The trigger lock order is deterministic for both teachers to avoid opposite-direction teacher-pair deadlocks.
 - The V70 migration is additive and has a down migration that restores the previous V62 substitute-only trigger. No existing substitution rows are deleted or rewritten.
