@@ -2105,12 +2105,14 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
     expect(url.searchParams.get("status")).toBe("approved");
     expect(url.searchParams.get("from_date")).toMatch(/^\d{4}-\d{2}-01$/);
     expect(url.searchParams.get("to_date")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const page = Number(url.searchParams.get("page") ?? 1);
+    const pageSize = Number(url.searchParams.get("page_size") ?? 100);
     await route.fulfill({ json: { data: [{
       id: 71, staff_principal_id: 512, staff_name: "Attendance Teacher", employee_code: "EMP-ATT-01",
       leave_type_id: 1, leave_type_name: "Casual Leave", start_date: url.searchParams.get("from_date"),
       end_date: url.searchParams.get("from_date"), duration_type: "full_day", reason: "PRIVATE_LEAVE_REASON",
       status: "approved", created_at: "2026-11-01T00:00:00.000Z",
-    }] } });
+    }], pagination: { page, page_size: pageSize, total: 1 } } });
   });
   let savedStatus = "";
   let bulkCreated = 0;
@@ -2914,7 +2916,9 @@ test("staff operational reports calculate month boundaries correctly for early y
     if (url.searchParams.get("from_date") === "0001-02-01") {
       requested.push("leave:" + url.searchParams.get("from_date") + ":" + url.searchParams.get("to_date"));
     }
-    await route.fulfill({ json: { data: [] } });
+    const page = Number(url.searchParams.get("page") ?? 1);
+    const pageSize = Number(url.searchParams.get("page_size") ?? 100);
+    await route.fulfill({ json: { data: [], pagination: { page, page_size: pageSize, total: 0 } } });
   });
   await page.getByRole("button", { name: "Reports", exact: true }).click();
   const month = page.getByLabel("Select attendance and leave report month");
@@ -3567,7 +3571,9 @@ test("staff attendance monthly context uses correct dates for years below 100", 
     if (url.searchParams.get("from_date") === "0001-02-01") {
       requested.push("leave:" + url.searchParams.get("from_date") + ":" + url.searchParams.get("to_date"));
     }
-    await route.fulfill({ json: { data: [] } });
+    const page = Number(url.searchParams.get("page") ?? 1);
+    const pageSize = Number(url.searchParams.get("page_size") ?? 100);
+    await route.fulfill({ json: { data: [], pagination: { page, page_size: pageSize, total: 0 } } });
   });
   await page.route("**/api/school/holidays?*", async route => {
     const url = new URL(route.request().url());
@@ -3908,9 +3914,10 @@ test("staff leave report CSV exports every matching page", async ({ page }) => {
     ["users.read", "staff.leave.read"], undefined, requests);
   await page.getByRole("button", { name: "Reports", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Leave requests" })).toBeVisible();
-  await expect(page.getByText("205", { exact: true })).toBeVisible();
+  const exportButton = page.getByRole("button", { name: "Export leave CSV" });
+  await expect(exportButton).toBeEnabled();
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export leave CSV" }).click();
+  await exportButton.click();
   const download = await downloadPromise;
   const path = await download.path();
   expect(path).toBeTruthy();

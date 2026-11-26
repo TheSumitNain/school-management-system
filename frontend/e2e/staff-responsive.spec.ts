@@ -45,7 +45,10 @@ test("Staff Management tabs remain usable without page overflow on mobile, table
       return;
     }
     if (path === "/school/staff-leave/requests" && request.method() === "GET") {
-      await route.fulfill({ json: { data: [] } });
+      const url = new URL(request.url());
+      const page = Number(url.searchParams.get("page") ?? 1);
+      const pageSize = Number(url.searchParams.get("page_size") ?? 50);
+      await route.fulfill({ json: { data: [], pagination: { page, page_size: pageSize, total: 0 } } });
       return;
     }
     if (path === "/school/staff-leave/types" && request.method() === "GET") {

@@ -54,12 +54,14 @@ test("monthly staff report downloads attendance, approved leave and holidays as 
       return;
     }
     if (path === "/school/staff-leave/requests" && request.method() === "GET") {
+      const page = Number(url.searchParams.get("page") ?? 1);
+      const pageSize = Number(url.searchParams.get("page_size") ?? 100);
       await route.fulfill({ json: { data: [{
         id: 81, staff_principal_id: 702, employee_code: "T-702", staff_name: "Report Teacher",
         leave_type_id: 4, leave_type_name: "Medical Leave", start_date: "2026-11-04",
         end_date: "2026-11-04", duration_type: "full_day", reason: "Medical appointment",
         status: "approved", created_at: "2026-11-01T09:00:00Z",
-      }] } });
+      }], pagination: { page, page_size: pageSize, total: 1 } } });
       return;
     }
     if (path === "/school/holidays" && request.method() === "GET") {
