@@ -2154,7 +2154,7 @@ test("staff substitution history exports every matching page", async ({ page }) 
       pagination: { page: pageNumber, page_size: pageSize, total: 51 },
     } });
   });
-  await page.getByRole("button", { name: "Substitutions" }).click();
+  await expect(page.getByRole("heading", { name: "Substitute Teacher Coverage" })).toBeVisible();
   await expect(page.getByText("Showing 1–50 of 51")).toBeVisible();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export all CSV" }).click();
