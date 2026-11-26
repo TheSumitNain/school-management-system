@@ -101,6 +101,9 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	var secondTimetableEntryID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,room,created_by_principal_id,updated_by_principal_id)
 		VALUES($1,$2,$3,$4,$5,$6,$7,1,'Second room',$8,$8) RETURNING id`,schoolID,yearID,sectionID,subjectID,originalID,originalAssignmentID,secondPeriodID,originalID).Scan(&secondTimetableEntryID);err!=nil{t.Fatalf("create second-period timetable entry: %v",err)}
+	var thirdPeriodID int64
+	if err=tx.QueryRow(ctx,`INSERT INTO timetable_periods(school_id,academic_year_id,period_number,name,starts_at,ends_at)
+		VALUES($1,$2,3,'Period 3',TIME '11:00',TIME '11:40') RETURNING id`,schoolID,yearID).Scan(&thirdPeriodID);err!=nil{t.Fatalf("create third timetable period: %v",err)}
 	var secondSubstitutionID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO staff_substitutions(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
 		VALUES($1,$2,$3,$4::date,$5,$6,'Second period cover',$5) RETURNING id`,schoolID,secondTimetableEntryID,secondPeriodID,coverDate,originalID,substituteID).Scan(&secondSubstitutionID);err!=nil{t.Fatalf("create second-period substitution: %v",err)}
@@ -236,9 +239,6 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	var secondEntryID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO timetable_entries(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,teacher_subject_assignment_id,period_id,day_of_week,created_by_principal_id,updated_by_principal_id)
 		VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8) RETURNING id`,schoolID,yearID,secondSectionID,subjectID,substituteID,secondAssignmentID,periodID,actorPrincipalID).Scan(&secondEntryID);err!=nil{t.Fatalf("teacher schedule should be allowed after substitution cancellation: %v",err)}
-	var thirdPeriodID int64
-	if err=tx.QueryRow(ctx,`INSERT INTO timetable_periods(school_id,academic_year_id,period_number,name,starts_at,ends_at)
-		VALUES($1,$2,3,'Period 3',TIME '11:00',TIME '11:40') RETURNING id`,schoolID,yearID).Scan(&thirdPeriodID);err!=nil{t.Fatalf("create third timetable period: %v",err)}
 	var secondOriginalAssignmentID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO teacher_subject_assignments(school_id,academic_year_id,section_id,subject_id,teacher_principal_id,assigned_by_principal_id)
 		VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,schoolID,yearID,secondSectionID,subjectID,secondOriginalID,actorPrincipalID).Scan(&secondOriginalAssignmentID);err!=nil{t.Fatalf("assign original teacher to second section: %v",err)}
