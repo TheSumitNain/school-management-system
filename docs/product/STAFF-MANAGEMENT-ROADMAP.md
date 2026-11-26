@@ -1071,3 +1071,13 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Backend CI [45648554311](https://github.com/TheSumitNain/school-management-system/actions/runs/45648554311) **PASS** on `5304b86609762741b500046e730e91c874a6bb81`: migrations, Go tests including PostgreSQL integration tests, and `go vet` passed.
 - This is a capacity/truncation correction, **not** server-side pagination. Bounded Leave/Substitution pages with total counts and complete all-pages CSV/report export remain open; do not describe these workflows as fully scalable until those are implemented and verified.
 - `main` remains untouched. No schema migration or persistent database change was made.
+
+
+
+## 2026-11-26 follow-up — read-only leave/holiday permissions and substitution tenant boundary
+
+- Added browser acceptance for leave-read-only and holiday-read-only principals. Both can reach the permitted workspace without triggering Staff Directory requests; mutation actions are absent for these read-only principals.
+- Frontend CI [45745435651](https://github.com/TheSumitNain/school-management-system/actions/runs/45745435651) **PASS** with TypeScript, production build and the full Playwright suite. Backend CI [45745435658](https://github.com/TheSumitNain/school-management-system/actions/runs/45745435658) **PASS**.
+- Added PostgreSQL integration assertions using a School Admin with home-school substitution permissions: cross-school create, cancel and list attempts must all return access denied. A separate test covers foreign-school authorization before input/record handling.
+- Backend CI [45746067897](https://github.com/TheSumitNain/school-management-system/actions/runs/45746067897) **PASS**: full migrations, Go/PostgreSQL integration suite and `go vet`.
+- These are regression-test improvements, not a claim that Staff Management is complete. Identity-schema approval for onboarding/bulk import, school policy approval for leave entitlements, document-storage approval and authenticated School Admin browser sign-off remain outstanding. `main` remains untouched.
