@@ -171,6 +171,12 @@ export function StaffManagementPage({ permissions }: Props) {
   };
   const directoryQuery = useSchoolStaffDirectoryQuery(canReadStaff && activeTab === "directory", directoryFilters);
   useEffect(() => { setDirectoryPageIndex(0); }, [search, employmentFilter, accountFilter, profileFilter]);
+  useEffect(() => {
+    const total = directoryQuery.data?.total;
+    if (total === undefined) return;
+    const lastPageIndex = Math.max(0, Math.ceil(total / 50) - 1);
+    if (directoryPageIndex > lastPageIndex) setDirectoryPageIndex(lastPageIndex);
+  }, [directoryQuery.data?.total, directoryPageIndex]);
   const [action, setAction] = useState<Action>(null);
   const [selected, setSelected] = useState<StaffRecord | null>(null);
   const [profileFor, setProfileFor] = useState<StaffRecord | null>(null);
