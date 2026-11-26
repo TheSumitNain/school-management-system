@@ -221,8 +221,8 @@ function QualificationsReport({ permissions }: Props) {
     setExporting(true);
     setExportError("");
     try {
-      const rows = [...page.rows];
-      let nextOffset = rows.length;
+      const rows: StaffQualificationReportRow[] = [];
+      let nextOffset = 0;
       while (nextOffset < page.total) {
         const result = await getStaffQualificationsReport({
           recordType,
@@ -296,7 +296,7 @@ function ExperienceReport({ permissions }: Props) {
     if(!page||page.total===0||exporting)return;
     setExporting(true);setExportError("");
     try{
-      const rows=[...page.rows];let nextOffset=rows.length;
+      const rows:StaffExperienceReportRow[]=[];let nextOffset=0;
       while(nextOffset<page.total){
         const result=await getStaffExperienceReport({employmentType:employmentType||undefined,currentOnly,limit:200,offset:nextOffset});
         if(result.report.rows.length===0)throw new Error("The report returned an incomplete page.");
