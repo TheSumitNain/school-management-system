@@ -3374,7 +3374,7 @@ test("staff directory filters stay locked while the complete CSV is being prepar
   await expect(page.getByLabel("Filter by employment status")).toBeDisabled();
   await expect(page.getByRole("button",{name:"Clear filters"})).toBeDisabled();
   const download=await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/^staff-directory-\\d{4}-\\d{2}-\\d{2}\\.csv$/);
+  expect(download.suggestedFilename()).toMatch(/^staff-directory-\d{4}-\d{2}-\d{2}\.csv$/);
   await expect(page.getByLabel("Search staff by name, code, designation, mobile or username")).toBeEnabled();
 });
 
