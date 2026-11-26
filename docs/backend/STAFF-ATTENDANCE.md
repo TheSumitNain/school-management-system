@@ -2,7 +2,7 @@
 
 - Staff Directory page counts and page rows now run in one read-only repeatable-read transaction for pool-backed requests. The directory summary's authorization and aggregate query also share one snapshot. Caller-owned transactions retain their existing isolation.
 - Staff Attendance Daily and Monthly totals and rows now use the same read-only repeatable-read pattern for pool-backed requests, preventing page totals from drifting away from returned rows while attendance is being marked or corrected.
-- Backend CI [45826370084](https://github.com/TheSumitNain/school-management-system/actions/runs/45826370084) **PASS** on `34d626dc613cfe1d0d94332c7fedd9a842fdabc5`: full migrations, Go/PostgreSQL integration tests and `go vet`.
+- Backend CI [45827227688](https://github.com/TheSumitNain/school-management-system/actions/runs/45827227688) **PASS** on `ec0825d386889bbc84bd4a243f0d58fe2ced6881`: full migrations, Go/PostgreSQL integration tests and `go vet`.
 - Frontend CI [45825300711](https://github.com/TheSumitNain/school-management-system/actions/runs/45825300711) **PASS** on the preceding frontend checkpoint: TypeScript, Vite production build and 154 Playwright tests.
 - No schema migration or persistent school-data change. Changes remain on `work`; `main` remains untouched.
 
@@ -70,7 +70,7 @@ Every API operation must re-evaluate effective permissions on the server, includ
 
 ## API contract
 
-- `GET /school/staff-attendance?date=YYYY-MM-DD&limit=50&offset=0`: active staff roster and that day's attendance state. Optional `search` matches name, employee code or designation across the school roster; optional `status` accepts `all`, `unmarked`, `present`, `absent`, `late` or `half_day`. Daily limit is 1–100 (default 50), offset is non-negative, and totals reflect the active filters.
+- `GET /school/staff-attendance?date=YYYY-MM-DD&limit=50&offset=0`: active staff roster and that day's attendance state. Optional `search` matches name, employee code or designation across the school roster; optional `status` accepts `all`, `unmarked`, `present`, `absent`, `late` or `half_day`. Daily limit is 1–100 (default 50), offset is 0–1,000,000, and totals reflect the active filters.
 - `GET /school/staff-attendance/month?month=YYYY-MM&limit=50&offset=0`: month register with derived per-staff totals and daily entries; pagination is bounded to 1–100 (default 50).
 - `POST /school/staff-attendance`: create one daily record; duplicate staff/date returns conflict, never silently overwrites.
 - `POST /school/staff-attendance/bulk`: atomically create records for 1–1000 unique staff principals; if any target is invalid or any duplicate exists, the entire batch rolls back.

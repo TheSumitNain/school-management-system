@@ -1,3 +1,13 @@
+## 2026-11-26 — paginated staff reads bounded and snapshot-consistent
+
+- Staff Directory, Attendance Daily/Monthly, Qualifications/Experience reports, Leave Requests and Substitutions now keep authorization and their count/page reads in a single read-only repeatable-read transaction for pool-backed requests. Existing caller-owned transactions retain their isolation level.
+- Leave and Substitution page repositories authorize the active actor/school before validating date filters, then read count and rows from the same snapshot. This preserves fail-closed authorization ordering.
+- Attendance limit is bounded to 1–100 (default 50) and offset to 0–1,000,000 at the handler/service/repository boundaries; Daily search and status filters are applied server-side before pagination.
+- Backend CI [45827227688](https://github.com/TheSumitNain/school-management-system/actions/runs/45827227688) **PASS** on `ec0825d386889bbc84bd4a243f0d58fe2ced6881`: all migrations, Go/PostgreSQL integration tests and `go vet`. Frontend CI [45825300711](https://github.com/TheSumitNain/school-management-system/actions/runs/45825300711) **PASS** on the preceding frontend checkpoint with 154 Playwright tests.
+- No schema migration or persistent school-data change. Changes remain on `work`; `main` remains untouched.
+
+---
+
 ## 2026-11-26 — Staff directory and attendance read snapshots hardened
 
 - Staff Directory page counts and page rows now run in one read-only repeatable-read transaction for pool-backed requests. The directory summary's authorization and aggregate query also share one snapshot. Caller-owned transactions retain their existing isolation.
