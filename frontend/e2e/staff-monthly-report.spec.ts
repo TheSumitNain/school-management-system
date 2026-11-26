@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 
 test("monthly staff report downloads attendance, approved leave and holidays as separate CSV rows", async ({ page }) => {
   const permissions = ["users.read", "staff.attendance.read", "staff.leave.read", "staff.holidays.read"];
+  let omitAttendancePaginationForExport = false;
 
   await page.route("**/api/**", async route => {
     const request = route.request();
@@ -42,15 +43,23 @@ test("monthly staff report downloads attendance, approved leave and holidays as 
     }
     if (path === "/school/staff-attendance/month" && request.method() === "GET") {
       const month = url.searchParams.get("month") ?? "2026-11";
-      await route.fulfill({ json: { month, data: [{
-        staff_principal_id: 702, employee_code: "T-702", full_name: "=1+1 Report Teacher",
-        designation: "Teacher", present_days: 2, absent_days: 1, late_days: 0, half_days: 1,
-        records: [
+      const limit = Number(url.searchParams.get("limit") ?? 50);
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      const allRows = Array.from({ length: 101 }, (_, index) => ({
+        staff_principal_id: 702 + index,
+        employee_code: "T-" + (702 + index),
+        full_name: index === 0 ? "=1+1 Report Teacher" : index === 100 ? "Final Report Teacher" : "Report Teacher " + index,
+        designation: "Teacher", present_days: index === 0 ? 2 : 1, absent_days: index === 0 ? 1 : 0,
+        late_days: 0, half_days: index === 0 ? 1 : 0,
+        records: index === 0 ? [
           { id: 1, date: month + "-03", status: "present", remarks: "=1+1" },
           { id: 2, date: month + "-04", status: "absent", remarks: "Approved medical leave is separate" },
           { id: 3, date: month + "-05", status: "half_day", remarks: null },
-        ],
-      }] } });
+        ] : [],
+      }));
+      const payload = { month, data: allRows.slice(offset, offset + limit) };
+      const omitPagination = url.searchParams.get("limit") === "100" && omitAttendancePaginationForExport;
+      await route.fulfill({ json: omitPagination ? payload : { ...payload, pagination: { limit, offset, total: allRows.length } } });
       return;
     }
     if (path === "/school/staff-leave/requests" && request.method() === "GET") {
@@ -94,10 +103,19 @@ test("monthly staff report downloads attendance, approved leave and holidays as 
   const csv = await readFile(filePath!, "utf8");
   expect(csv).toContain("Attendance summary");
   expect(csv).toContain("Report Teacher");
+  expect(csv).toContain("Final Report Teacher");
+  expect(csv).toContain("T-802");
   expect(csv).toContain("Attendance entry");
   expect(csv).toContain("'=1+1 Report Teacher");
   expect(csv).toContain("Approved leave");
   expect(csv).toContain("Medical Leave");
   expect(csv).toContain("School holiday");
   expect(csv).toContain("Children's Day");
+
+  // Missing pagination metadata must never be mistaken for a complete export.
+  omitAttendancePaginationForExport = true;
+  const missingMetadataDownload = page.waitForEvent("download", { timeout: 1000 }).catch(() => null);
+  await page.getByRole("button", { name: "Download complete monthly report" }).click();
+  await expect(page.getByRole("alert")).toContainText("complete monthly report could not be verified");
+  expect(await missingMetadataDownload).toBeNull();
 });

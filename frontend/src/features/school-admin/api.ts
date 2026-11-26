@@ -685,21 +685,37 @@ export function getMonthlyStaffAttendance(month: string, limit = 50, offset = 0,
 export async function getAllMonthlyStaffAttendance(month: string, signal?: AbortSignal): Promise<StaffAttendanceMonthlySummary[]> {
   const pageSize = 100;
   const first = await getMonthlyStaffAttendance(month, pageSize, 0, signal);
-  const total = first.pagination?.total ?? first.data.length;
-  const rows = [...first.data];
-  if (!first.pagination || rows.length >= total) return rows;
-  if (first.pagination.limit !== pageSize || first.pagination.offset !== 0 || rows.length !== Math.min(pageSize, total)) {
-    throw new Error("Monthly attendance export returned an incomplete first page.");
+  const firstPagination = first.pagination;
+  if (!Array.isArray(first.data) || !firstPagination ||
+      !Number.isSafeInteger(firstPagination.limit) || firstPagination.limit !== pageSize ||
+      !Number.isSafeInteger(firstPagination.offset) || firstPagination.offset !== 0 ||
+      !Number.isSafeInteger(firstPagination.total) || firstPagination.total < 0 ||
+      first.data.length !== Math.min(pageSize, firstPagination.total)) {
+    throw new Error("Monthly attendance export is missing valid first-page pagination metadata.");
   }
+
+  const total = firstPagination.total;
+  const rows = [...first.data];
   for (let offset = pageSize; offset < total; offset += pageSize) {
     const page = await getMonthlyStaffAttendance(month, pageSize, offset, signal);
-    if (page.pagination?.total !== total || page.pagination.offset !== offset ||
+    const pagination = page.pagination;
+    if (!Array.isArray(page.data) || !pagination ||
+        !Number.isSafeInteger(pagination.limit) || pagination.limit !== pageSize ||
+        !Number.isSafeInteger(pagination.offset) || pagination.offset !== offset ||
+        !Number.isSafeInteger(pagination.total) || pagination.total !== total ||
         page.data.length !== Math.min(pageSize, total - offset)) {
-      throw new Error("Monthly attendance changed while exporting. Retry the report.");
+      throw new Error("Monthly attendance changed or returned an incomplete page. Retry the report.");
     }
     rows.push(...page.data);
   }
-  const unique = new Set(rows.map(item => item.staff_principal_id));
+
+  const unique = new Set<number>();
+  for (const row of rows) {
+    if (!Number.isSafeInteger(row.staff_principal_id) || row.staff_principal_id <= 0 || unique.has(row.staff_principal_id)) {
+      throw new Error("Monthly attendance export contains duplicate or invalid staff identities.");
+    }
+    unique.add(row.staff_principal_id);
+  }
   if (rows.length !== total || unique.size !== total) {
     throw new Error("Monthly attendance export is incomplete or contains duplicate staff.");
   }

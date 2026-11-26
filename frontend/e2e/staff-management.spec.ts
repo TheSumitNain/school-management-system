@@ -119,7 +119,10 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       return;
     }
     if (path === "/school/staff-attendance/month" && method === "GET") {
-      await route.fulfill({ json: { month: url.searchParams.get("month"), data: [{ staff_principal_id: 501, employee_code: "EMP-ACTIVE", full_name: "Active Teacher", designation: "Mathematics Teacher", present_days: 18, absent_days: 1, late_days: 2, half_days: 0, records: [] }] } });
+      const limit = Number(url.searchParams.get("limit") ?? 50);
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      const data = [{ staff_principal_id: 501, employee_code: "EMP-ACTIVE", full_name: "Active Teacher", designation: "Mathematics Teacher", present_days: 18, absent_days: 1, late_days: 2, half_days: 0, records: [] }];
+      await route.fulfill({ json: { month: url.searchParams.get("month"), data: data.slice(offset, offset + limit), pagination: { limit, offset, total: data.length } } });
       return;
     }
     if (path === "/school/staff-leave/types" && method === "GET") {
@@ -3314,7 +3317,9 @@ test("staff operational reports calculate month boundaries correctly for early y
   await page.route("**/api/school/staff-attendance/month?*", async route => {
     const url = new URL(route.request().url());
     if (url.searchParams.get("month") === "0001-02") requested.push("attendance:" + url.searchParams.get("month"));
-    await route.fulfill({ json: { month: url.searchParams.get("month"), data: [] } });
+    const limit = Number(url.searchParams.get("limit") ?? 50);
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    await route.fulfill({ json: { month: url.searchParams.get("month"), data: [], pagination: { limit, offset, total: 0 } } });
   });
   await page.route("**/api/school/staff-leave/requests?*", async route => {
     const url = new URL(route.request().url());
@@ -4108,7 +4113,9 @@ test("staff attendance monthly context uses correct dates for years below 100", 
   await page.route("**/api/school/staff-attendance/month?*", async route => {
     const url = new URL(route.request().url());
     if (url.searchParams.get("month") === "0001-02") requested.push("attendance:" + url.searchParams.get("month"));
-    await route.fulfill({ json: { month: url.searchParams.get("month"), data: [] } });
+    const limit = Number(url.searchParams.get("limit") ?? 50);
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    await route.fulfill({ json: { month: url.searchParams.get("month"), data: [], pagination: { limit, offset, total: 0 } } });
   });
   await page.route("**/api/school/staff-leave/requests?*", async route => {
     const url = new URL(route.request().url());

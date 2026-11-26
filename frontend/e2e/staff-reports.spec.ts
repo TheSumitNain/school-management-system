@@ -213,7 +213,9 @@ test("staff operational reports are reachable with report-only permissions witho
     }
     if (path === "/school/staff-attendance/month" && request.method() === "GET") {
       attendanceRequests.push(url.searchParams.get("month") ?? "");
-      await route.fulfill({ json: { month: url.searchParams.get("month"), data: [] } });
+      const limit = Number(url.searchParams.get("limit") ?? 50);
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      await route.fulfill({ json: { month: url.searchParams.get("month"), data: [], pagination: { limit, offset, total: 0 } } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
