@@ -157,3 +157,60 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   await expect(qualificationSection.getByRole("alert")).toContainText("No partial CSV was created");
   expect(await failedDownload).toBeNull();
 });
+
+test("staff operational reports are reachable with report-only permissions without loading the staff directory", async ({ page }) => {
+  const attendanceOnlyAdmin = {
+    principal_id: 102,
+    principal_type: "staff",
+    status: "active",
+    school_id: 10,
+    username: "attendance-reports-admin",
+    permissions: ["staff.attendance.read"],
+  };
+  const staffDirectoryRequests: string[] = [];
+  const attendanceRequests: string[] = [];
+
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && request.method() === "POST") {
+      await route.fulfill({ json: { access_token: "staff-report-only-e2e-token", token_type: "Bearer", principal: attendanceOnlyAdmin } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: attendanceOnlyAdmin });
+      return;
+    }
+    if (path === "/school/staff" && request.method() === "GET") {
+      staffDirectoryRequests.push(request.method() + " " + path);
+      await route.fulfill({ json: { staff: [] } });
+      return;
+    }
+    if (path === "/school/staff-attendance/month" && request.method() === "GET") {
+      attendanceRequests.push(url.searchParams.get("month") ?? "");
+      await route.fulfill({ json: { month: url.searchParams.get("month"), data: [] } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("attendance-reports-admin");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: "Staff", exact: true }).click();
+
+  await expect(page.getByRole("button", { name: "Reports", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Attendance & leave reports" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Monthly staff attendance" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Staff Reports" })).toHaveCount(0);
+  await expect.poll(() => attendanceRequests.length).toBeGreaterThan(0);
+  expect(staffDirectoryRequests).toHaveLength(0);
+});
