@@ -2407,6 +2407,7 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   });
   let savedStatus = "";
   let bulkCreated = 0;
+  let monthlyTotal = 101;
   const dailyRecords = [
     { id: null as number | null, school_id: 10, staff_principal_id: 512, employee_code: "EMP-ATT-01", full_name: "Attendance Teacher", designation: "Science Teacher", attendance_date: "", status: null as string | null },
     { id: null as number | null, school_id: 10, staff_principal_id: 513, employee_code: "EMP-ATT-02", full_name: "Bulk Attendance Teacher", designation: "English Teacher", attendance_date: "", status: null as string | null },
@@ -2417,7 +2418,6 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
     if (request.method() === "GET" && url.pathname.endsWith("/month")) {
       const limit = Number(url.searchParams.get("limit") ?? 50);
       const offset = Number(url.searchParams.get("offset") ?? 0);
-      let monthlyTotal = 101;
       const allMonthly = Array.from({ length: 101 }, (_, index) => ({
         staff_principal_id: 512 + index,
         employee_code: `EMP-ATT-${String(index + 1).padStart(2, "0")}`,
