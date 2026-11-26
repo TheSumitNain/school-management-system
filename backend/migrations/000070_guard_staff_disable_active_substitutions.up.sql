@@ -10,6 +10,16 @@ AS $v62$
 DECLARE
     v_active_count INTEGER;
 BEGIN
+    -- Match the repository's refresh/profile lifecycle lock order: advisory
+    -- principal locks first, then canonical principal rows, then V60 profile
+    -- row locks. Direct profile SQL uses pg_try_advisory_xact_lock in V69,
+    -- so it fails fast instead of deadlocking while holding a profile row.
+    PERFORM pg_advisory_xact_lock(hashtextextended('refresh-principal:' || ids.principal_id::text,0))
+      FROM (
+        SELECT DISTINCT unnest(ARRAY[NEW.original_teacher_principal_id,NEW.substitute_teacher_principal_id]) AS principal_id
+         ORDER BY principal_id
+      ) ids;
+
     PERFORM ap.id
       FROM public.auth_principals ap
      WHERE ap.id IN (NEW.original_teacher_principal_id,NEW.substitute_teacher_principal_id)
