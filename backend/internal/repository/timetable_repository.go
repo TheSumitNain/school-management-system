@@ -244,9 +244,7 @@ func (r *AcademicRepository) ListTeacherWorkloadReport(ctx context.Context,actor
 		JOIN auth_principals ap ON ap.id=sp.principal_id AND ap.principal_type='staff'
 		LEFT JOIN timetable_entries te ON te.school_id=sp.school_id AND te.teacher_principal_id=sp.principal_id AND te.academic_year_id=$2
 		LEFT JOIN timetable_periods p ON p.id=te.period_id AND p.school_id=te.school_id AND p.academic_year_id=te.academic_year_id
-		WHERE sp.school_id=$1
-		  AND sp.staff_type='teaching' AND sp.employment_status='active'
-		  AND (NOT $3 OR sp.principal_id=$4)
+		WHERE sp.school_id=$1 AND (NOT $3 OR sp.principal_id=$4)
 		GROUP BY sp.principal_id,sp.full_name,sp.employee_code,sp.designation,sp.employment_status,ap.status,COALESCE(te.day_of_week,0)
 		ORDER BY lower(sp.full_name),COALESCE(te.day_of_week,0)`,schoolID,yearID,teacherOnly,actorID)
 	if err!=nil{return nil,fmt.Errorf("list teacher workload report: %w",err)}
