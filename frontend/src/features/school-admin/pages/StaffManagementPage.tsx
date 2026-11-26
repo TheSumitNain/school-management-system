@@ -124,6 +124,11 @@ export function StaffManagementPage({ permissions }: Props) {
   const canAssignRoles = permissions.includes("roles.assign");
   const canManageOverrides = permissions.includes("permissions.override");
   const canReadStaff = permissions.includes("users.read");
+  const canReadOperationalReports = canReadStaff ||
+    permissions.includes("staff.attendance.read") ||
+    permissions.includes("staff.leave.read") ||
+    permissions.includes("teacher_assignments.read") ||
+    permissions.includes("class_incharge_assignments.read");
   const hasLeaveWorkspace = permissions.includes("staff.leave.read") || permissions.includes("staff.holidays.read") || permissions.includes("staff.holidays.manage");
   const hasSubstitutionWorkspace = permissions.includes("staff.substitutions.read") || (canReadStaff && permissions.includes("staff.substitutions.manage"));
   const initialTab: "overview" | "directory" | "reports" | "assignments" | "attendance" | "leave" | "substitutions" | "workloadReport" | "idCards" =
@@ -145,7 +150,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const activeTabAllowed =
     (activeTab === "overview" && (canReadStaff || canCreate)) ||
     (activeTab === "directory" && canReadStaff) ||
-    (activeTab === "reports" && canReadStaff) ||
+    (activeTab === "reports" && canReadOperationalReports) ||
     (activeTab === "idCards" && canReadStaff) ||
     (activeTab === "assignments" && (permissions.includes("teacher_assignments.read") || permissions.includes("class_incharge_assignments.read"))) ||
     (activeTab === "attendance" && permissions.includes("staff.attendance.read")) ||
@@ -579,7 +584,7 @@ export function StaffManagementPage({ permissions }: Props) {
         {hasSubstitutionWorkspace && <button type="button" className={activeTab === "substitutions" ? "active" : ""} aria-current={activeTab === "substitutions" ? "page" : undefined} onClick={() => setActiveTab("substitutions")}><CalendarDays size={16}/> Substitutions</button>}
         {permissions.includes("timetable.read") && <button type="button" className={activeTab === "workloadReport" ? "active" : ""} aria-current={activeTab === "workloadReport" ? "page" : undefined} onClick={() => setActiveTab("workloadReport")}><BarChart3 size={16}/> Workload Report</button>}
         {!(permissions.includes("staff.leave.read") || permissions.includes("staff.holidays.read") || permissions.includes("staff.holidays.manage")) && <button type="button" className="upcoming" disabled title="Leave read permission required to open this workspace"><CalendarDays size={16}/> Leave <span>Restricted</span></button>}
-        {permissions.includes("users.read") && <button type="button" className={activeTab === "reports" ? "active" : ""} aria-current={activeTab === "reports" ? "page" : undefined} onClick={() => setActiveTab("reports")}><FileText size={16}/> Reports</button>}
+        {canReadOperationalReports && <button type="button" className={activeTab === "reports" ? "active" : ""} aria-current={activeTab === "reports" ? "page" : undefined} onClick={() => setActiveTab("reports")}><FileText size={16}/> Reports</button>}
         {permissions.includes("users.read") && <button type="button" className={activeTab === "idCards" ? "active" : ""} aria-current={activeTab === "idCards" ? "page" : undefined} onClick={() => setActiveTab("idCards")}><FileText size={16}/> ID Cards</button>}
       </nav>
 
@@ -653,7 +658,7 @@ export function StaffManagementPage({ permissions }: Props) {
       {activeTab === "leave" && <StaffLeaveWorkspace permissions={permissions} staff={staff} canReadStaff={canReadStaff}/>}
       {activeTab === "substitutions" && <StaffSubstitutionWorkspace permissions={permissions} staff={staff}/>}
       {activeTab === "workloadReport" && <StaffWorkloadReportWorkspace permissions={permissions}/>}
-      {activeTab === "reports" && permissions.includes("users.read") && <section className="staff-reports-workspace">
+      {activeTab === "reports" && canReadStaff && <section className="staff-reports-workspace">
         <div className="staff-reports-heading"><div><h2>Staff Reports</h2><p>School-scoped employment, account and profile readiness summary. Sensitive contact and login details are excluded.</p></div><button type="button" className="staff-directory-export" onClick={() => void runDirectoryExport(staff)} disabled={query.isPending || query.isError || staff.length === 0 || directoryExporting}><Download size={14}/> Export staff report</button></div>
         {query.isPending && <p role="status">Loading staff report…</p>}
         {query.isError && <div className="staff-overview-error" role="alert">Unable to load staff report. <button type="button" onClick={() => void query.refetch()}>Retry</button></div>}
@@ -669,7 +674,7 @@ export function StaffManagementPage({ permissions }: Props) {
           <p className="staff-reports-note">This summary covers current staff records only. Attendance and leave reports appear below when their separate read permissions are available. Qualifications, leave balances and payroll calculations are not included.</p>
         </>}
       </section>}
-      {activeTab === "reports" && permissions.includes("users.read") && <StaffOperationalReportsWorkspace permissions={permissions}/>}
+      {activeTab === "reports" && canReadOperationalReports && <StaffOperationalReportsWorkspace permissions={permissions}/>}
       {activeTab === "idCards" && permissions.includes("users.read") && <StaffIDCardsWorkspace staff={staff}/>}
       {activeTab === "directory" && canReadStaff && <section className="table-panel">
         <div className="toolbar staff-directory-toolbar"><div><h2>All staff</h2><small>{serverDirectory ? `${filtered.length ? directoryPageIndex * 50 + 1 : 0}–${directoryPageIndex * 50 + filtered.length} of ${directoryTotal}` : `${filtered.length} of ${staff.length}`} staff members</small></div><div className="staff-directory-controls"><button type="button" className="staff-directory-export" onClick={() => void runDirectoryExport(filtered, directoryFilters)} disabled={filtered.length===0 || !permissions.includes("users.read") || directoryQuery.isFetching || directoryExporting}><Download size={14}/> Export CSV</button><div className="search"><Search size={16}/><input value={search} disabled={directoryExporting} onChange={event => setSearch(event.target.value)} placeholder="Search by name, code, designation, mobile or username" aria-label="Search staff by name, code, designation, mobile or username"/></div><div className="staff-directory-filters"><label>Employment<Select value={employmentFilter} disabled={directoryExporting} onChange={setEmploymentFilter} ariaLabel="Filter by employment status" options={[{value:"all",label:"All employment"},{value:"active",label:"Active"},{value:"inactive",label:"Inactive"}]}/></label><label>Login account<Select value={accountFilter} disabled={directoryExporting} onChange={setAccountFilter} ariaLabel="Filter by login account status" options={[{value:"all",label:"All accounts"},{value:"enabled",label:"Enabled"},{value:"disabled",label:"Disabled"}]}/></label><label>Profile<Select value={profileFilter} disabled={directoryExporting} onChange={setProfileFilter} ariaLabel="Filter by profile completeness" options={[{value:"all",label:"All profiles"},{value:"complete",label:"Complete"},{value:"incomplete",label:"Incomplete"}]}/></label></div>{(search.trim() || employmentFilter !== "all" || accountFilter !== "all" || profileFilter !== "all") && <button type="button" className="staff-clear-filters" onClick={() => {setSearch("");setEmploymentFilter("all");setAccountFilter("all");setProfileFilter("all");}} disabled={directoryExporting}>Clear filters</button>}</div></div>
