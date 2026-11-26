@@ -30,7 +30,19 @@ func TestStaffReportsUsePoolBackedReadOnlySnapshotPostgresIntegration(t *testing
 	}
 	if !hasRole {
 		var platformAdminID, schoolAdminRoleID int64
-		err = tx.QueryRow(ctx, `SELECT id FROM auth_principals WHERE principal_type='platform_admin' AND status='active' ORDER BY id LIMIT 1`).Scan(&platformAdminID)
+		err = tx.QueryRow(ctx, `
+			SELECT ap.id
+			FROM platform_admin_accounts pa
+			JOIN auth_principals ap ON ap.id=pa.principal_id
+			JOIN principal_roles pr ON pr.principal_id=ap.id AND pr.revoked_at IS NULL
+			JOIN roles r ON r.id=pr.role_id
+			JOIN role_permissions rp ON rp.role_id=r.id
+			JOIN permissions p ON p.id=rp.permission_id
+			WHERE ap.principal_type='platform_admin' AND ap.status='active'
+			  AND r.role_key='platform_admin' AND r.scope_type='platform' AND r.is_system=TRUE
+			  AND p.permission_key='platform.permissions.delegate' AND p.scope_type='platform' AND p.is_active=TRUE
+			LIMIT 1
+		`).Scan(&platformAdminID)
 		if errors.Is(err, pgx.ErrNoRows) { t.Skip("an active Platform Admin is required for this fixture") }
 		if err != nil { t.Fatalf("load active Platform Admin: %v", err) }
 		if err := tx.QueryRow(ctx, `SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff' AND scope_type='school' AND role_key='school_admin' AND is_system=TRUE`, schoolID).Scan(&schoolAdminRoleID); err != nil {
