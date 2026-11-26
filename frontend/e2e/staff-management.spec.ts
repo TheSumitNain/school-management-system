@@ -2075,6 +2075,27 @@ test("staff profile history is permission-gated and renders staff audit events",
   await expect(dialog.getByText(expectedIST)).toBeVisible();
 });
 
+test("leave-read-only permission opens applications without staff directory or mutation controls", async ({ page }) => {
+  const staffDirectoryRequests: string[] = [];
+  const leaveReads: string[] = [];
+  page.on("request", request => {
+    const pathname = new URL(request.url()).pathname;
+    if (/^\/api\/school\/staff(?:\/|$)/.test(pathname)) staffDirectoryRequests.push(request.url());
+    if (pathname === "/api/school/staff-leave/requests") leaveReads.push(request.url());
+  });
+  await signInAndOpenStaff(page, [], undefined, ["staff.leave.read"]);
+  await expect(page.getByRole("heading", { name: "Staff Management" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Leave & Holidays" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Applications" })).toBeVisible();
+  await expect(page.getByText("Leave Teacher")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "New leave request" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Approve" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Reject" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Staff Directory/ })).toHaveCount(0);
+  expect(leaveReads.length).toBeGreaterThan(0);
+  expect(staffDirectoryRequests).toEqual([]);
+});
+
 test("attendance-only permission opens the attendance workspace without loading the staff directory", async ({ page }) => {
   const staffDirectoryRequests: string[] = [];
   page.on("request", request => {
