@@ -3287,6 +3287,33 @@ test("staff directory export refuses a changed total instead of downloading part
   expect(await noDownload).toBeNull();
 });
 
+test("staff directory filters stay locked while the complete CSV is being prepared", async ({ page }) => {
+  const rows:Array<Record<string,unknown>>=Array.from({length:51},(_,index)=>({
+    id:index+1,principal_id:801+index,school_id:10,username:"directory.lock."+index,
+    employee_code:"EMP-LOCK-"+index,full_name:"Directory Lock "+index,designation:"Teacher",
+    employment_status:"active",profile_complete:true,status:"active",must_change_password:false,
+  }));
+  await signInAndOpenStaff(page,rows,undefined,["users.read"]);
+  await page.getByRole("button",{name:"Staff Directory",exact:true}).click();
+  await page.route("**/api/school/staff?**",async route=>{
+    const url=new URL(route.request().url());
+    const limit=Number(url.searchParams.get("limit")??50);
+    const offset=Number(url.searchParams.get("offset")??0);
+    if(offset===50)await new Promise(resolve=>setTimeout(resolve,250));
+    await route.fulfill({json:{staff:rows.slice(offset,offset+limit),total:51,limit,offset}});
+  });
+  const secondPage=page.waitForRequest(request=>new URL(request.url()).searchParams.get("offset")==="50");
+  const downloadPromise=page.waitForEvent("download");
+  await page.getByRole("button",{name:"Export CSV"}).click();
+  await secondPage;
+  await expect(page.getByLabel("Search staff by name, code, designation, mobile or username")).toBeDisabled();
+  await expect(page.getByLabel("Filter by employment status")).toBeDisabled();
+  await expect(page.getByRole("button",{name:"Clear filters"})).toBeDisabled();
+  const download=await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^staff-directory-\\d{4}-\\d{2}-\\d{2}\\.csv$/);
+  await expect(page.getByLabel("Search staff by name, code, designation, mobile or username")).toBeEnabled();
+});
+
 test("staff qualifications report uses one paginated aggregate endpoint and exports approved fields only", async ({ page }) => {
   const staffRows: Array<Record<string, unknown>> = [
     { id: 1, principal_id: 501, school_id: 10, username: "teacher.active", employee_code: "EMP-ACTIVE", full_name: "Active Teacher", designation: "Mathematics Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
