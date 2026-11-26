@@ -52,7 +52,9 @@ func parseStaffPage(c *gin.Context)(int,int,bool){
 	page,size:=1,50
 	if raw:=strings.TrimSpace(c.Query("page"));raw!=""{v,e:=strconv.Atoi(raw);if e!=nil||v<1{c.JSON(400,gin.H{"status":"error","message":"Invalid page"});return 0,0,false};page=v}
 	if raw:=strings.TrimSpace(c.Query("page_size"));raw!=""{v,e:=strconv.Atoi(raw);if e!=nil||v<1||v>100{c.JSON(400,gin.H{"status":"error","message":"page_size must be between 1 and 100"});return 0,0,false};size=v}
-	if page-1 > int(^uint(0)>>1)/size { c.JSON(400,gin.H{"status":"error","message":"Page is too large"});return 0,0,false }
+	if page-1 > int(^uint(0)>>1)/size || (page-1)*size > 1000000 {
+		c.JSON(400,gin.H{"status":"error","message":"Page offset must not exceed 1000000"});return 0,0,false
+	}
 	return page,size,true
 }
 func(h *StaffLeaveHandler) ListRequests(c *gin.Context){

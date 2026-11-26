@@ -165,4 +165,36 @@ func TestStaffReportsUsePoolBackedReadOnlySnapshotPostgresIntegration(t *testing
 	if monthlyTotal < 1 || len(monthlyRows) != 1 {
 		t.Fatalf("monthly attendance snapshot total=%d rows=%+v want at least one row", monthlyTotal, monthlyRows)
 	}
+
+	leaveRepo := NewStaffLeaveRepository(pool)
+	leaveType, err := leaveRepo.SaveType(ctx, actorID, schoolID, 0, StaffLeaveType{
+		Name: "Snapshot Leave " + suffix, IsPaid: true, RequiresApproval: true, IsActive: true,
+	})
+	if err != nil {
+		t.Fatalf("create leave type for pool-backed pagination: %v", err)
+	}
+	leaveDate := today.AddDate(0, 0, 7).Format("2006-01-02")
+	if _, err := leaveRepo.CreateRequest(ctx, actorID, schoolID, StaffLeaveRequest{
+		StaffPrincipalID: staff.PrincipalID, LeaveTypeID: leaveType.ID,
+		StartDate: leaveDate, EndDate: leaveDate, DurationType: "full_day", Reason: "Snapshot pagination test",
+	}); err != nil {
+		t.Fatalf("create leave request for pool-backed pagination: %v", err)
+	}
+	leavePage, err := leaveRepo.ListRequestsPage(ctx, actorID, schoolID, "", 0, "", "", "", 1, 50)
+	if err != nil {
+		t.Fatalf("list pool-backed staff leave page snapshot: %v", err)
+	}
+	if leavePage.Total < 1 || len(leavePage.Items) < 1 {
+		t.Fatalf("leave page snapshot total=%d items=%+v want at least one row", leavePage.Total, leavePage.Items)
+	}
+
+	substitutionRepo := NewAcademicRepository(pool)
+	todayDate := today.Format("2006-01-02")
+	substitutionPage, err := substitutionRepo.ListStaffSubstitutionsPage(ctx, actorID, schoolID, todayDate, todayDate, 0, 1, 50)
+	if err != nil {
+		t.Fatalf("list pool-backed staff substitution page snapshot: %v", err)
+	}
+	if substitutionPage.Total != int64(len(substitutionPage.Items)) {
+		t.Fatalf("substitution page snapshot total=%d items=%d want matching empty/current page", substitutionPage.Total, len(substitutionPage.Items))
+	}
 }
