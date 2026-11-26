@@ -2417,6 +2417,7 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
     if (request.method() === "GET" && url.pathname.endsWith("/month")) {
       const limit = Number(url.searchParams.get("limit") ?? 50);
       const offset = Number(url.searchParams.get("offset") ?? 0);
+      let monthlyTotal = 101;
       const allMonthly = Array.from({ length: 101 }, (_, index) => ({
         staff_principal_id: 512 + index,
         employee_code: `EMP-ATT-${String(index + 1).padStart(2, "0")}`,
@@ -2427,8 +2428,8 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
       }));
       await route.fulfill({ json: {
         month: url.searchParams.get("month"),
-        data: allMonthly.slice(offset, offset + limit),
-        pagination: { limit, offset, total: allMonthly.length },
+        data: allMonthly.slice(offset, Math.min(offset + limit, monthlyTotal)),
+        pagination: { limit, offset, total: monthlyTotal },
       } });
       return;
     }
@@ -2501,6 +2502,12 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   expect(monthlyCSV).toContain("EMP-ATT-01");
   expect(monthlyCSV).toContain("EMP-ATT-101");
   expect(monthlyCSV).not.toContain("PRIVATE_ATTENDANCE_REMARK");
+  await page.getByRole("button", { name: "Next" }).last().click();
+  await expect(page.getByText("Monthly Teacher 51")).toBeVisible();
+  monthlyTotal = 50;
+  await page.getByRole("button", { name: "Refresh" }).click();
+  await expect(page.getByText("Showing 1–50 of 50 staff")).toBeVisible();
+  await expect(page.getByText("Monthly Teacher 51")).toHaveCount(0);
   expect(monthlyCSV).not.toContain("PRIVATE_LEAVE_REASON");
   expect(monthlyCSV).toContain("Leave 101");
 

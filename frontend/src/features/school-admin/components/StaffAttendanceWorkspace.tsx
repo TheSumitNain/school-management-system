@@ -85,6 +85,18 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     queryFn: ({ signal }) => getMonthlyStaffAttendance(month, attendancePageSize, monthlyOffset, signal),
     enabled: canRead && view === "monthly" && validMonth,
   });
+  useEffect(() => {
+    const total = daily.data?.pagination?.total;
+    if (total === undefined) return;
+    const lastOffset = total === 0 ? 0 : Math.floor((total - 1) / attendancePageSize) * attendancePageSize;
+    if (dailyOffset > lastOffset) setDailyOffset(lastOffset);
+  }, [daily.data?.pagination?.total, dailyOffset, attendancePageSize]);
+  useEffect(() => {
+    const total = monthly.data?.pagination?.total;
+    if (total === undefined) return;
+    const lastOffset = total === 0 ? 0 : Math.floor((total - 1) / attendancePageSize) * attendancePageSize;
+    if (monthlyOffset > lastOffset) setMonthlyOffset(lastOffset);
+  }, [monthly.data?.pagination?.total, monthlyOffset, attendancePageSize]);
   const monthStart = validMonth ? `${month}-01` : "";
   const monthEndDate = new Date(0);
   if (validMonth) monthEndDate.setUTCFullYear(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0);
@@ -258,14 +270,14 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     {view === "daily" && <>
       <div className="staff-attendance-toolbar">
         <label><span>Attendance date</span><DatePicker value={date} onChange={value => { setDate(value); setDailyOffset(0); }} ariaLabel="Staff attendance date" max={today}/></label>
-        <label><span>Search employees</span><input aria-label="Search staff attendance" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name, employee code or designation"/></label>
+        <label><span>Search this page</span><input aria-label="Search staff attendance" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name, employee code or designation"/></label>
         <label><span>Filter by status</span><select aria-label="Filter staff attendance status" value={statusFilter} onChange={event => setStatusFilter(event.target.value as "all" | "unmarked" | Status)}>
           <option value="all">All statuses</option><option value="unmarked">Not marked</option>{statuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
         </select></label>
         <button type="button" className="staff-secondary-button" onClick={() => void daily.refetch()} disabled={daily.isFetching}><RefreshCw size={15}/> Refresh</button>
       </div>
-      <div className="staff-attendance-totals" aria-live="polite">
-        <span>Present <strong>{totals.present}</strong></span><span>Absent <strong>{totals.absent}</strong></span><span>Late <strong>{totals.late}</strong></span><span>Half day <strong>{totals.half_day}</strong></span><span>Not marked <strong>{totals.unmarked}</strong></span>
+      <div className="staff-attendance-totals" aria-live="polite" aria-label="Attendance totals for current page">
+        <span>Current page totals</span><span>Present <strong>{totals.present}</strong></span><span>Absent <strong>{totals.absent}</strong></span><span>Late <strong>{totals.late}</strong></span><span>Half day <strong>{totals.half_day}</strong></span><span>Not marked <strong>{totals.unmarked}</strong></span>
       </div>
       <div className="staff-attendance-bulk">
         <label><span>Bulk status for unmarked visible staff</span><select aria-label="Bulk attendance status" value={bulkStatus} disabled={!canMark || bulkMark.isPending} aria-invalid={bulkAttempted && !bulkStatus} aria-describedby={bulkAttempted && !bulkStatus ? "staff-attendance-bulk-status-error" : undefined} onChange={event => setBulkStatus(event.target.value as Status | "")}>
