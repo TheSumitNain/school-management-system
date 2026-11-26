@@ -4196,7 +4196,7 @@ test("staff leave requests use bounded pages and show the matching total", async
     created_at: "2026-11-21T00:00:00.000Z",
   }));
   await signInAndOpenStaff(page, staffRows, undefined,
-    ["users.read", "staff.leave.read"], undefined, requests);
+    ["users.read", "staff.leave.read", "staff.leave.manage_requests"], undefined, requests);
   await page.getByRole("button", { name: "Leave & Holidays" }).click();
   await expect(page.getByText("Leave request 1", { exact: true })).toBeVisible();
   await expect(page.getByText("Leave request 51", { exact: true })).toHaveCount(0);
@@ -4204,6 +4204,13 @@ test("staff leave requests use bounded pages and show the matching total", async
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("Leave request 51", { exact: true })).toBeVisible();
   await expect(page.getByText("Showing 51–55 of 55")).toBeVisible();
-  await page.getByRole("button", { name: "Previous" }).click();
-  await expect(page.getByText("Leave request 1", { exact: true })).toBeVisible();
+  for(let index=51;index<=55;index++){
+    const requestRow=page.locator("article.staff-leave-request").filter({hasText:"Leave request "+index});
+    await requestRow.getByRole("button",{name:"Cancel request"}).click();
+    const confirmation=page.getByRole("dialog",{name:"Cancel leave request?"});
+    await confirmation.getByRole("button",{name:"Cancel request",exact:true}).click();
+    await expect(page.getByText("Leave request cancelled.")).toBeVisible();
+  }
+  await expect(page.getByText("Showing 1–50 of 50")).toBeVisible();
+  await expect(page.getByText("Leave request 1",{exact:true})).toBeVisible();
 });
