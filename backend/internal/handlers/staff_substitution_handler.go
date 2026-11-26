@@ -51,7 +51,7 @@ func(h *StaffSubstitutionHandler) List(c *gin.Context){
 		if result.Items==nil{result.Items=[]repository.StaffSubstitution{}}
 		c.JSON(http.StatusOK,gin.H{"status":"success","substitutions":result.Items,"pagination":gin.H{"page":page,"page_size":size,"total":result.Total}});return
 	}
-	items,err:=h.service.List(c.Request.Context(),actor,school,from,to,staffID);if err!=nil{staffSubstitutionError(c,err);return}
+	items,err:=h.service.List(c.Request.Context(),actor,school,from,to,staffID);if err!=nil{staffSubstitutionError(c,err);return};if items==nil{items=[]repository.StaffSubstitution{}}
 	total:=len(items);start:=(page-1)*size;if start>total{start=total};end:=start+size;if end>total{end=total}
 	c.JSON(http.StatusOK,gin.H{"status":"success","substitutions":items[start:end],"pagination":gin.H{"page":page,"page_size":size,"total":total}})
 }
