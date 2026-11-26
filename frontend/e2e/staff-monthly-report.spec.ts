@@ -85,7 +85,7 @@ test("monthly staff report downloads attendance, approved leave and holidays as 
 
   const month = await page.getByLabel("Attendance month").inputValue();
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download monthly report" }).click();
+  await page.getByRole("button", { name: "Download complete monthly report" }).click();
   const download = await downloadPromise;
 
   expect(download.suggestedFilename()).toBe(`staff-attendance-${month}.csv`);
