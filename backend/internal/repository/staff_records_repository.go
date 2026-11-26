@@ -502,7 +502,10 @@ func (r *UserRepository) ListStaffQualificationReport(ctx context.Context, actor
 	if r == nil || r.db == nil || actorID <= 0 || schoolID <= 0 || filter.Limit < 1 || filter.Limit > 200 || filter.Offset < 0 {
 		return nil, ErrInvalidStaffRecord
 	}
-	if err := authorizeStaffRecordsPermission(ctx, r.db, actorID, schoolID, "users.read"); err != nil {
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+	if err != nil { return nil, fmt.Errorf("begin staff qualifications report snapshot: %w", err) }
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := authorizeStaffRecordsPermission(ctx, tx, actorID, schoolID, "users.read"); err != nil {
 		return nil, fmt.Errorf("authorize staff qualifications report: %w", err)
 	}
 
@@ -522,7 +525,7 @@ func (r *UserRepository) ListStaffQualificationReport(ctx context.Context, actor
 		JOIN staff_profiles sp ON sp.principal_id=c.staff_principal_id AND sp.school_id=c.school_id
 		WHERE c.school_id=$1 AND sp.employment_status='active'
 	`
-	countRows, err := r.db.Query(ctx, `
+	countRows, err := tx.Query(ctx, `
 		SELECT record_type, verification_status, COUNT(*)::bigint
 		FROM (`+base+`) report_rows
 		WHERE ($2='all' OR record_type=$2) AND ($3='' OR verification_status=$3)
@@ -539,7 +542,7 @@ func (r *UserRepository) ListStaffQualificationReport(ctx context.Context, actor
 	if err := countRows.Err(); err != nil { countRows.Close(); return nil, fmt.Errorf("iterate staff qualifications report counts: %w",err) }
 	countRows.Close()
 
-	rows, err := r.db.Query(ctx, `
+	rows, err := tx.Query(ctx, `
 		SELECT record_type, record_id, staff_principal_id, employee_code, staff_name,
 		       record_name, organization, record_date, expiry_date, verification_status
 		FROM (`+base+`) report_rows
@@ -557,6 +560,8 @@ func (r *UserRepository) ListStaffQualificationReport(ctx context.Context, actor
 		page.Rows=append(page.Rows,item)
 	}
 	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate staff qualifications report: %w",err) }
+	rows.Close()
+	if err := tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit staff qualifications report snapshot: %w", err) }
 	return page,nil
 }
 
@@ -600,7 +605,10 @@ type StaffExperienceReportPage struct {
 // school, including inactive employees. Free-text descriptions are excluded.
 func (r *UserRepository) ListStaffExperienceReport(ctx context.Context, actorID, schoolID int64, filter StaffExperienceReportFilter) (*StaffExperienceReportPage,error) {
     if r==nil || r.db==nil || actorID<=0 || schoolID<=0 || filter.Limit<1 || filter.Limit>200 || filter.Offset<0 { return nil,ErrInvalidStaffRecord }
-    if err := authorizeStaffRecordsPermission(ctx, r.db, actorID, schoolID, "users.read"); err != nil {
+    tx, err := r.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+    if err != nil { return nil, fmt.Errorf("begin staff experience report snapshot: %w", err) }
+    defer func() { _ = tx.Rollback(ctx) }()
+    if err := authorizeStaffRecordsPermission(ctx, tx, actorID, schoolID, "users.read"); err != nil {
 		return nil, fmt.Errorf("authorize staff experience report: %w", err)
 	}
 
@@ -615,7 +623,7 @@ func (r *UserRepository) ListStaffExperienceReport(ctx context.Context, actorID,
           AND (NOT $3::boolean OR e.is_current=TRUE)
     `
     page:=&StaffExperienceReportPage{Rows:make([]StaffExperienceReportRow,0),Counts:make([]StaffExperienceReportCount,0),Limit:filter.Limit,Offset:filter.Offset}
-    countRows,err:=r.db.Query(ctx,`
+    countRows,err:=tx.Query(ctx,`
         SELECT employment_type,is_current,COUNT(*)::bigint
         FROM (`+base+`) report_rows GROUP BY employment_type,is_current
         ORDER BY employment_type,is_current
@@ -627,7 +635,7 @@ func (r *UserRepository) ListStaffExperienceReport(ctx context.Context, actorID,
     }
     if err:=countRows.Err();err!=nil{countRows.Close();return nil,fmt.Errorf("iterate staff experience report counts: %w",err)}
     countRows.Close()
-    rows,err:=r.db.Query(ctx,`
+    rows,err:=tx.Query(ctx,`
         SELECT id,staff_principal_id,employee_code,full_name,designation,employment_status,
                employer_name,previous_designation,employment_type,start_date,end_date,is_current
         FROM (`+base+`) report_rows
@@ -640,5 +648,7 @@ func (r *UserRepository) ListStaffExperienceReport(ctx context.Context, actorID,
         page.Rows=append(page.Rows,item)
     }
     if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate staff experience report: %w",err)}
+    rows.Close()
+    if err:=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit staff experience report snapshot: %w",err)}
     return page,nil
 }
