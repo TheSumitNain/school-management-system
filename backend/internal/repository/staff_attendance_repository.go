@@ -424,24 +424,28 @@ func (r *StaffAttendanceRepository) MarkBulk(ctx context.Context, actorID, schoo
     if err := lockActiveStaffProfiles(ctx, tx, schoolID, staffIDs); err != nil {
         return 0, err
     }
-    for _, staffID := range staffIDs {
-        var id int64
-        if err := tx.QueryRow(ctx, `
+
+    // Insert the whole batch and its audit trail in one database round trip.
+    // The data-modifying CTE keeps every attendance row atomic with its audit event.
+    var created int
+    err = tx.QueryRow(ctx, `
+        WITH inserted AS (
             INSERT INTO staff_attendance_records
                 (school_id, staff_principal_id, attendance_date, status, remarks, marked_by_principal_id, updated_by_principal_id)
-            VALUES ($1,$2,$3,$4,$5,$6,$6)
-            RETURNING id
-        `, schoolID, staffID, date, status, remarks, actorID).Scan(&id); err != nil {
-            return 0, staffAttendanceWriteError(err)
-        }
-        if _, err := tx.Exec(ctx, `
+            SELECT $1, target.staff_principal_id, $3::date, $4, $5, $6, $6
+              FROM unnest($2::bigint[]) AS target(staff_principal_id)
+            RETURNING id, staff_principal_id
+        ), audited AS (
             INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-            VALUES($1,$2,'school.staff_attendance.marked','staff_attendance_record',$3,'success',
-                   jsonb_build_object('staff_principal_id',$4::bigint,'attendance_date',$5::date,'status',$6::text,'bulk',TRUE))
-        `, actorID, schoolID, fmt.Sprint(id), staffID, date, status); err != nil {
-            return 0, fmt.Errorf("audit bulk staff attendance mark: %w", err)
-        }
-    }
+            SELECT $6,$1,'school.staff_attendance.marked','staff_attendance_record',inserted.id::text,'success',
+                   jsonb_build_object('staff_principal_id',inserted.staff_principal_id,'attendance_date',$3::date,'status',$4::text,'bulk',TRUE)
+              FROM inserted
+            RETURNING id
+        )
+        SELECT COUNT(*)::integer FROM audited
+    `, schoolID, staffIDs, date, status, remarks, actorID).Scan(&created)
+    if err != nil { return 0, staffAttendanceWriteError(fmt.Errorf("insert and audit bulk staff attendance: %w", err)) }
+    if created != len(staffIDs) { return 0, fmt.Errorf("bulk staff attendance inserted %d of %d records", created, len(staffIDs)) }
     if err := tx.Commit(ctx); err != nil { return 0, fmt.Errorf("commit bulk staff attendance mark: %w", err) }
     return len(staffIDs), nil
 }
