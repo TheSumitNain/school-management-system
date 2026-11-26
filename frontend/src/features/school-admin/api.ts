@@ -669,12 +669,41 @@ export type StaffAttendanceMonthlySummary = {
   half_days: number;
   records: Array<{ id: number; date: string; status: "present" | "absent" | "late" | "half_day"; remarks?: string | null }>;
 };
-export function getDailyStaffAttendance(date: string, signal?: AbortSignal) {
-  return api<{ date: string; data: StaffAttendanceRecord[] }>(`/school/staff-attendance?date=${encodeURIComponent(date)}`, { signal });
+export type StaffAttendancePagination = { limit: number; offset: number; total: number };
+export type StaffAttendanceDailyPage = { date: string; data: StaffAttendanceRecord[]; pagination?: StaffAttendancePagination };
+export type StaffAttendanceMonthlyPage = { month: string; data: StaffAttendanceMonthlySummary[]; pagination?: StaffAttendancePagination };
+export function getDailyStaffAttendance(date: string, limit = 50, offset = 0, signal?: AbortSignal) {
+  const params = new URLSearchParams({ date, limit: String(limit), offset: String(offset) });
+  return api<StaffAttendanceDailyPage>(`/school/staff-attendance?${params.toString()}`, { signal });
 }
-export function getMonthlyStaffAttendance(month: string, signal?: AbortSignal) {
-  return api<{ month: string; data: StaffAttendanceMonthlySummary[] }>(`/school/staff-attendance/month?month=${encodeURIComponent(month)}`, { signal });
+export function getMonthlyStaffAttendance(month: string, limit = 50, offset = 0, signal?: AbortSignal) {
+  const params = new URLSearchParams({ month, limit: String(limit), offset: String(offset) });
+  return api<StaffAttendanceMonthlyPage>(`/school/staff-attendance/month?${params.toString()}`, { signal });
 }
+export async function getAllMonthlyStaffAttendance(month: string): Promise<StaffAttendanceMonthlySummary[]> {
+  const pageSize = 100;
+  const first = await getMonthlyStaffAttendance(month, pageSize, 0);
+  const total = first.pagination?.total ?? first.data.length;
+  const rows = [...first.data];
+  if (!first.pagination || rows.length >= total) return rows;
+  if (first.pagination.limit !== pageSize || first.pagination.offset !== 0 || rows.length !== Math.min(pageSize, total)) {
+    throw new Error("Monthly attendance export returned an incomplete first page.");
+  }
+  for (let offset = pageSize; offset < total; offset += pageSize) {
+    const page = await getMonthlyStaffAttendance(month, pageSize, offset);
+    if (page.pagination?.total !== total || page.pagination.offset !== offset ||
+        page.data.length !== Math.min(pageSize, total - offset)) {
+      throw new Error("Monthly attendance changed while exporting. Retry the report.");
+    }
+    rows.push(...page.data);
+  }
+  const unique = new Set(rows.map(item => item.staff_principal_id));
+  if (rows.length !== total || unique.size !== total) {
+    throw new Error("Monthly attendance export is incomplete or contains duplicate staff.");
+  }
+  return rows;
+}
+
 export function markStaffAttendance(input: { staff_principal_id: number; attendance_date: string; status: "present" | "absent" | "late" | "half_day"; remarks?: string }) {
   return api<{ data: StaffAttendanceRecord }>("/school/staff-attendance", { method: "POST", body: JSON.stringify(input) });
 }

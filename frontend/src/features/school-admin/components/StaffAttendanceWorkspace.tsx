@@ -6,7 +6,7 @@ import { DatePicker } from "../../../shared/components/DatePicker";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { schoolDateValue } from "../../../shared/date/schoolDate";
 import {
-  getDailyStaffAttendance, getMonthlyStaffAttendance, markStaffAttendance, markStaffAttendanceBulk, updateStaffAttendance,
+  getDailyStaffAttendance, getMonthlyStaffAttendance, getAllMonthlyStaffAttendance, markStaffAttendance, markStaffAttendanceBulk, updateStaffAttendance,
   getAllStaffLeaveRequests, getSchoolHolidays,
   type StaffAttendanceRecord, type StaffLeaveRequest,
 } from "../api";
@@ -47,6 +47,10 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const [view, setView] = useState<"daily" | "monthly">("daily");
   const [date, setDate] = useState(today);
   const [month, setMonth] = useState(today.slice(0, 7));
+  const [dailyOffset, setDailyOffset] = useState(0);
+  const [monthlyOffset, setMonthlyOffset] = useState(0);
+  const [exportingMonthly, setExportingMonthly] = useState(false);
+  const attendancePageSize = 50;
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [pendingCorrection, setPendingCorrection] = useState<PendingCorrection | null>(null);
   const [search, setSearch] = useState("");
@@ -57,8 +61,8 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const canRead = permissions.includes("staff.attendance.read");
   const daily = useQuery({
-    queryKey: ["staff-attendance", "daily", date],
-    queryFn: ({ signal }) => getDailyStaffAttendance(date, signal),
+    queryKey: ["staff-attendance", "daily", date, dailyOffset],
+    queryFn: ({ signal }) => getDailyStaffAttendance(date, attendancePageSize, dailyOffset, signal),
     enabled: canRead && view === "daily",
   });
   const canReadLeaveContext = permissions.includes("staff.leave.read");
@@ -77,8 +81,8 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   });
   const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) && Number(month.slice(0, 4)) >= 1;
   const monthly = useQuery({
-    queryKey: ["staff-attendance", "monthly", month],
-    queryFn: ({ signal }) => getMonthlyStaffAttendance(month, signal),
+    queryKey: ["staff-attendance", "monthly", month, monthlyOffset],
+    queryFn: ({ signal }) => getMonthlyStaffAttendance(month, attendancePageSize, monthlyOffset, signal),
     enabled: canRead && view === "monthly" && validMonth,
   });
   const monthStart = validMonth ? `${month}-01` : "";
@@ -150,8 +154,11 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     (!canReadLeaveContext || approvedMonthLeave.isSuccess) &&
     (!canReadHolidayContext || monthHolidays.isSuccess);
 
-  const exportMonthlyReport = () => {
-    if (!monthlyReportReady || !monthly.data) return;
+  const exportMonthlyReport = async () => {
+    if (!monthlyReportReady || !monthly.data || exportingMonthly) return;
+    setExportingMonthly(true);
+    try {
+    const allMonthlyRows = await getAllMonthlyStaffAttendance(month);
     const rows: Array<Array<string | number | null | undefined>> = [[
       "Record type", "Staff name", "Employee code", "Designation",
       "Present days", "Absent days", "Late days", "Half days", "Recorded days",
@@ -159,7 +166,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       "Leave end date", "Holiday date", "Holiday name",
     ]];
 
-    for (const item of monthly.data.data) {
+    for (const item of allMonthlyRows) {
       rows.push([
         "Attendance summary", item.full_name, item.employee_code, item.designation,
         item.present_days, item.absent_days, item.late_days, item.half_days,
@@ -190,6 +197,10 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     }
 
     downloadCSV("staff-attendance-" + month + ".csv", rows);
+    notifyToast("success", `Downloaded attendance for ${allMonthlyRows.length} staff members.`);
+    } catch {
+      notifyToast("error", "The complete monthly report could not be verified. No partial export was downloaded; retry after refreshing.");
+    } finally { setExportingMonthly(false); }
   };
   const records = daily.data?.data ?? [];
   const visibleRecords = useMemo(() => {
@@ -295,7 +306,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       </table></div>}
     </>}
     {view === "monthly" && <>
-      <div className="staff-attendance-toolbar"><label><span>Month</span><input aria-label="Attendance month" type="month" value={month} max={today.slice(0, 7)} onChange={event => setMonth(event.target.value)}/></label><button type="button" className="staff-secondary-button" onClick={() => void Promise.all([monthly.refetch(), ...(canReadLeaveContext ? [approvedMonthLeave.refetch()] : []), ...(canReadHolidayContext ? [monthHolidays.refetch()] : [])])} disabled={!validMonth || monthly.isFetching || approvedMonthLeave.isFetching || monthHolidays.isFetching}><RefreshCw size={15}/> Refresh</button><button type="button" className="staff-attendance-save" onClick={exportMonthlyReport} disabled={!monthlyReportReady || monthly.data.data.length === 0}>Download monthly report</button></div>
+      <div className="staff-attendance-toolbar"><label><span>Month</span><input aria-label="Attendance month" type="month" value={month} max={today.slice(0, 7)} onChange={event => { setMonth(event.target.value); setMonthlyOffset(0); }}/></label><button type="button" className="staff-secondary-button" onClick={() => void Promise.all([monthly.refetch(), ...(canReadLeaveContext ? [approvedMonthLeave.refetch()] : []), ...(canReadHolidayContext ? [monthHolidays.refetch()] : [])])} disabled={!validMonth || monthly.isFetching || approvedMonthLeave.isFetching || monthHolidays.isFetching}><RefreshCw size={15}/> Refresh</button><button type="button" className="staff-attendance-save" onClick={exportMonthlyReport} disabled={!monthlyReportReady || monthly.data.data.length === 0 || exportingMonthly}>{exportingMonthly ? "Preparing complete report…" : "Download complete monthly report"}</button></div>
       {!validMonth && <p className="staff-attendance-message error" role="alert">Select a valid attendance month to load the monthly register.</p>}
       {validMonth && monthly.isPending && <p role="status" className="staff-attendance-message">Loading monthly register…</p>}
       {validMonth && monthly.isError && <div className="staff-attendance-message error" role="alert">Unable to load monthly register. <button type="button" onClick={() => void monthly.refetch()}>Try again</button></div>}
