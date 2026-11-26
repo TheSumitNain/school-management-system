@@ -174,6 +174,8 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	if _, err := repo.CreateCustomRole(ctx, actorPrincipalID, schoolID, customRoleKey, "Duplicate Custom Role"); !errors.Is(err, ErrRoleNameTaken) {
 		t.Fatalf("duplicate custom role error = %v, want ErrRoleNameTaken", err)
 	}
+	grantFailureRole, err := repo.CreateCustomRole(ctx, actorPrincipalID, schoolID, "audit_failure_grant_"+suffix, "Audit Failure Grant Role")
+	if err != nil { t.Fatalf("create isolated role for permission-grant audit rollback: %v", err) }
 
 	roles, err := repo.ListSchoolRoles(ctx, actorPrincipalID, schoolID)
 	if err != nil {
@@ -495,15 +497,13 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	if failedAssignmentCount != 0 { t.Fatalf("role assignments after failed audited create=%d want=0", failedAssignmentCount) }
 
 	// A custom-role permission grant must roll back if its append-only audit event fails.
-	grantFailureDelegationID := overrideDelegation.ID
-	if _, err := tx.Exec(ctx, `UPDATE role_permission_delegations SET can_assign_to_roles=TRUE WHERE id=$1 AND school_id=$2 AND revoked_at IS NULL`, grantFailureDelegationID, schoolID); err != nil {
-		t.Fatalf("enable role assignment on existing audit-failure delegation: %v", err)
-	}
-	if err := repo.GrantCustomRolePermission(ctx, actorPrincipalID, schoolID, customRole.ID, grantFailureDelegationID, "homework.create"); err == nil {
+	// Use the original immutable role-delegation grant and an isolated custom role;
+	// never mutate delegation provenance just to manufacture a test fixture.
+	if err := repo.GrantCustomRolePermission(ctx, actorPrincipalID, schoolID, grantFailureRole.ID, roleDelegation.ID, "students.read_basic"); err == nil {
 		t.Fatal("custom-role permission grant succeeded despite forced audit failure")
 	}
 	var failedRoleGrantCount int
-	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM role_permissions rp JOIN permissions p ON p.id=rp.permission_id WHERE rp.role_id=$1 AND p.permission_key='homework.create'`, customRole.ID).Scan(&failedRoleGrantCount); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM role_permissions rp JOIN permissions p ON p.id=rp.permission_id WHERE rp.role_id=$1 AND p.permission_key='students.read_basic'`, grantFailureRole.ID).Scan(&failedRoleGrantCount); err != nil {
 		t.Fatalf("count custom-role grants after failed audited grant: %v", err)
 	}
 	if failedRoleGrantCount != 0 { t.Fatalf("custom-role grants after failed audited grant=%d want=0", failedRoleGrantCount) }
