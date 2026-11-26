@@ -12,7 +12,7 @@ const schoolAdmin = {
 test("staff qualifications and experience reports filter, paginate and retain historical employees", async ({ page }) => {
   const qualificationRequests: URL[] = [];
   const experienceRequests: URL[] = [];
-  let failQualificationExportSecondPage = false;
+  let failQualificationExport = false;
 
   await page.route("**/api/**", async route => {
     const request = route.request();
@@ -40,7 +40,7 @@ test("staff qualifications and experience reports filter, paginate and retain hi
     }
     if (path === "/school/staff/qualifications-report" && request.method() === "GET") {
       qualificationRequests.push(url);
-      if (failQualificationExportSecondPage && url.searchParams.get("limit") === "200" && url.searchParams.get("offset") === "50") {
+      if (failQualificationExport && url.searchParams.get("limit") === "200" && url.searchParams.get("offset") === "0") {
         await route.fulfill({ status: 503, json: { message: "Temporary report failure" } });
         return;
       }
@@ -48,41 +48,39 @@ test("staff qualifications and experience reports filter, paginate and retain hi
       const status = url.searchParams.get("verification_status") ?? "";
       const offset = Number(url.searchParams.get("offset") ?? "0");
       const filtered = recordType === "certification" && status === "pending";
+      const requestedLimit = Number(url.searchParams.get("limit") ?? "50");
+      const allRows = Array.from({ length: 51 }, (_, index) => ({
+        record_type: "qualification", record_id: index + 1, staff_principal_id: 201, employee_code: "EMP-201",
+        staff_name: "Active Teacher", record_name: `Qualification ${index + 1}`, organization: "State University",
+        record_date: "2021", expiry_date: "", verification_status: "pending",
+      }));
       const rows = filtered
         ? [{ record_type: "certification", record_id: 900, staff_principal_id: 201, employee_code: "EMP-201", staff_name: "Active Teacher", record_name: "First Aid Certificate", organization: "Safety Institute", record_date: "2026-01-10", expiry_date: "2028-01-10", verification_status: "pending" }]
-        : offset >= 50
-          ? [{ record_type: "qualification", record_id: 51, staff_principal_id: 201, employee_code: "EMP-201", staff_name: "Active Teacher", record_name: "Qualification 51", organization: "State University", record_date: "2021", expiry_date: "", verification_status: "pending" }]
-          : Array.from({ length: 50 }, (_, index) => ({
-              record_type: "qualification", record_id: index + 1, staff_principal_id: 201, employee_code: "EMP-201",
-              staff_name: "Active Teacher", record_name: `Qualification ${index + 1}`, organization: "State University",
-              record_date: "2021", expiry_date: "", verification_status: "pending",
-            }));
+        : allRows.slice(offset, offset + requestedLimit);
       const counts = filtered
         ? [{ record_type: "certification", verification_status: "pending", count: 1 }]
         : [{ record_type: "qualification", verification_status: "pending", count: 51 }];
-      await route.fulfill({ json: { report: { rows, counts, limit: 50, offset, total: filtered ? 1 : 51 } } });
+      await route.fulfill({ json: { report: { rows, counts, limit: requestedLimit, offset, total: filtered ? 1 : 51 } } });
       return;
     }
     if (path === "/school/staff/experience-report" && request.method() === "GET") {
       experienceRequests.push(url);
       const currentOnly = url.searchParams.get("current_only") === "true";
       const offset = Number(url.searchParams.get("offset") ?? "0");
-      const rows = currentOnly
-        ? [{ record_id: 702, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Current Academy", previous_designation: "Senior Teacher", employment_type: "permanent", start_date: "2022-04-01", end_date: "", is_current: true }]
-        : offset >= 50
-          ? [{ record_id: 751, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Older Academy", previous_designation: "Teacher", employment_type: "contract", start_date: "2015-04-01", end_date: "2018-03-31", is_current: false }]
-          : [
-              { record_id: 701, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Previous School", previous_designation: "Teacher", employment_type: "contract", start_date: "2018-04-01", end_date: "2022-03-31", is_current: false },
-              { record_id: 702, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Current Academy", previous_designation: "Senior Teacher", employment_type: "permanent", start_date: "2022-04-01", end_date: "", is_current: true },
-              ...Array.from({ length: 48 }, (_, index) => ({
-                record_id: 703 + index, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive",
-                employer_name: `Historical School ${index + 1}`, previous_designation: "Teacher", employment_type: "contract", start_date: "2010-04-01", end_date: "2011-03-31", is_current: false,
-              })),
-            ];
+      const requestedLimit = Number(url.searchParams.get("limit") ?? "50");
+      const allRows = [
+        { record_id: 701, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Previous School", previous_designation: "Teacher", employment_type: "contract", start_date: "2018-04-01", end_date: "2022-03-31", is_current: false },
+        { record_id: 702, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive", employer_name: "Current Academy", previous_designation: "Senior Teacher", employment_type: "permanent", start_date: "2022-04-01", end_date: "", is_current: true },
+        ...Array.from({ length: 49 }, (_, index) => ({
+          record_id: 703 + index, staff_principal_id: 202, employee_code: "EMP-202", staff_name: "Former Teacher", designation: "Teacher", employment_status: "inactive",
+          employer_name: `Historical School ${index + 1}`, previous_designation: "Teacher", employment_type: "contract", start_date: "2010-04-01", end_date: "2011-03-31", is_current: false,
+        })),
+      ];
+      const rows = currentOnly ? [allRows[1]] : allRows.slice(offset, offset + requestedLimit);
       const counts = currentOnly
         ? [{ employment_type: "permanent", is_current: true, count: 1 }]
         : [{ employment_type: "contract", is_current: false, count: 50 }, { employment_type: "permanent", is_current: true, count: 1 }];
-      await route.fulfill({ json: { report: { rows, counts, limit: 50, offset, total: currentOnly ? 1 : 51 } } });
+      await route.fulfill({ json: { report: { rows, counts, limit: requestedLimit, offset, total: currentOnly ? 1 : 51 } } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked E2E API request: ${request.method()} ${path}` } });
@@ -111,7 +109,7 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   const qualificationDownload = await qualificationDownloadPromise;
   expect(qualificationDownload.suggestedFilename()).toBe("staff-qualifications-certifications.csv");
   expect(qualificationRequests.some(url => url.searchParams.get("offset") === "0" && url.searchParams.get("limit") === "200")).toBeTruthy();
-  expect(qualificationRequests.some(url => url.searchParams.get("offset") === "50" && url.searchParams.get("limit") === "200")).toBeTruthy();
+  expect(qualificationRequests.some(url => url.searchParams.get("offset") === "0" && url.searchParams.get("limit") === "200")).toBeTruthy();
   await qualificationSection.getByLabel("Record type").selectOption("certification");
   await qualificationSection.getByLabel("Verification status").selectOption("pending");
   await expect(page.getByText("First Aid Certificate", { exact: true })).toBeVisible();
@@ -132,15 +130,15 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   const experienceDownload = await experienceDownloadPromise;
   expect(experienceDownload.suggestedFilename()).toBe("staff-experience-report.csv");
   expect(experienceRequests.some(url => url.searchParams.get("offset") === "0" && url.searchParams.get("limit") === "200")).toBeTruthy();
-  expect(experienceRequests.some(url => url.searchParams.get("offset") === "50" && url.searchParams.get("limit") === "200")).toBeTruthy();
+  expect(experienceRequests.some(url => url.searchParams.get("offset") === "0" && url.searchParams.get("limit") === "200")).toBeTruthy();
   await experiencePagination.getByRole("button", { name: "Previous" }).click();
   await expect(experienceSection.getByText("Previous School", { exact: true })).toBeVisible();
   await experienceSection.getByLabel("Experience status").selectOption("current");
   await expect(experienceSection.getByText("Current Academy", { exact: true })).toBeVisible();
   expect(experienceRequests.some(url => url.searchParams.get("current_only") === "true")).toBeTruthy();
 
-  // A later page failure must not create a misleading partial CSV.
-  failQualificationExportSecondPage = true;
+  // An export-page failure must not create a misleading partial CSV.
+  failQualificationExport = true;
   await qualificationSection.getByLabel("Record type").selectOption("all");
   await qualificationSection.getByLabel("Verification status").selectOption("");
   const failedDownload = page.waitForEvent("download", { timeout: 1000 }).catch(() => null);
