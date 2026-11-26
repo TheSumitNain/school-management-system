@@ -1099,3 +1099,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added forged-school-ID tests for single attendance mark, bulk mark and attendance update/correction. The existing daily/monthly read isolation tests remain in place; rejected bulk writes are verified to leave no rows. Backend CI [45746893796](https://github.com/TheSumitNain/school-management-system/actions/runs/45746893796) **PASS**.
 - Both CI runs execute the complete migration chain, Go/PostgreSQL integration suite and `go vet`. These are test-only tenant-isolation improvements, not production behavior changes.
 - Staff Management remains in progress pending remaining workflow audit and authenticated School Admin browser sign-off. `main` remains untouched.
+
+
+## 2026-11-26 follow-up — operational report refresh and account/profile audit rollback
+
+- Qualifications and Experience report Refresh now invalidates the correct filter-specific query cache and returns to page one. Browser acceptance covers the reduced-total case (50 rows after a prior 51-row result), confirms the last valid row remains visible, the removed row is absent, pagination is hidden and the first-page API request is repeated. Frontend CI [45757876613](https://github.com/TheSumitNain/school-management-system/actions/runs/45757876613) **PASS** on `88ed91af`.
+- Added PostgreSQL failure injection for staff account/profile onboarding: failure to write `staff.account.created` must roll back the user and profile rows and leave no success audit record. Backend CI [45758112429](https://github.com/TheSumitNain/school-management-system/actions/runs/45758112429) **PASS** on `8468f1ad`, including full migrations, PostgreSQL integration tests and `go vet`.
+- No schema migration or persistent database change. These checks do not resolve the separately approved/deferred items (identity-schema/Bulk Import, leave entitlement policy, sensitive personal fields, Payroll, private document/photo storage) or replace authenticated School Admin browser sign-off. `main` remains untouched.
