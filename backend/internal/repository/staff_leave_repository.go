@@ -115,9 +115,14 @@ func(r *StaffLeaveRepository) CreateRequest(ctx context.Context,actor,school int
  if x.DurationType=="half_day"{if !start.Equal(end)||x.HalfDaySession==nil||(*x.HalfDaySession!="first_half"&&*x.HalfDaySession!="second_half"){return nil,ErrInvalidStaffLeave}}else if x.DurationType=="full_day"{x.HalfDaySession=nil}else{return nil,ErrInvalidStaffLeave}
  // Serialize overlap checks per school/staff so simultaneous submissions cannot both pass.
  if _,e=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(hashtextextended($1::bigint::text || ':' || $2::bigint::text,0))`,school,x.StaffPrincipalID);e!=nil{return nil,e}
- var active bool
- e=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM staff_profiles WHERE principal_id=$1 AND school_id=$2 AND employment_status='active') AND EXISTS(SELECT 1 FROM staff_leave_types WHERE id=$3 AND school_id=$2 AND is_active=TRUE)`,x.StaffPrincipalID,school,x.LeaveTypeID).Scan(&active)
- if e!=nil{return nil,e};if !active{return nil,ErrStaffLeaveNotFound}
+ // Hold a shared row lock until the request and its audit event commit. A concurrent
+ // employment inactivation must wait, or complete first and make this check fail.
+ var activeProfileID int64
+ e=tx.QueryRow(ctx,`SELECT principal_id FROM staff_profiles WHERE principal_id=$1 AND school_id=$2 AND employment_status='active' FOR SHARE`,x.StaffPrincipalID,school).Scan(&activeProfileID)
+ if errors.Is(e,pgx.ErrNoRows){return nil,ErrStaffLeaveNotFound};if e!=nil{return nil,e}
+ var activeLeaveType bool
+ e=tx.QueryRow(ctx,`SELECT is_active FROM staff_leave_types WHERE id=$1 AND school_id=$2`,x.LeaveTypeID,school).Scan(&activeLeaveType)
+ if errors.Is(e,pgx.ErrNoRows)||!activeLeaveType{return nil,ErrStaffLeaveNotFound};if e!=nil{return nil,e}
  var overlap bool
  e=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM staff_leave_requests WHERE school_id=$1 AND staff_principal_id=$2 AND status IN ('pending','approved') AND daterange(start_date,end_date,'[]') && daterange($3::date,$4::date,'[]'))`,school,x.StaffPrincipalID,x.StartDate,x.EndDate).Scan(&overlap)
  if e!=nil{return nil,e};if overlap{return nil,ErrStaffLeaveConflict}
