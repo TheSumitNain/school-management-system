@@ -1193,7 +1193,7 @@ test("staff creation keeps entered details available after a temporary server fa
   let attempts = 0;
   await signInAndOpenStaff(page, [], async (_path, route) => {
     attempts += 1;
-    if (attempts === 1) {
+    if (attempts <= 2) {
       await route.fulfill({ status: 503, json: { message: "Staff account creation is temporarily unavailable." } });
       return;
     }
@@ -4611,9 +4611,9 @@ test("staff directory retries after a transient server error and accepts a subse
   await expect(page.getByText("Staff directory is temporarily unavailable.")).toBeVisible();
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByText("No staff accounts yet. Add the first staff account to get started.")).toBeVisible();
-  expect(attempts).toBe(2);
+  expect(attempts).toBe(3);
 
   await page.getByRole("textbox", { name: "Search staff by name, code, designation, mobile or username" }).fill("recovered");
   await expect(page.getByRole("button", { name: "Recovered Staff" })).toBeVisible();
-  expect(attempts).toBe(3);
+  expect(attempts).toBe(4);
 });
