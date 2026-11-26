@@ -1305,7 +1305,7 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 ## 2026-11-26 follow-up — substitution login lifecycle calendar consistency
 
 - Added V67 to align the database guard that blocks disabling a substitute's login while future cover is active with the Asia/Kolkata school calendar date. This removes dependence on the PostgreSQL session timezone at midnight boundaries.
-- Added a PostgreSQL integration regression that inspects the installed guard function; V67 migration/rollback and backend CI verification are pending.
+- Added a PostgreSQL integration regression that inspects the installed guard function; V67 migration/rollback and Backend CI [45809288242](https://github.com/TheSumitNain/school-management-system/actions/runs/45809288242) **PASS**.
 - Existing substitution history is preserved; no data rewrite. Authenticated School Admin acceptance/sign-off and the previously documented approval gates remain outstanding.
 - Verification update: Backend CI [45809288242](https://github.com/TheSumitNain/school-management-system/actions/runs/45809288242) **PASS** on `fe6c7ae67d96e1767471b1af9282d3f3b16946c0`; full migrations, PostgreSQL integration (including V67 regression) and `go vet` all passed.
 
