@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"school-management-system/internal/models"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -162,6 +164,13 @@ func TestStaffSubstitutionV61SerializesConcurrentSubstituteSlotAssignmentsPostgr
 	// database guard is authoritative, and the repository returns a stable
 	// domain error so the School Admin UI can explain the required action.
 	userRepo := NewUserRepository(pool)
+	_, profileErr := userRepo.UpdateStaffProfile(ctx, actorPrincipalID, schoolID, originalOne, models.StaffProfile{
+		StaffType: "teaching", EmployeeCode: fmt.Sprintf("R1-%s-0", suffix), FullName: "Race Original One",
+		Designation: "Teacher", MobileNumber: "9876543210", EmploymentStatus: "inactive",
+	})
+	if !errors.Is(profileErr, ErrStaffProfileHasActiveSubstitutions) {
+		t.Fatalf("inactivate original teacher with active substitution error=%v; want ErrStaffProfileHasActiveSubstitutions", profileErr)
+	}
 	for _, teacherID := range []int64{originalOne, substitute} {
 		if err := userRepo.DisableStaffAccount(ctx, actorPrincipalID, schoolID, teacherID); !errors.Is(err, ErrStaffProfileHasActiveSubstitutions) {
 			t.Fatalf("disable teacher %d with active substitution error=%v; want ErrStaffProfileHasActiveSubstitutions", teacherID, err)
