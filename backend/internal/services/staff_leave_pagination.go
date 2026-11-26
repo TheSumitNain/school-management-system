@@ -13,7 +13,7 @@ type staffLeavePaginatedRepository interface {
 
 func (s *StaffLeaveService) ListRequestsPage(ctx context.Context, actor, school int64, status string, staffID int64, onDate, fromDate, toDate string, page, pageSize int) (repository.StaffLeaveRequestPage, error) {
 	empty := repository.StaffLeaveRequestPage{Items: []repository.StaffLeaveRequest{}}
-	if s == nil || s.repo == nil || actor <= 0 || school <= 0 || staffID < 0 || page < 1 || pageSize < 1 || pageSize > 100 {
+	if s == nil || s.repo == nil || actor <= 0 || school <= 0 || staffID < 0 || page < 1 || pageSize < 1 || pageSize > 100 || page-1 > int(^uint(0)>>1)/pageSize {
 		return empty, ErrInvalidStaffLeave
 	}
 	switch status { case "", "pending", "approved", "rejected", "cancelled": default: return empty, ErrInvalidStaffLeave }
