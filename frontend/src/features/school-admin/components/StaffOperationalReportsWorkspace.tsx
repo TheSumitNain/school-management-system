@@ -248,12 +248,12 @@ function QualificationsReport({ permissions }: Props) {
   return <section className="staff-operational-report-section">
     <div className="staff-operational-report-title">
       <div><h3>Qualifications & certifications</h3><p>Active employees only · Verification notes and credential references are not included.</p></div>
-      <button type="button" className="staff-operational-report-export" onClick={() => void exportAll()} disabled={!page || page.total === 0 || exporting || report.isError}><Download size={14}/> {exporting ? "Preparing CSV…" : "Export all matching CSV"}</button>
+      <button type="button" className="staff-operational-report-export" onClick={() => void exportAll()} disabled={!page || page.total === 0 || exporting || report.isFetching || report.isError}><Download size={14}/> {exporting ? "Preparing CSV…" : "Export all matching CSV"}</button>
     </div>
     {exportError && <p className="staff-operational-report-error" role="alert">{exportError}</p>}
     <div className="staff-operational-report-filters">
-      <label>Record type<select value={recordType} onChange={event => { setRecordType(event.target.value as typeof recordType); setOffset(0); setExportError(""); }}><option value="all">All records</option><option value="qualification">Qualifications</option><option value="certification">Certifications</option></select></label>
-      <label>Verification status<select value={verificationStatus} onChange={event => { setVerificationStatus(event.target.value as typeof verificationStatus); setOffset(0); setExportError(""); }}><option value="">All statuses</option><option value="pending">Pending</option><option value="verified">Verified</option><option value="rejected">Rejected</option></select></label>
+      <label>Record type<select value={recordType} disabled={exporting || report.isFetching} onChange={event => { setRecordType(event.target.value as typeof recordType); setOffset(0); setExportError(""); }}><option value="all">All records</option><option value="qualification">Qualifications</option><option value="certification">Certifications</option></select></label>
+      <label>Verification status<select value={verificationStatus} disabled={exporting || report.isFetching} onChange={event => { setVerificationStatus(event.target.value as typeof verificationStatus); setOffset(0); setExportError(""); }}><option value="">All statuses</option><option value="pending">Pending</option><option value="verified">Verified</option><option value="rejected">Rejected</option></select></label>
     </div>
     <div className="staff-operational-report-metrics">
       <article><span>Matching records</span><strong>{page?.total ?? "—"}</strong></article>
@@ -311,14 +311,14 @@ function ExperienceReport({ permissions }: Props) {
   return <section className="staff-operational-report-section">
     <div className="staff-operational-report-title">
       <div><h3>Staff experience history</h3><p>School-wide employment history, including inactive employees. Free-text descriptions are excluded.</p></div>
-      <button type="button" className="staff-operational-report-export" onClick={()=>void exportAll()} disabled={!page||page.total===0||exporting||report.isError}><Download size={14}/> {exporting?"Preparing CSV…":"Export all matching CSV"}</button>
+      <button type="button" className="staff-operational-report-export" onClick={()=>void exportAll()} disabled={!page||page.total===0||exporting||report.isFetching||report.isError}><Download size={14}/> {exporting?"Preparing CSV…":"Export all matching CSV"}</button>
     </div>
     {exportError&&<p className="staff-operational-report-error" role="alert">{exportError}</p>}
     <div className="staff-operational-report-filters">
-      <label>Employment type<select value={employmentType} onChange={event=>{setEmploymentType(event.target.value as typeof employmentType);setOffset(0);setExportError("");}}>
+      <label>Employment type<select value={employmentType} disabled={exporting || report.isFetching} onChange={event=>{setEmploymentType(event.target.value as typeof employmentType);setOffset(0);setExportError("");}}>
         <option value="">All employment types</option><option value="permanent">Permanent</option><option value="contract">Contract</option><option value="part_time">Part time</option><option value="temporary">Temporary</option><option value="internship">Internship</option><option value="other">Other</option>
       </select></label>
-      <label>Experience status<select value={currentOnly?"current":"all"} onChange={event=>{setCurrentOnly(event.target.value==="current");setOffset(0);setExportError("");}}><option value="all">All history</option><option value="current">Current roles only</option></select></label>
+      <label>Experience status<select value={currentOnly?"current":"all"} disabled={exporting || report.isFetching} onChange={event=>{setCurrentOnly(event.target.value==="current");setOffset(0);setExportError("");}}><option value="all">All history</option><option value="current">Current roles only</option></select></label>
     </div>
     <div className="staff-operational-report-metrics">
       <article><span>Matching records</span><strong>{page?.total??"—"}</strong></article>
