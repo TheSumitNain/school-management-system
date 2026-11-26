@@ -1,3 +1,14 @@
+## 2026-11-26 — employment lifecycle serialization and bounded bulk-write performance
+
+- Single and bulk attendance writes now take shared locks on all target active staff profiles, in ascending principal-ID order, until the attendance rows and audit events commit. Concurrent employment inactivation therefore either completes first (and the attendance write is rejected) or waits until an already-started attendance transaction commits; bulk lock ordering avoids deadlocks between overlapping target sets.
+- Leave request creation applies the same shared profile-row lock, so a new request cannot be created after employment inactivation has won the race. Existing approved/pending leave history remains intact.
+- Bulk attendance now inserts all target rows and their per-record audit events with one PostgreSQL data-modifying CTE instead of issuing one insert and one audit round trip per employee. The transaction remains all-or-nothing; any constraint or audit failure rolls back the complete batch.
+- The 1,000-record maximum is an API safety ceiling, not the default batch size or a requirement to mark 1,000 people at once. The School Admin UI still limits bulk marking to the explicitly selected visible, unmarked employees and confirms the exact count before submission.
+- New PostgreSQL integration coverage exercises single/bulk attendance and leave-request races against an uncommitted employment-inactivation transaction, plus a full 1,000-record attendance batch with exactly 1,000 audit events.
+- Backend CI is required to pass the complete migration chain, Go/PostgreSQL integration suite and go vet before this batch is considered verified. No schema migration or persistent school-data change is introduced.
+
+---
+
 ## 2026-11-26 — Staff directory and attendance read snapshots hardened
 
 - Staff Directory page counts and page rows now run in one read-only repeatable-read transaction for pool-backed requests. The directory summary's authorization and aggregate query also share one snapshot. Caller-owned transactions retain their existing isolation.
