@@ -533,6 +533,31 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		t.Fatalf("setting permission override for peer School Admin error = %v, want ErrDelegationNotFound", err)
 	}
 
+	// A pre-existing override on a protected peer admin must also be
+	// immutable through the repository delete path.
+	if tag, err := tx.Exec(ctx, `
+		INSERT INTO user_permission_overrides
+		    (principal_id, school_id, permission_id, effect, reason, granted_by, delegation_id)
+		SELECT $1, $2, p.id, 'deny', 'protected peer admin existing override', $3, $4
+		FROM permissions p WHERE p.permission_key = 'homework.create'
+	`, peerAdminPrincipalID, schoolID, platformAdminPrincipalID, overrideDelegation.ID); err != nil || tag.RowsAffected() != 1 {
+		t.Fatalf("seed protected peer School Admin override: rows=%d err=%v", tag.RowsAffected(), err)
+	}
+	if err := repo.DeleteStaffPermissionOverride(ctx, actorPrincipalID, schoolID, peerAdminPrincipalID, "homework.create"); !errors.Is(err, ErrDelegationNotFound) {
+		t.Fatalf("deleting permission override for peer School Admin error = %v, want ErrDelegationNotFound", err)
+	}
+	var protectedOverrideCount int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM user_permission_overrides
+		WHERE principal_id=$1 AND school_id=$2
+		  AND permission_id=(SELECT id FROM permissions WHERE permission_key='homework.create')
+	`, peerAdminPrincipalID, schoolID).Scan(&protectedOverrideCount); err != nil {
+		t.Fatalf("count protected peer School Admin overrides after rejected delete: %v", err)
+	}
+	if protectedOverrideCount != 1 {
+		t.Fatalf("protected peer School Admin override count after rejected delete=%d want=1", protectedOverrideCount)
+	}
+
 	if err := repo.SetStaffPermissionOverride(
 		ctx, actorPrincipalID, schoolID, targetPrincipalID, overrideDelegation.ID,
 		"homework.create", "allow", "integration test allow",
@@ -622,6 +647,9 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	if err := repo.AssignStaffRole(ctx, actorPrincipalID, schoolID, otherSchoolPrincipalID, customRole.ID); !errors.Is(err, ErrRoleNotFound) {
 		t.Fatalf("School A actor assigning role to School B staff error = %v, want ErrRoleNotFound", err)
 	}
+	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, otherSchoolPrincipalID, customRole.ID); !errors.Is(err, ErrRoleNotFound) {
+		t.Fatalf("School A actor revoking School B staff role error = %v, want ErrRoleNotFound", err)
+	}
 	if err := repo.SetStaffPermissionOverride(
 		ctx, actorPrincipalID, schoolID, otherSchoolPrincipalID, overrideDelegation.ID,
 		"homework.create", "allow", "cross-school isolation test",
@@ -634,6 +662,9 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 	}
 	if len(crossSchoolOverrides) != 0 {
 		t.Fatalf("School A actor received School B permission overrides: %+v", crossSchoolOverrides)
+	}
+	if err := repo.DeleteStaffPermissionOverride(ctx, actorPrincipalID, schoolID, otherSchoolPrincipalID, "homework.create"); !errors.Is(err, ErrDelegationNotFound) {
+		t.Fatalf("School A actor deleting School B staff override error = %v, want ErrDelegationNotFound", err)
 	}
 
 	if err := repo.RevokeSchoolPermissionDelegation(ctx, platformAdminPrincipalID, overrideDelegation.ID); !errors.Is(err, ErrDelegationNotFound) {
