@@ -48,3 +48,24 @@ BEGIN
   RETURN NEW;
 END;
 $v60$;
+
+-- Restore the original V60 profile-inactivation guard.
+CREATE OR REPLACE FUNCTION public.guard_v60_substitution_staff_lifecycle()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path=pg_catalog,public
+AS $v60$
+BEGIN
+  IF NEW.employment_status='inactive' AND OLD.employment_status IS DISTINCT FROM NEW.employment_status
+     AND EXISTS (
+       SELECT 1 FROM public.staff_substitutions ss
+        WHERE ss.school_id=NEW.school_id
+          AND ss.status='active'
+          AND ss.cover_date>=(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
+          AND (ss.original_teacher_principal_id=NEW.principal_id OR ss.substitute_teacher_principal_id=NEW.principal_id)
+     ) THEN
+    RAISE EXCEPTION 'cancel future substitutions before making this staff member inactive' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$v60$;
