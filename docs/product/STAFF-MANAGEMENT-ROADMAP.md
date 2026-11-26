@@ -1081,3 +1081,12 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added PostgreSQL integration assertions using a School Admin with home-school substitution permissions: cross-school create, cancel and list attempts must all return access denied. A separate test covers foreign-school authorization before input/record handling.
 - Backend CI [45746067897](https://github.com/TheSumitNain/school-management-system/actions/runs/45746067897) **PASS**: full migrations, Go/PostgreSQL integration suite and `go vet`.
 - These are regression-test improvements, not a claim that Staff Management is complete. Identity-schema approval for onboarding/bulk import, school policy approval for leave entitlements, document-storage approval and authenticated School Admin browser sign-off remain outstanding. `main` remains untouched.
+
+
+
+## 2026-11-26 follow-up — staff record and attendance write isolation
+
+- Added cross-tenant regression assertions for Qualification, Certification and Experience reads/creates/updates, including database row-count checks after rejected writes. Backend CI [45746562607](https://github.com/TheSumitNain/school-management-system/actions/runs/45746562607) **PASS**.
+- Added forged-school-ID tests for single attendance mark, bulk mark and attendance update/correction. The existing daily/monthly read isolation tests remain in place; rejected bulk writes are verified to leave no rows. Backend CI [45746893796](https://github.com/TheSumitNain/school-management-system/actions/runs/45746893796) **PASS**.
+- Both CI runs execute the complete migration chain, Go/PostgreSQL integration suite and `go vet`. These are test-only tenant-isolation improvements, not production behavior changes.
+- Staff Management remains in progress pending remaining workflow audit and authenticated School Admin browser sign-off. `main` remains untouched.
