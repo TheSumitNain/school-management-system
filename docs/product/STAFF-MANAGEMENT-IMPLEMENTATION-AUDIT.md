@@ -1,11 +1,12 @@
-## 2026-11-26 — Teaching assignment eligibility enforced by Staff Type and employment status
+## 2026-11-26 — Staff Type enforced across teacher assignment, reads and substitution
 
-- Teacher subject and class in-charge assignment writes now require a same-school staff profile explicitly classified as Teaching with active employment, in addition to the existing active principal, Teacher role, School Admin permission and tenant checks.
-- The eligible-teacher API excludes unclassified, Non-teaching, inactive-employment and inactive-login accounts. Legacy NULL Staff Type records remain visible in the Staff Directory's Unclassified filter but cannot receive new teaching assignments until explicitly classified.
-- V65 adds database-level guards for both assignment tables and prevents changing a Teaching employee to Non-teaching or Inactive while active subject/class-in-charge assignments remain. The profile row lock serializes concurrent assignment creation against type/employment changes.
-- Conflicts return HTTP 409 with an actionable message. No automatic Teacher role grant is introduced; role assignment remains a separate authorization/product-contract gate.
-- PostgreSQL integration coverage verifies non-teaching and inactive-employment assignment rejection, eligible-teacher filtering, and rollback-safe rejection of Staff Type/employment changes while assignments remain active. Automated CI for this checkpoint is pending.
-- No persistent database migration has been applied. V65 is included in the repository migration chain only; main remains untouched.
+- Teacher subject and class-in-charge assignment writes require a same-school profile explicitly classified as Teaching with active employment, alongside the existing active principal, Teacher role, School Admin permission and tenant checks. The eligible-teacher API excludes Unclassified, Non-teaching, inactive-employment and inactive-login accounts.
+- V65 adds database guards for both assignment tables and prevents changing a Teaching employee to Non-teaching or Inactive while active subject/class-in-charge assignments remain. Row locking serializes concurrent assignment creation against profile changes.
+- Teacher-only timetable and workload reads now require an active Teaching profile. Attendance section access, student enrollment history and paginated enrollment directory also enforce active Teaching eligibility; legacy assignments do not preserve teacher-only access after a profile becomes Unclassified or inactive.
+- V66 adds a database guard requiring both original and substitute employees to have active Teaching profiles before creating or changing dated substitution coverage.
+- PostgreSQL integration coverage verifies rejection of Non-teaching, Unclassified and inactive assignment targets; legacy teacher-only read denial across timetable, workload, attendance and enrollment history/directory; and substitution rejection when either participant is Non-teaching. Existing School Admin permissions remain intact.
+- Backend CI [45797481249](https://github.com/TheSumitNain/school-management-system/actions/runs/45797481249) **PASS** on commit `4a10038`, including the full migration chain, Go/PostgreSQL integration suite and `go vet`.
+- No persistent database migration has been applied. V66 is included in the repository migration chain only; `main` remains untouched.
 
 ---
 
@@ -41,8 +42,8 @@ This audit records what exists in the repository today. It is not an implementat
 
 - Repository review confirms `CreateStaffAccountWithProfile` creates the login account and employee profile but does not create a `principal_roles` assignment. The Add Staff wizard also has no role selector or role-assignment step.
 - Role assignment is currently a separate, post-creation operation in the employee's Account & Access workspace, subject to the separate live role-assignment permission and delegation rules.
-- This differs from Roadmap Form A, Step 3, which says a role is required when login is enabled and specifies Teacher as the default for teaching staff. The current schema/UI also has no persisted Staff Type, so assigning Teacher automatically would misclassify non-teaching employees.
-- **Do not auto-assign Teacher or another role as a workaround.** Keep the existing separately authorized role workflow until Staff Type, allowed role mapping, and whether role assignment must be part of atomic account creation are explicitly approved. Until then, the Add Staff login-provisioning phase is not fully met.
+- This differs from Roadmap Form A, Step 3, which says a role is required when login is enabled and specifies Teacher as the default for teaching staff. Staff Type is now persisted and captured by Add Staff, but the allowed role mapping and whether assignment must be part of atomic account creation have not been approved.
+- **Do not auto-assign Teacher or another role as a workaround.** Keep the existing separately authorized role workflow until the role mapping, permission/delegation behavior and atomicity contract are explicitly approved. Teaching classification alone does not grant access. Until then, the Add Staff login-provisioning phase is not fully met.
 - No production code, schema, or database was changed for this finding. Authenticated School Admin browser sign-off remains outstanding.
 
 ---
