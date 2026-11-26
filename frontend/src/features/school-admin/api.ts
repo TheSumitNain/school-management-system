@@ -672,8 +672,10 @@ export type StaffAttendanceMonthlySummary = {
 export type StaffAttendancePagination = { limit: number; offset: number; total: number };
 export type StaffAttendanceDailyPage = { date: string; data: StaffAttendanceRecord[]; pagination?: StaffAttendancePagination };
 export type StaffAttendanceMonthlyPage = { month: string; data: StaffAttendanceMonthlySummary[]; pagination?: StaffAttendancePagination };
-export function getDailyStaffAttendance(date: string, limit = 50, offset = 0, signal?: AbortSignal) {
+export function getDailyStaffAttendance(date: string, limit = 50, offset = 0, filters: { search?: string; status?: "all" | "unmarked" | "present" | "absent" | "late" | "half_day" } = {}, signal?: AbortSignal) {
   const params = new URLSearchParams({ date, limit: String(limit), offset: String(offset) });
+  if (filters.search?.trim()) params.set("search", filters.search.trim());
+  if (filters.status && filters.status !== "all") params.set("status", filters.status);
   return api<StaffAttendanceDailyPage>(`/school/staff-attendance?${params.toString()}`, { signal });
 }
 export function getMonthlyStaffAttendance(month: string, limit = 50, offset = 0, signal?: AbortSignal) {
