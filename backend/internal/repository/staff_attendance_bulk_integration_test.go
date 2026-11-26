@@ -244,3 +244,56 @@ func TestStaffAttendanceUpdateRollsBackWhenAuditFailsPostgresIntegration(t *test
 	}
 }
 
+func TestStaffAttendanceDailyAndMonthlyReadsAreSchoolScopedPostgresIntegration(t *testing.T) {
+	f := newStaffAttendanceIntegrationFixture(t)
+	day, err := time.Parse("2006-01-02", schooltime.TodayDate())
+	if err != nil {
+		t.Fatalf("parse school date: %v", err)
+	}
+	if _, err := f.repo.Mark(f.ctx, f.actorID, f.schoolID, f.staffIDs[0], day, "present", nil); err != nil {
+		t.Fatalf("mark attendance for read verification: %v", err)
+	}
+
+	daily, err := f.repo.ListDaily(f.ctx, f.actorID, f.schoolID, day)
+	if err != nil {
+		t.Fatalf("list daily attendance: %v", err)
+	}
+	foundDaily := false
+	for _, item := range daily {
+		if item.StaffPrincipalID == f.staffIDs[0] {
+			foundDaily = true
+			if item.Status == nil || *item.Status != "present" {
+				t.Fatalf("daily attendance status=%v want present", item.Status)
+			}
+		}
+	}
+	if !foundDaily {
+		t.Fatal("daily attendance omitted the active staff member with a marked record")
+	}
+
+	monthly, err := f.repo.ListMonthly(f.ctx, f.actorID, f.schoolID, day)
+	if err != nil {
+		t.Fatalf("list monthly attendance: %v", err)
+	}
+	foundMonthly := false
+	for _, item := range monthly {
+		if item.StaffPrincipalID == f.staffIDs[0] {
+			foundMonthly = true
+			if item.PresentDays != 1 || item.AbsentDays != 0 {
+				t.Fatalf("monthly totals present=%d absent=%d; want 1 and 0", item.PresentDays, item.AbsentDays)
+			}
+		}
+	}
+	if !foundMonthly {
+		t.Fatal("monthly attendance omitted the active staff member with a marked record")
+	}
+
+	otherSchoolID := f.schoolID + 9_000_000
+	if _, err := f.repo.ListDaily(f.ctx, f.actorID, otherSchoolID, day); !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+		t.Fatalf("cross-school daily read error=%v want ErrStaffAttendanceAccessDenied", err)
+	}
+	if _, err := f.repo.ListMonthly(f.ctx, f.actorID, otherSchoolID, day); !errors.Is(err, ErrStaffAttendanceAccessDenied) {
+		t.Fatalf("cross-school monthly read error=%v want ErrStaffAttendanceAccessDenied", err)
+	}
+}
+
