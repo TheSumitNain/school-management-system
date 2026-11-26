@@ -271,6 +271,13 @@ func TestStaffAttendanceDailyAndMonthlyReadsAreSchoolScopedPostgresIntegration(t
 		t.Fatal("daily attendance omitted the active staff member with a marked record")
 	}
 
+    dailyPage1, dailyTotal, err := f.repo.ListDailyPage(f.ctx, f.actorID, f.schoolID, day, 1, 0)
+    if err != nil || dailyTotal != 3 || len(dailyPage1) != 1 { t.Fatalf("daily first page rows=%d total=%d err=%v; want 1 and 3",len(dailyPage1),dailyTotal,err) }
+    dailyPage2, dailyTotal2, err := f.repo.ListDailyPage(f.ctx, f.actorID, f.schoolID, day, 1, 1)
+    if err != nil || dailyTotal2 != dailyTotal || len(dailyPage2) != 1 || dailyPage1[0].StaffPrincipalID == dailyPage2[0].StaffPrincipalID {
+        t.Fatalf("daily second page rows=%d total=%d first=%d err=%v; expected distinct row and stable total",len(dailyPage2),dailyTotal2,dailyPage1[0].StaffPrincipalID,err)
+    }
+
 	monthly, err := f.repo.ListMonthly(f.ctx, f.actorID, f.schoolID, day)
 	if err != nil {
 		t.Fatalf("list monthly attendance: %v", err)
@@ -287,6 +294,13 @@ func TestStaffAttendanceDailyAndMonthlyReadsAreSchoolScopedPostgresIntegration(t
 	if !foundMonthly {
 		t.Fatal("monthly attendance omitted the active staff member with a marked record")
 	}
+
+    monthlyPage1, monthlyTotal, err := f.repo.ListMonthlyPage(f.ctx, f.actorID, f.schoolID, day, 1, 0)
+    if err != nil || monthlyTotal != 3 || len(monthlyPage1) != 1 { t.Fatalf("monthly first page rows=%d total=%d err=%v; want 1 and 3",len(monthlyPage1),monthlyTotal,err) }
+    monthlyPage2, monthlyTotal2, err := f.repo.ListMonthlyPage(f.ctx, f.actorID, f.schoolID, day, 1, 1)
+    if err != nil || monthlyTotal2 != monthlyTotal || len(monthlyPage2) != 1 || monthlyPage1[0].StaffPrincipalID == monthlyPage2[0].StaffPrincipalID {
+        t.Fatalf("monthly second page rows=%d total=%d first=%d err=%v; expected distinct row and stable total",len(monthlyPage2),monthlyTotal2,monthlyPage1[0].StaffPrincipalID,err)
+    }
 
 	otherSchoolID := f.schoolID + 9_000_000
 	if _, err := f.repo.ListDaily(f.ctx, f.actorID, otherSchoolID, day); !errors.Is(err, ErrStaffAttendanceAccessDenied) {

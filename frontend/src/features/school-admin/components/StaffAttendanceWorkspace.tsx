@@ -257,7 +257,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     </div>
     {view === "daily" && <>
       <div className="staff-attendance-toolbar">
-        <label><span>Attendance date</span><DatePicker value={date} onChange={setDate} ariaLabel="Staff attendance date" max={today}/></label>
+        <label><span>Attendance date</span><DatePicker value={date} onChange={value => { setDate(value); setDailyOffset(0); }} ariaLabel="Staff attendance date" max={today}/></label>
         <label><span>Search employees</span><input aria-label="Search staff attendance" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name, employee code or designation"/></label>
         <label><span>Filter by status</span><select aria-label="Filter staff attendance status" value={statusFilter} onChange={event => setStatusFilter(event.target.value as "all" | "unmarked" | Status)}>
           <option value="all">All statuses</option><option value="unmarked">Not marked</option>{statuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}

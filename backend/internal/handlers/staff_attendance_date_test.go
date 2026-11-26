@@ -1,6 +1,11 @@
 package handlers
 
-import "testing"
+import (
+ "testing"
+ "net/http"
+ "net/http/httptest"
+ "github.com/gin-gonic/gin"
+)
 
 func TestParseStaffAttendanceDate(t *testing.T) {
 	tests := []struct {
@@ -46,4 +51,26 @@ func TestParseStaffAttendanceMonth(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseStaffAttendancePagination(t *testing.T) {
+    tests := []struct { name, limit, offset string; wantLimit, wantOffset int; wantOK bool }{
+        {name:"defaults",wantLimit:50,wantOffset:0,wantOK:true},
+        {name:"custom",limit:"100",offset:"250",wantLimit:100,wantOffset:250,wantOK:true},
+        {name:"zero limit",limit:"0"},
+        {name:"oversized limit",limit:"101"},
+        {name:"non numeric limit",limit:"many"},
+        {name:"negative offset",limit:"50",offset:"-1"},
+        {name:"oversized offset",limit:"50",offset:"1000000001"},
+        {name:"non numeric offset",limit:"50",offset:"next"},
+    }
+    for _,tt:=range tests { t.Run(tt.name,func(t *testing.T) {
+        router:=gin.New()
+        router.GET("/",func(c *gin.Context){limit,offset,ok:=parseStaffAttendancePagination(c);if ok!=tt.wantOK|| (ok&&(limit!=tt.wantLimit||offset!=tt.wantOffset)){c.Status(http.StatusInternalServerError);return};c.Status(http.StatusNoContent)})
+        target:="/"
+        if tt.limit!="" { target+="?limit="+tt.limit }
+        if tt.offset!="" { if tt.limit=="" {target+="?"} else {target+="&"};target+="offset="+tt.offset }
+        rec:=httptest.NewRecorder();router.ServeHTTP(rec,httptest.NewRequest(http.MethodGet,target,nil))
+        if rec.Code!=http.StatusNoContent {t.Fatalf("status=%d want 204",rec.Code)}
+    }) }
 }
