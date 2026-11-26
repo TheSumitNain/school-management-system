@@ -126,6 +126,28 @@ func TestTeacherWorkloadReportPostgresIntegration(t *testing.T) {
 	if _,err=tx.Exec(ctx,`INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number,staff_type)
 		VALUES($1,$2,$3,'Peer Workload Teacher','Teacher','9876543219','teaching')`,peerID,schoolID,fmt.Sprintf("WP-%d",suffix));err!=nil{t.Fatalf("create peer workload teacher profile: %v",err)}
 
+	// Workload is a Teaching report, not a generic staff directory. Legacy
+	// Unclassified, Non-teaching, and inactive-employment profiles must not
+	// appear even when they have otherwise valid staff principals.
+	for _, fixture := range []struct {
+		username, code, name, staffType, employment string
+	}{
+		{fmt.Sprintf("wlnt-%d", suffix), fmt.Sprintf("WNT-%d", suffix), "Workload Non-teaching", "non_teaching", "active"},
+		{fmt.Sprintf("wlu-%d", suffix), fmt.Sprintf("WU-%d", suffix), "Workload Unclassified", "", "active"},
+		{fmt.Sprintf("wli-%d", suffix), fmt.Sprintf("WI-%d", suffix), "Workload Inactive Teaching", "teaching", "inactive"},
+	} {
+		var principalID int64
+		if err=tx.QueryRow(ctx,`INSERT INTO users(school_id,username,password_hash,status)
+			VALUES($1,$2,'integration-test-password-hash','active') RETURNING principal_id`,schoolID,fixture.username).Scan(&principalID);err!=nil{
+			t.Fatalf("create %s principal: %v",fixture.name,err)
+		}
+		if _,err=tx.Exec(ctx,`INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number,staff_type,employment_status)
+			VALUES($1,$2,$3,$4,'Staff','9876543220',NULLIF($5,''),$6)`,
+			principalID,schoolID,fixture.code,fixture.name,fixture.staffType,fixture.employment);err!=nil{
+			t.Fatalf("create %s profile: %v",fixture.name,err)
+		}
+	}
+
 	var yearID,classID,sectionID,subjectID,periodID,assignmentID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO academic_years(school_id,name,starts_on,ends_on,status)
 		VALUES($1,$2,DATE '2026-04-01',DATE '2027-03-31','active') RETURNING id`,schoolID,fmt.Sprintf("workload-year-%d",suffix)).Scan(&yearID);err!=nil{t.Fatalf("create workload year: %v",err)}
