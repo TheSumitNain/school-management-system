@@ -52,6 +52,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
   const [toDate,setToDate]=useState(range.to);
   const [filterStaffID,setFilterStaffID]=useState("0");
   const [substitutionPage,setSubstitutionPage]=useState(1);
+  const [isExporting,setIsExporting]=useState(false);
   const substitutionPageSize=50;
   const [entryID,setEntryID]=useState("");
   const [coverDate,setCoverDate]=useState("");
