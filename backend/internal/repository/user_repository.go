@@ -374,6 +374,10 @@ func (r *UserRepository) UpdateStaffProfile(ctx context.Context, actorPrincipalI
         if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "ux_staff_profiles_school_employee_code" {
             return nil, ErrEmployeeCodeTaken
         }
+        if errors.As(err, &pgErr) && pgErr.Code == "23514" &&
+            strings.Contains(strings.ToLower(pgErr.Message), "active teaching and class in-charge assignments") {
+            return nil, ErrStaffProfileHasActiveAssignments
+        }
         return nil, fmt.Errorf("upsert staff profile: %w", err)
     }
 
