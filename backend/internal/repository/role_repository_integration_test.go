@@ -540,7 +540,7 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 		    (principal_id, school_id, permission_id, effect, reason, granted_by, delegation_id)
 		SELECT $1, $2, p.id, 'deny', 'protected peer admin existing override', $3, $4
 		FROM permissions p WHERE p.permission_key = 'homework.create'
-	`, peerAdminPrincipalID, schoolID, platformAdminPrincipalID, overrideDelegation.ID); err != nil || tag.RowsAffected() != 1 {
+	`, peerAdminPrincipalID, schoolID, actorPrincipalID, overrideDelegation.ID); err != nil || tag.RowsAffected() != 1 {
 		t.Fatalf("seed protected peer School Admin override: rows=%d err=%v", tag.RowsAffected(), err)
 	}
 	if err := repo.DeleteStaffPermissionOverride(ctx, actorPrincipalID, schoolID, peerAdminPrincipalID, "homework.create"); !errors.Is(err, ErrDelegationNotFound) {

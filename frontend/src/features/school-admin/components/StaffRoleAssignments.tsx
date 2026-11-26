@@ -17,13 +17,6 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
   const [feedback, setFeedback] = useState("");
   const [roleToRevoke, setRoleToRevoke] = useState<{id:number;name:string}|null>(null);
   const [roleError, setRoleError] = useState("");
-  useEffect(() => {
-    if (!canAssign || protectedSchoolAdmin) {
-      setRoleID("");
-      setRoleError("");
-      setRoleToRevoke(null);
-    }
-  }, [canAssign]);
   const rolesQuery = useQuery({
     queryKey: ["school-admin", "roles"],
     queryFn: ({ signal }) => getSchoolRoles(signal),
@@ -60,6 +53,13 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
   });
   const assignments = assignmentsQuery.data?.roles ?? [];
   const protectedSchoolAdmin = assignments.some(item => item.role_key === "school_admin");
+  useEffect(() => {
+    if (!canAssign || protectedSchoolAdmin) {
+      setRoleID("");
+      setRoleError("");
+      setRoleToRevoke(null);
+    }
+  }, [canAssign, protectedSchoolAdmin]);
   const availableRoles = useMemo(
     () => (rolesQuery.data?.roles ?? []).filter(role =>
       role.role_key !== "school_admin" && !assignments.some(assigned => assigned.role_id === role.id)),
