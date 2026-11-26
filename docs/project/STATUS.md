@@ -2807,3 +2807,13 @@ This update supersedes older status bullets that listed the following database-b
 - Added PostgreSQL regressions proving a School Admin with substitution permissions in their own school cannot create, cancel or list substitutions by supplying a different school ID. Added a focused foreign-school authorization-order regression as well.
 - Backend CI [45746067897](https://github.com/TheSumitNain/school-management-system/actions/runs/45746067897) **PASS** on `48bafd0ce56777d207725a9a047471cb832c2b1d`: full migration chain, complete Go/PostgreSQL integration suite and `go vet`.
 - Test-only hardening; no production behavior, schema migration or persistent school-data change. Current work remains on `work`; `main` remains untouched.
+
+
+
+## 2026-11-26 — Staff record and attendance write tenant-isolation regressions
+
+- Expanded PostgreSQL regression coverage across staff Qualifications, Certifications and Experience. A School Admin's home-school permissions cannot be reused with a forged foreign school ID for record reads, creates or updates; rejected writes are verified not to change record counts.
+- Backend CI [45746562607](https://github.com/TheSumitNain/school-management-system/actions/runs/45746562607) **PASS** on `5acd850fa98d0d11df1022daaad4a2667df13c96`: full migration chain, Go/PostgreSQL integration suite and `go vet`.
+- Extended attendance isolation coverage beyond daily/monthly reads: single mark, bulk mark and attendance correction/update reject a foreign school ID; rejected bulk writes leave no attendance rows.
+- Backend CI [45746893796](https://github.com/TheSumitNain/school-management-system/actions/runs/45746893796) **PASS** on `b563c161aade7f185c8476d07f73fcd65ae657b0`: full migration chain, Go/PostgreSQL integration suite and `go vet`.
+- Regression-test-only changes; no production behavior, schema migration or persistent school-data change. Current work remains on `work`; `main` remains untouched.
