@@ -801,7 +801,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		t.Fatalf("foreign academic year leaked into teacher assignment list: items=%+v err=%v", items, err)
 	}
 	if _, err := academicRepo.CreateTeacherSubjectAssignment(ctx, actorPrincipalID, schoolID,
-		foreignAcademicYearID, apiSection.ID, apiSubject.ID, teacherPrincipalID); err == nil {
+		foreignAcademicYearID, apiSection.ID, subjectAltID, teacherPrincipalID); err == nil {
 		t.Fatal("teacher subject assignment accepted a foreign-school academic year")
 	}
 	if _, err := academicRepo.ListEligibleTeachers(ctx, actorPrincipalID, otherSchoolID); !errors.Is(err, ErrAcademicAccessDenied) {
@@ -851,7 +851,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		t.Fatalf("foreign academic year leaked into class in-charge list: items=%+v err=%v", items, err)
 	}
 	if _, err := academicRepo.CreateClassInchargeAssignment(ctx, actorPrincipalID, schoolID,
-		foreignAcademicYearID, apiSection.ID, teacherPrincipalID); err == nil {
+		foreignAcademicYearID, section2, teacherPrincipalID); err == nil {
 		t.Fatal("class in-charge assignment accepted a foreign-school academic year")
 	}
 	if _, err := academicRepo.ListClassInchargeAssignments(ctx, actorPrincipalID, otherSchoolID, apiYear.ID); !errors.Is(err, ErrAcademicAccessDenied) {
