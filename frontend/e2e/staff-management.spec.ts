@@ -932,6 +932,30 @@ test("add staff wizard validates each step before allowing progress", async ({ p
 });
 
 
+test("staff modal traps focus from its dialog container and restores focus to its trigger", async ({ page }) => {
+  await signInAndOpenStaff(page, []);
+  const trigger = page.getByRole("button", { name: "Add staff", exact: true });
+  await trigger.focus();
+  await trigger.click();
+
+  const dialog = page.getByRole("dialog", { name: "Add employee" });
+  const close = dialog.getByRole("button", { name: "Close dialog" });
+  const continueButton = dialog.getByRole("button", { name: "Continue" });
+  await expect(dialog).toBeFocused();
+
+  // Initial focus is on the dialog container; reverse tab must wrap to the
+  // last visible control rather than escaping the modal or landing on hidden fields.
+  await page.keyboard.press("Shift+Tab");
+  await expect(continueButton).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(close).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+});
+
+
 test("staff profile email validation rejects malformed address components", async ({ page }) => {
   await signInAndOpenStaff(page, [], async (_path, route) => {
     await route.fulfill({ status: 201, json: { staff: { id: 93, principal_id: 293, school_id: 10, username: "email.teacher", employee_code: "EMP-EMAIL", full_name: "Email Teacher", designation: "Class Teacher", mobile_number: "9876543210", employment_status: "active", profile_complete: true, status: "active", must_change_password: true } } });

@@ -845,3 +845,11 @@ This section supersedes older statements in this audit that describe browser ver
 - Frontend CI [45773653025](https://github.com/TheSumitNain/school-management-system/actions/runs/45773653025) **PASS** on `2100c56`: TypeScript, Vite production build, and complete Playwright browser acceptance suite.
 - Re-audited Staff Leave, Attendance and Substitution transactional/audit behavior and concurrent overlap/slot tests; no additional production defect was confirmed. No schema or persistent data changes. `main` remains untouched.
 - Staff Management remains in progress pending authenticated School Admin browser acceptance/sign-off and documented approval-gated scope.
+
+
+## 2026-11-26 follow-up — modal keyboard focus containment
+
+- Source review found the shared modal focus trap included hidden wizard controls and did not wrap Shift+Tab when initial focus was on the dialog container. This could move keyboard focus outside an open dialog or into controls hidden on another wizard step.
+- Updated the shared Modal focusable-element list to exclude elements without a rendered box, hidden visibility, `aria-hidden` ancestry or inert ancestry. Tab and Shift+Tab now wrap from the dialog container as well as from the first/last visible control.
+- Added a Staff Management Playwright regression for reverse-tab from initial dialog focus, forward wrapping from the final visible control, Escape close, and focus restoration to the Add staff trigger.
+- Backend behavior and database schema are unchanged. Frontend CI is required to verify the shared component change and full browser suite. `main` remains untouched; authenticated School Admin acceptance/sign-off and documented approval-gated scope remain outstanding.

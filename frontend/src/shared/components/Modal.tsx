@@ -48,12 +48,25 @@ export function Modal({ open, title, description, onClose, children, closeDisabl
       if (event.key !== "Tab" || !dialogRef.current) return;
       const items = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
         "a[href], button:not([disabled]), input:not([disabled]):not([type='hidden']), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
-      ));
+      )).filter(item =>
+        item.getClientRects().length > 0 &&
+        window.getComputedStyle(item).visibility !== "hidden" &&
+        !item.closest("[aria-hidden='true'], [inert]"),
+      );
       if (!items.length) return;
       const first = items[0];
       const last = items[items.length - 1];
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      const activeElement = document.activeElement;
+      if (activeElement === dialogRef.current || !items.includes(activeElement as HTMLElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => {

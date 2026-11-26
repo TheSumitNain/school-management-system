@@ -1255,3 +1255,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Backend CI [45774065525](https://github.com/TheSumitNain/school-management-system/actions/runs/45774065525) **PASS** on `6ae620d3f2cc2b729ca40220614332d7c5d6576e`; frontend CI [45773653025](https://github.com/TheSumitNain/school-management-system/actions/runs/45773653025) **PASS** on `2100c56`, including the complete Playwright suite.
 - Re-audited leave, attendance and substitution transaction/audit and concurrency regression coverage. No new production change was justified in this pass.
 - No schema or persistent data changes. `main` remains untouched. Authenticated School Admin acceptance/sign-off and documented approval-gated scope remain outstanding; Staff Management is not complete.
+
+
+## 2026-11-26 follow-up — shared modal keyboard focus containment
+
+- Hardened the shared modal focus trap to ignore hidden wizard-step controls and wrap keyboard focus correctly when the dialog container itself has initial focus.
+- Added browser acceptance for Shift+Tab/Tab containment, Escape close and trigger focus restoration. Frontend CI verification is required before treating this accessibility regression as closed.
+- No backend or database changes. Authenticated School Admin sign-off and the previously recorded approval gates remain outstanding.
