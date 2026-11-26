@@ -152,7 +152,7 @@ func(r *StaffLeaveRepository) ListHolidays(ctx context.Context,actor,school int6
  if r==nil||r.db==nil||actor<=0||school<=0{return nil,ErrInvalidStaffLeave}
  permission:="staff.holidays.read";if includeInactive{permission="staff.holidays.manage"};if authorizeGuardian(ctx,r.db,actor,school,permission)!=nil{return nil,ErrStaffLeaveAccessDenied}
  start,e:=parseStaffLeaveDate(from);if e!=nil{return nil,ErrInvalidStaffLeave};end,e:=parseStaffLeaveDate(to);if e!=nil||end.Before(start)||end.Sub(start)>366*24*time.Hour{return nil,ErrInvalidStaffLeave}
- rows,e:=r.db.Query(ctx,`SELECT id,holiday_date::text,name,description,is_active FROM school_holidays WHERE school_id=$1 AND holiday_date BETWEEN $2::date AND $3::date AND ($4::boolean=TRUE OR is_active=TRUE) ORDER BY holiday_date,name LIMIT 1000`,school,from,to,includeInactive);if e!=nil{return nil,e};defer rows.Close();out:=[]SchoolHoliday{}
+ rows,e:=r.db.Query(ctx,`SELECT id,holiday_date::text,name,description,is_active FROM school_holidays WHERE school_id=$1 AND holiday_date BETWEEN $2::date AND $3::date AND ($4::boolean=TRUE OR is_active=TRUE) ORDER BY holiday_date,name`,school,from,to,includeInactive);if e!=nil{return nil,e};defer rows.Close();out:=[]SchoolHoliday{}
  for rows.Next(){var x SchoolHoliday;if e=rows.Scan(&x.ID,&x.HolidayDate,&x.Name,&x.Description,&x.IsActive);e!=nil{return nil,e};out=append(out,x)};return out,rows.Err()
 }
 func(r *StaffLeaveRepository) SaveHoliday(ctx context.Context,actor,school,id int64,x SchoolHoliday)(*SchoolHoliday,error){
