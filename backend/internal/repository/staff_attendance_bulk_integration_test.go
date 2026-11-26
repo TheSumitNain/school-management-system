@@ -446,3 +446,48 @@ func TestStaffAttendanceOperationsRejectForeignSchoolScopePostgresIntegration(t 
 		t.Fatalf("foreign-school attendance records=%d after denied operations; want 0", foreignRecords)
 	}
 }
+
+func TestStaffAttendanceWritesSerializeWithEmploymentInactivationPostgresIntegration(t *testing.T) {
+    for _, mode := range []string{"single", "bulk"} {
+        t.Run(mode, func(t *testing.T) {
+            f := newStaffAttendanceIntegrationFixture(t)
+            day, err := time.Parse("2006-01-02", schooltime.TodayDate())
+            if err != nil { t.Fatalf("parse school date: %v", err) }
+            targetID := f.staffIDs[0]
+            inactivationTx, err := f.pool.Begin(f.ctx)
+            if err != nil { t.Fatalf("begin employment inactivation: %v", err) }
+            defer func() { _ = inactivationTx.Rollback(context.Background()) }()
+            if _, err := inactivationTx.Exec(f.ctx, `UPDATE staff_profiles SET employment_status='inactive',updated_at=NOW() WHERE principal_id=$1 AND school_id=$2`, targetID, f.schoolID); err != nil {
+                t.Fatalf("lock and inactivate attendance target: %v", err)
+            }
+            result := make(chan error, 1)
+            started := make(chan struct{})
+            go func() {
+                close(started)
+                if mode == "single" {
+                    _, err := f.repo.Mark(f.ctx, f.actorID, f.schoolID, targetID, day, "present", nil)
+                    result <- err
+                    return
+                }
+                _, err := f.repo.MarkBulk(f.ctx, f.actorID, f.schoolID, f.staffIDs, day, "present", nil)
+                result <- err
+            }()
+            <-started
+            select {
+            case err := <-result:
+                t.Fatalf("attendance %s write completed while employment inactivation held the profile row: %v", mode, err)
+            case <-time.After(150 * time.Millisecond):
+            }
+            if err := inactivationTx.Commit(f.ctx); err != nil { t.Fatalf("commit employment inactivation: %v", err) }
+            select {
+            case err := <-result:
+                if !errors.Is(err, ErrStaffAttendanceNotFound) { t.Fatalf("attendance %s after inactivation error=%v; want not found", mode, err) }
+            case <-time.After(5 * time.Second):
+                t.Fatalf("attendance %s write did not finish after inactivation committed", mode)
+            }
+            var records int
+            if err := f.pool.QueryRow(f.ctx, `SELECT COUNT(*) FROM staff_attendance_records WHERE school_id=$1 AND staff_principal_id=$2 AND attendance_date=$3::date`, f.schoolID, targetID, schooltime.TodayDate()).Scan(&records); err != nil { t.Fatalf("count attendance records after inactivation: %v", err) }
+            if records != 0 { t.Fatalf("attendance records for inactive employee=%d; want 0", records) }
+        })
+    }
+}
