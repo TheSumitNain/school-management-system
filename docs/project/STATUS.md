@@ -2846,3 +2846,12 @@ This update supersedes older status bullets that listed the following database-b
 - Extended attendance isolation coverage beyond daily/monthly reads: single mark, bulk mark and attendance correction/update reject a foreign school ID; rejected bulk writes leave no attendance rows.
 - Backend CI [45746893796](https://github.com/TheSumitNain/school-management-system/actions/runs/45746893796) **PASS** on `b563c161aade7f185c8476d07f73fcd65ae657b0`: full migration chain, Go/PostgreSQL integration suite and `go vet`.
 - Regression-test-only changes; no production behavior, schema migration or persistent school-data change. Current work remains on `work`; `main` remains untouched.
+
+## 2026-11-26 — Timetable staff eligibility and workload report acceptance
+
+- Teacher-specific timetable reads now require the selected same-school staff profile to be explicitly Teaching and active, preventing legacy timetable entries from being surfaced for Non-teaching, Unclassified or inactive staff.
+- Preserved the School Admin workload-report contract: the school-wide report includes every same-school staff profile, including Non-teaching, Unclassified and inactive employees. Teacher-role workload reads remain self-only and require an active Teaching profile.
+- Extended PostgreSQL integration fixtures to cover Non-teaching, Unclassified and inactive Teaching employees; the School Admin report assertion verifies all five same-school profiles while the Teacher self-only assertion remains in place.
+- Added a Workload Report Playwright regression covering all employee types, active-only filtering and filtered CSV export, including spreadsheet-formula escaping. Corrected a Leave handler test so it sends a valid date-filter combination instead of expecting success for mutually exclusive filters.
+- Backend CI [45803817474](https://github.com/TheSumitNain/school-management-system/actions/runs/45803817474) **PASS** and Frontend CI [45803817695](https://github.com/TheSumitNain/school-management-system/actions/runs/45803817695) **PASS** on commit `71f64e6637c3280efc8f9fe33c3f53f37a57d946`. Backend verification includes the full ephemeral migration chain, Go/PostgreSQL integration suite and `go vet`; frontend verification includes TypeScript, Vite production build and the complete Playwright browser acceptance suite.
+- No database migration or persistent school-data change. Current work remains on `work`; `main` remains untouched.
