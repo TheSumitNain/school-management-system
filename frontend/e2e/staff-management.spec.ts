@@ -4586,3 +4586,34 @@ test("protected School Admin staff records expose no ordinary account lifecycle 
   await expect(profile.getByRole("button", { name: "Edit employee details" })).toHaveCount(0);
   await expect(profile.getByRole("button", { name: "Edit personal details" })).toHaveCount(0);
 });
+
+test("staff directory recovers from a transient server error without losing its filters", async ({ page }) => {
+  let attempts = 0;
+  await signInAndOpenStaff(page, []);
+  await page.route(
+    url => url.pathname === "/api/school/staff" && url.searchParams.has("limit"),
+    async route => {
+      attempts += 1;
+      if (attempts === 1) {
+        await route.fulfill({ status: 503, json: { message: "Staff directory is temporarily unavailable." } });
+        return;
+      }
+      const url = new URL(route.request().url());
+      const search = url.searchParams.get("search") ?? "";
+      const staff = search === "recovered"
+        ? [{ id: 1, principal_id: 901, school_id: 10, username: "recovered.staff", employee_code: "REC-901", full_name: "Recovered Staff", designation: "Office Staff", mobile_number: "9876543210", employment_status: "active", profile_complete: true, status: "active", must_change_password: false }]
+        : [];
+      await route.fulfill({ json: { staff, total: staff.length, limit: Number(url.searchParams.get("limit")), offset: Number(url.searchParams.get("offset") ?? 0) } });
+    },
+  );
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await expect(page.getByText("Staff directory is temporarily unavailable.")).toBeVisible();
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByText("No staff accounts yet. Add the first staff account to get started.")).toBeVisible();
+  expect(attempts).toBe(2);
+
+  await page.getByRole("textbox", { name: "Search staff by name, code, designation, mobile or username" }).fill("recovered");
+  await expect(page.getByRole("button", { name: "Recovered Staff" })).toBeVisible();
+  expect(attempts).toBe(3);
+});
