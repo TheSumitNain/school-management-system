@@ -1501,6 +1501,56 @@ test("staff profile edit skips the API and shows a no-changes toast when values 
   expect(updateRequests).toBe(0);
 });
 
+test("unchanged qualification, certification and experience edits skip API requests", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 620, school_id: 10, username: "teacher.record-unchanged",
+    employee_code: "EMP-RECORD-UNCHANGED", full_name: "Unchanged Records Teacher",
+    designation: "Teacher", mobile_number: "9876543222", employment_status: "active",
+    profile_complete: true, status: "active", must_change_password: false,
+  }];
+  const savedRecords: Record<"qualifications" | "certifications" | "experience", Array<Record<string, unknown>>> = {
+    qualifications: [{
+      id: 921, staff_principal_id: 620, qualification_type: "undergraduate",
+      qualification_name: "B.Ed.", specialization: "", institution: "State University",
+      board_university: "", completion_year: null, score: null, score_scale: null,
+      credential_reference: "", verification_status: "pending",
+    }],
+    certifications: [{
+      id: 922, staff_principal_id: 620, certificate_name: "First Aid",
+      issuing_organization: "State Board", issue_date: null, expiry_date: null,
+      credential_id: "", verification_status: "pending",
+    }],
+    experience: [{
+      id: 923, staff_principal_id: 620, employer_name: "Previous School",
+      designation: "Teacher", employment_type: "permanent", start_date: "2019-04-01",
+      end_date: null, is_current: false, description: "", verification_status: "pending",
+    }],
+  };
+  let mutationRequests = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update"], async (_collection, route) => {
+    mutationRequests += 1;
+    await route.fulfill({ status: 500, json: { message: "An unchanged record must not be submitted." } });
+  }, undefined, savedRecords);
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Unchanged Records Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Unchanged Records Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+
+  for (const [collection, recordLabel] of [
+    ["qualifications", "B.Ed."],
+    ["certifications", "First Aid"],
+    ["experience", "Previous School"],
+  ] as const) {
+    const recordCard = dialog.locator(".staff-record-card").filter({ hasText: recordLabel });
+    await recordCard.getByRole("button", { name: "Edit" }).click();
+    await dialog.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByText("No changes to save.", { exact: true })).toBeVisible();
+    expect(mutationRequests, collection).toBe(0);
+    await expect(recordCard).toBeVisible();
+  }
+});
+
 test("staff record server field errors render under the matching field and preserve entered values", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 612, school_id: 10, username: "teacher.record-validation",
