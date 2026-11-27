@@ -1,3 +1,13 @@
+## 2026-11-27 — Staff Attendance scale verification checkpoint
+
+- Automated Attendance technical verification now includes Daily pagination through a 1,001-employee roster, Monthly CSV export of all 1,001 employees, and real PostgreSQL pagination across 1,004 same-school staff profiles.
+- Frontend CI [45947477220](https://github.com/TheSumitNain/school-management-system/actions/runs/45947477220) **PASS** with 182 Playwright tests, TypeScript, Vite build and design-token checks. Backend CI [45947590210](https://github.com/TheSumitNain/school-management-system/actions/runs/45947590210) **PASS** with the complete migration chain, Go/PostgreSQL integration tests and `go vet`.
+- The 1,000-item bulk-write cap is an API safety ceiling, not a limit on the number of staff visible in Attendance. The UI bulk action remains limited to the currently visible unmarked page and requires count confirmation.
+- Attendance is technically verified for this automated batch, but is **not declared 100% complete** until local authenticated School Admin acceptance of daily marking, correction permissions, approved-leave/holiday context, monthly summary/export and mobile/landscape behavior.
+- Continue one page at a time: finish Attendance acceptance before moving to the next Staff Management page. Document upload remains deferred and is excluded from current completion scope. `main` remains untouched.
+
+---
+
 ## 2026-11-26 — paginated staff reads bounded and snapshot-consistent
 
 - Staff Directory, Attendance Daily/Monthly, Qualifications/Experience reports, Leave Requests and Substitutions now keep authorization and their count/page reads in a single read-only repeatable-read transaction for pool-backed requests. Existing caller-owned transactions retain their isolation level.
