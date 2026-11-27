@@ -1487,3 +1487,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added a PostgreSQL race test that holds the actual slot lock, starts leave approval and substitute assignment concurrently, then verifies exactly one write can commit.
 - Backend CI [45944248099](https://github.com/TheSumitNain/school-management-system/actions/runs/45944248099) **PASS** on `67d130760772ed84c9b09f8a7759dfd091c2a4ea`: full migrations, Go/PostgreSQL integration and `go vet`.
 - The technical concurrency gate is closed. Authenticated School Admin real-school sign-off and outstanding product/policy approvals remain open; do not mark this page or Staff Management 100% yet. Document upload remains deferred; `main` is untouched.
+
+
+## 2026-11-27 — Conflict messaging and final technical CI checkpoint
+
+- Substitution conflict responses now explicitly explain that approved leave can make a teacher unavailable; the shared leave conflict response also mentions active substitute coverage while remaining generic enough for duplicate school-record conflicts. Handler tests cover both response messages.
+- Backend CI [45944728147](https://github.com/TheSumitNain/school-management-system/actions/runs/45944728147) **PASS** on `f26e635e8cb776902325fe16868cee90e7ec451e`: migration chain, Go unit/integration tests including the V72 real concurrent leave/assignment race, and `go vet`.
+- Remaining page exit gate is a real authenticated School Admin sign-off. Execute against a test timetable in the target school: (1) assign cover for a lesson on the matching weekday inside the active academic year; (2) verify only active Teaching staff with the matching class/subject assignment are eligible; (3) verify an approved-leave substitute is rejected with a clear message; (4) verify overlapping leave approval is rejected and remains pending; (5) cancel a future cover and confirm the cancelled history remains; (6) confirm completed coverage cannot be cancelled; (7) verify read-only access exposes history but no management controls; (8) verify mobile/landscape layout, filters, pagination and CSV export.
+- Do not mark Substitute Teacher Coverage or Staff Management 100% until that sign-off and the outstanding product/policy approvals are recorded. Document upload remains deferred; `main` remains untouched.
