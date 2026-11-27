@@ -5921,10 +5921,10 @@ test("staff monthly attendance CSV export verifies every page for more than 1,00
   const downloadPath = await download.path();
   expect(downloadPath).toBeTruthy();
   const csv = await readFile(downloadPath!, "utf8");
-  expect(csv.startsWith("\\uFEFF")).toBe(true);
+  expect(csv.startsWith("\uFEFF")).toBe(true);
   expect(csv).toContain("Monthly Scale Staff 0001");
   expect(csv).toContain("Monthly Scale Staff 1001");
   expect(csv).toContain("EMP-ATT-EXPORT-1001");
-  expect(csv.split(/\\r?\\n/).length).toBe(2003);
+  expect(csv.split(/\r?\n/).length).toBe(2003);
   expect(exportOffsets).toEqual([0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]);
 });
