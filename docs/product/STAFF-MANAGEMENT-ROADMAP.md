@@ -1435,3 +1435,12 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Credential handoff browser coverage verifies explicit copy, clipboard permission denial without false success, retention of the handoff for a safe alternate action, and the “Do this later” dismissal. No credentials are automatically sent by email or SMS.
 - Role assignment and permission override backend restrictions were reviewed: school scoping, protected School Admin restrictions, self-escalation prevention, audit history and transaction rollback remain enforced by the backend integration coverage. UI duplicate-submit hardening and remaining authenticated School Admin acceptance are separate open checks; this checkpoint does not declare Staff Profile or Staff Management 100% complete.
 - No schema migration or persistent school-data change. Document upload remains deferred pending the private storage service decision; profile-only onboarding and leave-policy/product approvals remain open. Current work remains on `work`; `main` remains untouched.
+
+
+## 2026-11-27 — Account & Access duplicate-submit safeguards verified
+
+- Verified code checkpoint `c0d08e078200e72a0d4500f14cd4deaf92506660` on `work`.
+- Frontend CI [45933605769](https://github.com/TheSumitNain/school-management-system/actions/runs/45933605769) **PASS**: TypeScript, Vite production build and complete Playwright browser acceptance suite.
+- Backend CI [45933605721](https://github.com/TheSumitNain/school-management-system/actions/runs/45933605721) **PASS**: full migration chain, Go/PostgreSQL integration tests and `go vet`.
+- Role Assignment and Permission Override save handlers have synchronous in-flight guards in addition to disabled pending-state buttons. Browser regressions simulate repeated form submission while the request is deliberately held and verify a single mutation request plus successful completion.
+- This closes only the duplicate-submit acceptance item for these two Account & Access operations. It does not close all Account & Access requirements or declare Staff Profile/Staff Management complete. Authenticated School Admin sign-off and the recorded product approval gates remain outstanding. Documents upload remains deferred; `main` is untouched.
