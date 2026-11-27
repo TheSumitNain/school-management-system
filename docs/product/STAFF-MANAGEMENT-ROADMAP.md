@@ -1407,3 +1407,13 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Updated the regression test to assert the current `Saving…` button is disabled before issuing a programmatic second form submission. The assertion still verifies the actual pending UI state and the request-count guard.
 - Fix commit: `92d70b76`. Backend and Frontend CI for this fix are pending; do not mark browser acceptance green until the rerun completes.
 - Document upload remains explicitly deferred; Staff Profile is not yet declared 100% complete.
+
+
+## 2026-11-27 follow-up — record-save modal lifecycle and E2E fixture
+
+- The `92d70b76` rerun passed employee-create duplicate-submit coverage but exposed a second issue in the record-save regression: its custom POST mock returned a saved qualification without updating the helper's in-memory GET fixture, so the post-save refetch correctly returned an empty list. The application save path was not the cause of this assertion failure.
+- Corrected the E2E fixture to persist the successful mock qualification before fulfilling the POST, preserving the follow-up GET/refetch assertion.
+- Also fixed a real pending-state UX gap: the employee profile dialog could still close via its close control, Escape or backdrop while a qualification/certification/experience mutation was pending. The profile modal now receives `closeDisabled` during all six create/update mutation states; both record-form Cancel controls are disabled until the request settles. The Save button shares the same pending-state predicate.
+- Expanded the browser regression to verify close-button and Cancel disabled state, Escape/backdrop close prevention, duplicate `requestSubmit()` suppression, successful refetch/list rendering, and re-enabling close after completion. Removed the redundant duplicate pending-button assertion.
+- Code checkpoints: `2cdc1b4a` (profile modal lifecycle guard), `ae5b27c9` (E2E fixture and acceptance coverage). CI is pending on the latest `work` code checkpoint; do not mark this batch or Staff Profile browser acceptance verified until CI completes.
+- Document upload remains explicitly deferred. Authenticated School Admin sign-off and separately documented identity-schema/leave-policy/product approval gates remain outstanding; `main` remains untouched.
