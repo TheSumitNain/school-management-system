@@ -9,7 +9,14 @@ LANGUAGE plpgsql
 SET search_path=pg_catalog,public
 AS $v71$
 BEGIN
-  IF OLD.status='pending' AND NEW.status='approved' THEN
+  IF NEW.status='approved' AND (
+       TG_OP='INSERT'
+       OR OLD.status IS DISTINCT FROM NEW.status
+       OR OLD.start_date IS DISTINCT FROM NEW.start_date
+       OR OLD.end_date IS DISTINCT FROM NEW.end_date
+       OR OLD.staff_principal_id IS DISTINCT FROM NEW.staff_principal_id
+       OR OLD.school_id IS DISTINCT FROM NEW.school_id
+     ) THEN
     PERFORM pg_advisory_xact_lock(
       hashtextextended('refresh-principal:' || NEW.staff_principal_id::bigint::text,0)
     );
@@ -32,7 +39,7 @@ END;
 $v71$;
 
 CREATE TRIGGER trg_guard_v71_leave_approval_against_substitution
-BEFORE UPDATE OF status ON public.staff_leave_requests
+BEFORE INSERT OR UPDATE OF status,start_date,end_date,staff_principal_id,school_id ON public.staff_leave_requests
 FOR EACH ROW EXECUTE FUNCTION public.guard_v71_leave_approval_against_substitution();
 
 -- V62 locks both teachers in deterministic principal-ID order. Run this
