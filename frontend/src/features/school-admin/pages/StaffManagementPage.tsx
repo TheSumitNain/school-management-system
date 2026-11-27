@@ -220,6 +220,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const [recordFormKind, setRecordFormKind] = useState<"qualification" | "certification" | "experience" | null>(null);
   const [recordError, setRecordError] = useState("");
   const [recordFieldErrors, setRecordFieldErrors] = useState<Record<string, string>>({});
+  const recordSubmitInFlight = useRef(false);
   const [certificationIssueDate, setCertificationIssueDate] = useState("");
   const [certificationExpiryDate, setCertificationExpiryDate] = useState("");
   const [experienceStartDate, setExperienceStartDate] = useState("");
@@ -485,6 +486,7 @@ export function StaffManagementPage({ permissions }: Props) {
   }
   async function submitStaffRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (recordSubmitInFlight.current) return;
     if (!canUpdate) { setRecordFormKind(null); setEditingRecordID(null); return; }
     if (!profileFor || !recordFormKind) return;
     const form = new FormData(event.currentTarget);
@@ -530,6 +532,7 @@ export function StaffManagementPage({ permissions }: Props) {
     }
     setRecordFieldErrors(errors);
     if (Object.keys(errors).length) return;
+    recordSubmitInFlight.current = true;
     try {
       if (recordFormKind === "qualification") {
         const year = value("completion_year");
@@ -597,6 +600,8 @@ export function StaffManagementPage({ permissions }: Props) {
       } else {
         setRecordError(message);
       }
+    } finally {
+      recordSubmitInFlight.current = false;
     }
   }
   function deactivate(item: StaffRecord) { if (item.protected_school_admin) return; setDisableError(""); setStaffToDisable(item); }
