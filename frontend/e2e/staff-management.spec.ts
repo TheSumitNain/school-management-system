@@ -1784,7 +1784,7 @@ test("unchanged qualification, certification and experience edits skip API reque
   }, undefined, savedRecords);
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Unchanged Records Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.record-unchanged" }).click();
   const dialog = page.getByRole("dialog", { name: "Unchanged Records Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
 
@@ -2122,7 +2122,7 @@ test("staff certification form preserves values after a failed save and succeeds
   }, undefined, savedRecords);
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Certification Retry Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.certification-retry" }).click();
   const dialog = page.getByRole("dialog", { name: "Certification Retry Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await dialog.getByRole("button", { name: "Add certification" }).click();
