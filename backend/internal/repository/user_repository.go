@@ -321,22 +321,22 @@ func (r *UserRepository) CreateStaffAccountWithProfile(
                   JOIN users actor ON actor.principal_id = ap.id
                   JOIN schools school ON school.id = actor.school_id AND school.status = 'active'
                   JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
-                  JOIN roles role ON role.id = pr.role_id
-                  JOIN role_permissions rp ON rp.role_id = role.id
-                  JOIN permissions permission ON permission.id = rp.permission_id
+                  JOIN roles actor_role ON actor_role.id = pr.role_id
+                  JOIN role_permissions rp ON rp.role_id = actor_role.id
+                  JOIN permissions actor_permission ON actor_permission.id = rp.permission_id
                  WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
                    AND actor.status = 'active' AND actor.school_id = $2
-                   AND role.school_id = $2 AND role.scope_type = 'school'
-                   AND role.principal_type = 'staff' AND role.role_key = 'school_admin'
-                   AND role.is_system = TRUE
-                   AND permission.permission_key = 'roles.assign'
-                   AND permission.scope_type = 'school' AND permission.is_active = TRUE
+                   AND actor_role.school_id = $2 AND actor_role.scope_type = 'school'
+                   AND actor_role.principal_type = 'staff' AND actor_role.role_key = 'school_admin'
+                   AND actor_role.is_system = TRUE
+                   AND actor_permission.permission_key = 'roles.assign'
+                   AND actor_permission.scope_type = 'school' AND actor_permission.is_active = TRUE
                    AND NOT EXISTS (
                        SELECT 1
                          FROM user_permission_overrides denied
                         WHERE denied.principal_id = ap.id
                           AND denied.school_id = $2
-                          AND denied.permission_id = permission.id
+                          AND denied.permission_id = actor_permission.id
                           AND denied.effect = 'deny'
                    )
             )
