@@ -240,6 +240,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const [overridesForPrincipal, setOverridesForPrincipal] = useState<number | null>(null);
   const [staffToDisable, setStaffToDisable] = useState<StaffRecord | null>(null);
   const [disableError, setDisableError] = useState("");
+  const disableInFlight = useRef(false);
 
   const staff = canReadStaff ? query.data?.staff ?? [] : [];
   const filtered = useMemo(() => {
@@ -630,9 +631,10 @@ export function StaffManagementPage({ permissions }: Props) {
   }
   function deactivate(item: StaffRecord) { if (item.protected_school_admin) return; setDisableError(""); setStaffToDisable(item); }
   async function confirmDeactivate() {
-    if (!staffToDisable) return;
+    if (!staffToDisable || disableInFlight.current || disable.isPending) return;
     if (!canDisable || !canReadStaff || staffToDisable.protected_school_admin) { setStaffToDisable(null); setDisableError(""); return; }
     const item = staffToDisable;
+    disableInFlight.current = true;
     setDisableError("");
     setFeedback(null);
     try {
@@ -642,6 +644,8 @@ export function StaffManagementPage({ permissions }: Props) {
       setFeedback(null);
     } catch (error) {
       setDisableError(error instanceof Error ? error.message : "Unable to disable this account. Please try again.");
+    } finally {
+      disableInFlight.current = false;
     }
   }
 
