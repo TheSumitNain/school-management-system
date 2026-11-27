@@ -1613,6 +1613,61 @@ test("staff certification saves valid issue and expiry dates selected from the d
   await expect(card).toContainText("2025-01-15");
 });
 
+
+test("staff certification rejects expiry dates earlier than issue dates without an API request", async ({ page }) => {
+  let mutationCalls = 0;
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 614, school_id: 10, username: "teacher.date-order",
+    employee_code: "EMP-DATE-03", full_name: "Date Order Teacher", designation: "Teacher",
+    mobile_number: "9876543216", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update"], async (_collection, route) => {
+    mutationCalls += 1;
+    await route.fulfill({ status: 201, json: { certification: { id: 1 } } });
+  });
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Date Order Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Date Order Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  await dialog.getByRole("button", { name: "Add certification" }).click();
+  await dialog.locator('input[name="certificate_name"]').fill("Chronology Check Certificate");
+  await dialog.locator('input[name="issuing_organization"]').fill("State Board");
+  await dialog.locator('input[name="issue_date"]').evaluate((element: HTMLInputElement) => { element.value = "2025-06-01"; });
+  await dialog.locator('input[name="expiry_date"]').evaluate((element: HTMLInputElement) => { element.value = "2025-05-31"; });
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("Expiry date cannot be before the issue date.")).toBeVisible();
+  expect(mutationCalls).toBe(0);
+  await expect(dialog.locator('input[name="certificate_name"]')).toHaveValue("Chronology Check Certificate");
+});
+
+test("staff experience rejects end dates before start dates without an API request", async ({ page }) => {
+  let mutationCalls = 0;
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 615, school_id: 10, username: "teacher.experience-order",
+    employee_code: "EMP-EXP-01", full_name: "Experience Order Teacher", designation: "Teacher",
+    mobile_number: "9876543217", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update"], async (_collection, route) => {
+    mutationCalls += 1;
+    await route.fulfill({ status: 201, json: { experience: { id: 1 } } });
+  });
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Experience Order Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Experience Order Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  await dialog.getByRole("button", { name: "Add experience" }).click();
+  await dialog.locator('input[name="employer_name"]').fill("Previous School");
+  await dialog.locator('input[name="record_designation"]').fill("Teacher");
+  await dialog.locator('input[name="start_date"]').evaluate((element: HTMLInputElement) => { element.value = "2024-08-01"; });
+  await dialog.locator('input[name="end_date"]').evaluate((element: HTMLInputElement) => { element.value = "2024-07-31"; });
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("End date must be a real calendar date on or after the start date.")).toBeVisible();
+  expect(mutationCalls).toBe(0);
+  await expect(dialog.locator('input[name="employer_name"]')).toHaveValue("Previous School");
+});
+
 test("staff profile shows only the selected employee's academic assignments and retained history", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 411, school_id: 10, username: "teacher.profile",
