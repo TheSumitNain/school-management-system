@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getSchoolClassCurricula, getSchoolStudentEnrollmentCurriculum, getSchoolStudentEnrollmentDirectory, previewSchoolClassCurriculumRemoval, saveSchoolClassCurriculum,
   saveSchoolStudentEnrollmentSubjects,
-  createSchoolStaff, disableSchoolStaff, enableSchoolStaff, getSchoolStaff, getSchoolStaffDirectory, getSchoolStaffDirectorySummary,
+  createSchoolStaff, disableSchoolStaff, enableSchoolStaff, getSchoolStaff, getSchoolStaffProfile, getSchoolStaffDirectory, getSchoolStaffDirectorySummary,
   resetSchoolStaffPassword, updateSchoolStaff,
   getStaffQualifications, createStaffQualification, updateStaffQualification, getStaffCertifications, createStaffCertification, updateStaffCertification, getStaffExperience, createStaffExperience, updateStaffExperience,
   getStaffLeaveTypes, saveStaffLeaveType, getStaffLeaveRequests, createStaffLeaveRequest, decideStaffLeaveRequest, cancelStaffLeaveRequest, getSchoolHolidays, saveSchoolHoliday,
@@ -23,6 +23,16 @@ export function useSchoolStaffQuery(enabled = true) {
     queryFn: ({ signal }) => getSchoolStaff(signal),
     staleTime: 30_000,
     enabled,
+  });
+}
+
+export function useSchoolStaffProfileQuery(principalID: number, enabled = true) {
+  return useQuery({
+    queryKey: [...schoolAdminQueryKeys.staff(), "profile", principalID] as const,
+    queryFn: ({ signal }) => getSchoolStaffProfile(principalID, signal),
+    enabled: enabled && principalID > 0,
+    staleTime: 15_000,
+    retry: false,
   });
 }
 
