@@ -232,10 +232,24 @@ export function StaffManagementPage({ permissions }: Props) {
   const [recordError, setRecordError] = useState("");
   const [recordFieldErrors, setRecordFieldErrors] = useState<Record<string, string>>({});
   const recordSubmitInFlight = useRef(false);
+  const recordFormRef = useRef<HTMLFormElement>(null);
   const [certificationIssueDate, setCertificationIssueDate] = useState("");
   const [certificationExpiryDate, setCertificationExpiryDate] = useState("");
   const [experienceStartDate, setExperienceStartDate] = useState("");
   const [experienceEndDate, setExperienceEndDate] = useState("");
+  useEffect(() => {
+    if (!recordFormKind) return;
+    const form = recordFormRef.current;
+    if (!form) return;
+
+    const firstField = form.querySelector<HTMLElement>(
+      'input:not([type="hidden"]), select, textarea, button:not([type="button"])',
+    );
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    form.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
+    const focusTimer = window.setTimeout(() => firstField?.focus({ preventScroll: true }), reduceMotion ? 0 : 250);
+    return () => window.clearTimeout(focusTimer);
+  }, [recordFormKind]);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [createStep, setCreateStep] = useState(1);
@@ -825,7 +839,7 @@ export function StaffManagementPage({ permissions }: Props) {
           </div>
           {!canUpdate && <p className="staff-wizard-note">You have read-only access to these records.</p>}
           <p className="staff-wizard-note">New records are saved with Pending verification. Existing records are not silently overwritten or deleted.</p>
-          {recordFormKind && <form className="staff-record-form" noValidate onSubmit={submitStaffRecord} aria-busy={recordMutationPending} inert={recordMutationPending}>
+          {recordFormKind && <form ref={recordFormRef} className="staff-record-form" noValidate onSubmit={submitStaffRecord} aria-busy={recordMutationPending} inert={recordMutationPending}>
             <div className="staff-record-form-heading"><h4>{editingRecordID !== null ? "Edit " : "Add "}{recordFormKind === "qualification" ? "education" : recordFormKind === "certification" ? "certification" : "employment history"}</h4><button type="button" className="staff-text-button" disabled={recordMutationPending} onClick={() => {setRecordFormKind(null);setEditingRecordID(null);setRecordError("");setRecordFieldErrors({});}}>Cancel</button></div>
             {recordFormKind === "qualification" && <>
               <label>Qualification type <select name="qualification_type" required onChange={() => clearRecordFieldError("qualification_type")} defaultValue={editingQualification?.qualification_type ?? "undergraduate"} aria-invalid={Boolean(recordFieldErrors.qualification_type)} aria-describedby={recordFieldErrors.qualification_type ? "staff-record-type-error" : undefined}><option value="school">School</option><option value="diploma">Diploma</option><option value="undergraduate">Undergraduate</option><option value="postgraduate">Postgraduate</option><option value="doctorate">Doctorate</option><option value="other">Other</option></select>{recordFieldErrors.qualification_type && <small id="staff-record-type-error" className="app-field-error" role="alert">{recordFieldErrors.qualification_type}</small>}</label>
