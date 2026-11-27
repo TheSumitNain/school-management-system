@@ -1453,3 +1453,13 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - A shared synchronous in-flight guard now serializes individual attendance marks, existing-record updates/historical corrections and bulk marking. Playwright holds individual and bulk requests open and verifies that repeated submit events issue only one request.
 - Attendance still has explicit browser acceptance work outstanding: same-day update flow, historical-correction confirmation flow, and failed-write retry. Do not mark Attendance or Staff Management complete until those and the remaining page-level acceptance criteria are verified.
 - No migration or schema change. Document upload remains deferred pending private-storage selection; `main` remains untouched.
+
+
+## 2026-11-27 — Attendance lifecycle and narrow-viewport regression coverage
+
+- Verified checkpoint: `88607972d5b8e547bd551176d17e6c4f28b523da` on `work`.
+- Frontend CI [45939039578](https://github.com/TheSumitNain/school-management-system/actions/runs/45939039578) **PASS** with **172 Playwright tests**; Backend CI [45939039547](https://github.com/TheSumitNain/school-management-system/actions/runs/45939039547) **PASS** with migrations, PostgreSQL integration tests and `go vet`.
+- Attendance now has explicit browser regression coverage for updating an existing record, recovering from a failed write, confirming a historical correction once, and suppressing duplicate individual/bulk submissions while requests are pending.
+- Daily and Monthly Attendance browser layouts are checked at 320, 360, 390, 768 and 1280px, including inner-table horizontal scrolling on narrow screens and no document-level horizontal overflow. Staff Directory also gained 320/360px coverage.
+- These tests close the previously listed Attendance browser-flow gaps, but do not alone declare Attendance, Staff Profile or the Staff Management module fully complete. Continue with the remaining page acceptance audit and manual authenticated-school sign-off. Document upload remains deferred pending private-storage selection.
+- No schema/API change or persistent data change in this batch; `main` remains untouched.
