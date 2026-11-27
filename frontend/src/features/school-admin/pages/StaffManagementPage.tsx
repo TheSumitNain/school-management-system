@@ -177,7 +177,10 @@ export function StaffManagementPage({ permissions }: Props) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
-    const timeout = window.setTimeout(() => setDebouncedSearch(search), 350);
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(search);
+      setDirectoryPageIndex(0);
+    }, 350);
     return () => window.clearTimeout(timeout);
   }, [search]);
   const [staffTypeFilter, setStaffTypeFilter] = useState("all");
@@ -196,7 +199,7 @@ export function StaffManagementPage({ permissions }: Props) {
     offset: directoryPageIndex * 50,
   };
   const directoryQuery = useSchoolStaffDirectoryQuery(canReadStaff && activeTab === "directory", directoryFilters);
-  useEffect(() => { setDirectoryPageIndex(0); }, [debouncedSearch, staffTypeFilter, employmentFilter, accountFilter, profileFilter]);
+  useEffect(() => { setDirectoryPageIndex(0); }, [staffTypeFilter, employmentFilter, accountFilter, profileFilter]);
   useEffect(() => {
     const total = directoryQuery.data?.total;
     if (total === undefined) return;
