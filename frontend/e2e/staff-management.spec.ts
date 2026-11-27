@@ -3613,6 +3613,161 @@ test("staff leave request submits a valid half-day application with its selected
   });
 });
 
+test("staff leave request suppresses duplicate submissions while the create request is pending", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.double-submit",
+    employee_code: "EMP-DOUBLE-01", full_name: "Double Submit Teacher", designation: "Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  let attempts = 0;
+  let releaseRequest!: () => void;
+  const requestGate = new Promise<void>(resolve => { releaseRequest = resolve; });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.leave.read", "staff.leave.manage_requests"]);
+  await page.route("**/api/school/staff-leave/requests", async route => {
+    if (route.request().method() !== "POST") { await route.fallback(); return; }
+    attempts += 1;
+    await requestGate;
+    await route.fulfill({ status: 201, json: { data: {
+      id: 91, staff_principal_id: 501, employee_code: "EMP-DOUBLE-01", staff_name: "Double Submit Teacher",
+      leave_type_id: 1, leave_type_name: "Casual Leave", start_date: schoolDateValue(),
+      end_date: schoolDateValue(), duration_type: "full_day", reason: "Duplicate guard check",
+      status: "pending", created_at: "2026-11-27T00:00:00.000Z",
+    } } });
+  });
+
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await page.getByRole("button", { name: "Staff member", exact: true }).click();
+  await page.getByRole("option", { name: /Double Submit Teacher/ }).click();
+  await page.getByLabel("Leave type").click();
+  await page.getByRole("option", { name: /Casual Leave/ }).click();
+  await chooseDatePickerValue(page, "Leave start date", schoolDateValue());
+  await chooseDatePickerValue(page, "Leave end date", schoolDateValue());
+  await page.getByLabel("Reason").fill("Duplicate guard check");
+
+  const form = page.locator("form.staff-leave-form").first();
+  await form.getByRole("button", { name: "Submit leave request" }).click();
+  await expect.poll(() => attempts).toBe(1);
+  await form.evaluate(element => (element as HTMLFormElement).requestSubmit());
+  expect(attempts).toBe(1);
+  releaseRequest();
+  await expect(page.getByText("Leave request created and sent for approval.")).toBeVisible();
+});
+
+test("staff leave decisions suppress duplicate confirmation while the decision is pending", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.decision-guard",
+    employee_code: "EMP-DECISION-01", full_name: "Decision Teacher", designation: "Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  let attempts = 0;
+  let releaseRequest!: () => void;
+  const requestGate = new Promise<void>(resolve => { releaseRequest = resolve; });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.leave.read", "staff.leave.decide"]);
+  await page.route("**/api/school/staff-leave/requests/21/approve", async route => {
+    attempts += 1;
+    await requestGate;
+    await route.fulfill({ json: { message: "Decision saved" } });
+  });
+
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await page.getByRole("button", { name: "Approve" }).click();
+  const dialog = page.getByRole("dialog", { name: "Approve leave request" });
+  const confirm = dialog.getByRole("button", { name: "Confirm approval" });
+  await confirm.click();
+  await expect.poll(() => attempts).toBe(1);
+  await confirm.evaluate(element => element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
+  expect(attempts).toBe(1);
+  releaseRequest();
+  await expect(page.getByText("Leave request approved.")).toBeVisible();
+});
+
+test("staff leave cancellation suppresses duplicate confirmation while cancellation is pending", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "leave.cancel-guard",
+    employee_code: "EMP-CANCEL-01", full_name: "Cancel Teacher", designation: "Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  let attempts = 0;
+  let releaseRequest!: () => void;
+  const requestGate = new Promise<void>(resolve => { releaseRequest = resolve; });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.leave.read", "staff.leave.manage_requests"]);
+  await page.route("**/api/school/staff-leave/requests/21/cancel", async route => {
+    attempts += 1;
+    await requestGate;
+    await route.fulfill({ json: { message: "Request cancelled" } });
+  });
+
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await page.getByRole("button", { name: "Cancel request" }).click();
+  const dialog = page.getByRole("dialog", { name: "Cancel leave request?" });
+  const confirm = dialog.getByRole("button", { name: "Cancel request", exact: true });
+  await confirm.click();
+  await expect.poll(() => attempts).toBe(1);
+  await confirm.evaluate(element => element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
+  expect(attempts).toBe(1);
+  releaseRequest();
+  await expect(page.getByText("Leave request cancelled.")).toBeVisible();
+});
+
+test("staff leave type creation suppresses duplicate form submissions while saving", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [];
+  let attempts = 0;
+  let releaseRequest!: () => void;
+  const requestGate = new Promise<void>(resolve => { releaseRequest = resolve; });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.leave.read", "staff.leave.manage_types"]);
+  await page.route("**/api/school/staff-leave/types", async route => {
+    if (route.request().method() !== "POST") { await route.fallback(); return; }
+    attempts += 1;
+    await requestGate;
+    await route.fulfill({ status: 201, json: { data: {
+      id: 2, name: "Study Leave", is_paid: true, requires_approval: true, is_active: true,
+    } } });
+  });
+
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await page.getByRole("button", { name: "Leave types" }).click();
+  await page.getByPlaceholder("e.g. Casual Leave").fill("Study Leave");
+  const form = page.locator("form.staff-leave-form").first();
+  await form.getByRole("button", { name: "Add leave type" }).click();
+  await expect.poll(() => attempts).toBe(1);
+  await form.evaluate(element => (element as HTMLFormElement).requestSubmit());
+  expect(attempts).toBe(1);
+  releaseRequest();
+  await expect(page.getByText("Leave type created.")).toBeVisible();
+});
+
+test("school holiday creation suppresses duplicate form submissions while saving", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [];
+  let attempts = 0;
+  let releaseRequest!: () => void;
+  const requestGate = new Promise<void>(resolve => { releaseRequest = resolve; });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.holidays.read", "staff.holidays.manage"]);
+  await page.route("**/api/school/holidays", async route => {
+    if (route.request().method() !== "POST") { await route.fallback(); return; }
+    attempts += 1;
+    await requestGate;
+    await route.fulfill({ status: 201, json: { data: {
+      id: 92, holiday_date: schoolDateValue(), name: "One-time School Event",
+      description: null, is_active: true,
+    } } });
+  });
+
+  await page.getByRole("button", { name: "Leave & Holidays" }).click();
+  await page.getByRole("button", { name: "Holiday calendar" }).click();
+  await chooseDatePickerValue(page, "Holiday date", schoolDateValue());
+  await page.getByLabel(/Holiday name/).fill("One-time School Event");
+  const form = page.locator("form.staff-leave-form").first();
+  await form.getByRole("button", { name: "Save holiday" }).click();
+  await expect.poll(() => attempts).toBe(1);
+  await form.evaluate(element => (element as HTMLFormElement).requestSubmit());
+  expect(attempts).toBe(1);
+  releaseRequest();
+  await expect(page.getByText("School holiday saved.")).toBeVisible();
+});
+
 test("staff leave rejection requires a comment before the pending request can be rejected", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 501, school_id: 10, username: "leave.teacher",
