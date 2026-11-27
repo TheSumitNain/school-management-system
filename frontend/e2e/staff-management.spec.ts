@@ -4582,6 +4582,8 @@ test("staff profile dialog and section navigation remain responsive on mobile, t
   await expect(navigation.getByRole("button")).toHaveCount(8);
 
   for (const viewport of [
+    { width: 320, height: 720 },
+    { width: 360, height: 800 },
     { width: 390, height: 844 },
     { width: 768, height: 900 },
     { width: 1280, height: 900 },
@@ -4598,6 +4600,13 @@ test("staff profile dialog and section navigation remain responsive on mobile, t
       await expect.poll(() => navigation.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
     }
   }
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await expect.poll(() => dialog.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return rect.left >= 0 && rect.right <= window.innerWidth;
+  })).toBe(true);
+  await expect(navigation).toBeVisible();
   await navigation.getByRole("button", { name: "Personal Details" }).click();
   await expect(dialog.getByText("responsive.profile@example.test")).toBeVisible();
 });
