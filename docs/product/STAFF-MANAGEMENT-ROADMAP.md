@@ -1479,3 +1479,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - V71 database guards now prevent an employee with approved leave from being assigned as a substitute, and prevent approving overlapping leave while an active substitute assignment exists. The initial V71 guards covered both conflict directions sequentially, but did not yet prove concurrent serialization. A later audit found the leave-side lock differed from the V60 substitution slot lock; V72 below corrects this and adds a real PostgreSQL race test.
 - Backend CI [45943122223](https://github.com/TheSumitNain/school-management-system/actions/runs/45943122223) **PASS** on `be038afa9c314770c62f57026c711a2811262132`: all migrations, PostgreSQL integration and `go vet`.
 - Exit gate remains open: authenticated School Admin acceptance in a real school, plus outstanding product/policy approvals. Do not mark Substitute Teacher Coverage or Staff Management 100% complete until those gates are signed off. Document upload remains deferred pending private-storage selection; `main` remains untouched.
+
+
+## 2026-11-27 — V72 leave/substitution race verification
+
+- Corrected the V71 concurrency-lock mismatch: leave approval now acquires the same `school:teacher:ISO-weekday:period` advisory keys as V60 substitution writes for every period/day in the leave range, using deterministic ordering.
+- Added a PostgreSQL race test that holds the actual slot lock, starts leave approval and substitute assignment concurrently, then verifies exactly one write can commit.
+- Backend CI [45944248099](https://github.com/TheSumitNain/school-management-system/actions/runs/45944248099) **PASS** on `67d130760772ed84c9b09f8a7759dfd091c2a4ea`: full migrations, Go/PostgreSQL integration and `go vet`.
+- The technical concurrency gate is closed. Authenticated School Admin real-school sign-off and outstanding product/policy approvals remain open; do not mark this page or Staff Management 100% yet. Document upload remains deferred; `main` is untouched.
