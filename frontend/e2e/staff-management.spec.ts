@@ -1551,6 +1551,45 @@ test("unchanged qualification, certification and experience edits skip API reque
   }
 });
 
+test("staff record save prevents duplicate submissions while the request is pending", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 621, school_id: 10, username: "teacher.record-pending",
+    employee_code: "EMP-RECORD-PENDING", full_name: "Pending Record Teacher",
+    designation: "Teacher", mobile_number: "9876543223", employment_status: "active",
+    profile_complete: true, status: "active", must_change_password: false,
+  }];
+  let mutationRequests = 0;
+  let releaseRequest!: () => void;
+  const requestGate = new Promise<void>(resolve => { releaseRequest = resolve; });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update"], async (collection, route) => {
+    mutationRequests += 1;
+    expect(collection).toBe("qualifications");
+    await requestGate;
+    await route.fulfill({ status: 201, json: { qualification: {
+      id: 924, staff_principal_id: 621, qualification_type: "undergraduate",
+      qualification_name: "B.Ed.", institution: "State University", verification_status: "pending",
+    } } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Pending Record Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Pending Record Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  await dialog.getByRole("button", { name: "Add qualification" }).click();
+  await dialog.locator('input[name="qualification_name"]').fill("B.Ed.");
+  await dialog.locator('input[name="institution"]').fill("State University");
+
+  const saveButton = dialog.getByRole("button", { name: "Save record" });
+  await saveButton.click();
+  await expect(dialog.getByRole("button", { name: "Saving…" })).toBeDisabled();
+  expect(mutationRequests).toBe(1);
+  await expect(saveButton).toBeDisabled();
+
+  releaseRequest();
+  await expect(dialog.getByText("B.Ed.")).toBeVisible();
+  expect(mutationRequests).toBe(1);
+});
+
 test("staff record server field errors render under the matching field and preserve entered values", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 612, school_id: 10, username: "teacher.record-validation",
