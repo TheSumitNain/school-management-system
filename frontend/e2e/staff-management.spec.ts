@@ -1670,6 +1670,90 @@ test("staff qualification form preserves values after a failed save and succeeds
   expect(payloads[1]).toMatchObject({ qualification_name: "B.Ed. Retry", institution: "State University" });
 });
 
+test("staff certification form preserves values after a failed save and succeeds on retry", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 617, school_id: 10, username: "teacher.certification-retry",
+    employee_code: "EMP-CERT-RETRY", full_name: "Certification Retry Teacher",
+    designation: "Teacher", mobile_number: "9876543219", employment_status: "active",
+    profile_complete: true, status: "active", must_change_password: false,
+  }];
+  let attempts = 0;
+  const payloads: Array<Record<string, unknown>> = [];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update"], async (collection, route) => {
+    expect(collection).toBe("certifications");
+    attempts += 1;
+    payloads.push(route.request().postDataJSON() as Record<string, unknown>);
+    if (attempts === 1) {
+      await route.fulfill({ status: 503, json: { message: "Certification service is temporarily unavailable. Please retry." } });
+      return;
+    }
+    await route.fulfill({ status: 201, json: { certification: { id: 902, ...payloads[1] } } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Certification Retry Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Certification Retry Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  await dialog.getByRole("button", { name: "Add certification" }).click();
+  await dialog.locator('input[name="certificate_name"]').fill("Child Safety Training");
+  await dialog.locator('input[name="issuing_organization"]').fill("State Board");
+  await dialog.getByRole("button", { name: "Save record" }).click();
+
+  await expect(dialog.getByText("Certification service is temporarily unavailable. Please retry.")).toBeVisible();
+  await expect(dialog.locator('input[name="certificate_name"]')).toHaveValue("Child Safety Training");
+  await expect(dialog.locator('input[name="issuing_organization"]')).toHaveValue("State Board");
+  expect(attempts).toBe(1);
+
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("Child Safety Training")).toBeVisible();
+  expect(attempts).toBe(2);
+  expect(payloads[0]).toMatchObject({ certificate_name: "Child Safety Training", issuing_organization: "State Board" });
+  expect(payloads[1]).toMatchObject({ certificate_name: "Child Safety Training", issuing_organization: "State Board" });
+});
+
+test("staff experience form preserves values after a failed save and succeeds on retry", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 618, school_id: 10, username: "teacher.experience-retry",
+    employee_code: "EMP-EXP-RETRY", full_name: "Experience Retry Teacher",
+    designation: "Teacher", mobile_number: "9876543220", employment_status: "active",
+    profile_complete: true, status: "active", must_change_password: false,
+  }];
+  let attempts = 0;
+  const payloads: Array<Record<string, unknown>> = [];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update"], async (collection, route) => {
+    expect(collection).toBe("experience");
+    attempts += 1;
+    payloads.push(route.request().postDataJSON() as Record<string, unknown>);
+    if (attempts === 1) {
+      await route.fulfill({ status: 503, json: { message: "Experience service is temporarily unavailable. Please retry." } });
+      return;
+    }
+    await route.fulfill({ status: 201, json: { experience: { id: 903, ...payloads[1] } } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Experience Retry Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Experience Retry Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  await dialog.getByRole("button", { name: "Add experience" }).click();
+  await dialog.locator('input[name="employer_name"]').fill("Previous School");
+  await dialog.locator('input[name="record_designation"]').fill("Science Teacher");
+  await chooseDatePickerValue(dialog, "Previous employment start date", "2019-04-01");
+  await dialog.getByRole("button", { name: "Save record" }).click();
+
+  await expect(dialog.getByText("Experience service is temporarily unavailable. Please retry.")).toBeVisible();
+  await expect(dialog.locator('input[name="employer_name"]')).toHaveValue("Previous School");
+  await expect(dialog.locator('input[name="record_designation"]')).toHaveValue("Science Teacher");
+  await expect(dialog.locator('input[name="start_date"]')).toHaveValue("2019-04-01");
+  expect(attempts).toBe(1);
+
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("Previous School")).toBeVisible();
+  expect(attempts).toBe(2);
+  expect(payloads[0]).toMatchObject({ employer_name: "Previous School", designation: "Science Teacher", start_date: "2019-04-01" });
+  expect(payloads[1]).toMatchObject({ employer_name: "Previous School", designation: "Science Teacher", start_date: "2019-04-01" });
+});
+
 test("staff certification rejects impossible calendar dates before saving", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 612, school_id: 10, username: "teacher.date-check",
