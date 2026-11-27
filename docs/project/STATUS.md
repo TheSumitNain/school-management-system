@@ -2966,3 +2966,13 @@ This update supersedes older status bullets that listed the following database-b
 - Backend CI [45933605721](https://github.com/TheSumitNain/school-management-system/actions/runs/45933605721) **PASS**: full migration chain, Go/PostgreSQL integration tests and `go vet`.
 - Staff Role Assignment and Permission Override forms now synchronously block duplicate submissions while their mutations are in flight. Deferred-request Playwright regressions issue a programmatic second `requestSubmit()` and assert exactly one POST, then verify the successful result.
 - This verifies the Account & Access duplicate-submit slice, not the full Staff Profile or Staff Management module. Authenticated School Admin sign-off and documented product/identity/leave-policy gates remain open; document upload remains deferred. No schema migration or persistent school-data change. `main` remains untouched.
+
+
+## 2026-11-27 — Attendance duplicate-write protection
+
+- Verified code checkpoint: `bf8afa8caf1da613dd378e5e113e986952951c14` on `work`.
+- Frontend CI [45937271014](https://github.com/TheSumitNain/school-management-system/actions/runs/45937271014) **PASS**: TypeScript, Vite production build and complete Playwright browser acceptance suite.
+- Backend CI [45937271059](https://github.com/TheSumitNain/school-management-system/actions/runs/45937271059) **PASS**: migration chain, PostgreSQL integration tests and `go vet`.
+- Staff attendance now shares a synchronous in-flight write guard across individual marks, same-day updates/historical corrections and bulk marking. Deferred-request Playwright coverage verifies that repeated individual and bulk submit events produce exactly one request.
+- Remaining Attendance acceptance gap: explicit browser flows for updating an existing same-day record, confirming a historical correction, and retry after a failed write still need dedicated regression coverage. Therefore the Attendance page is **not** declared 100% complete.
+- No schema migration or persistent school-data change. Document upload remains deferred; current work stays on `work`, and `main` remains untouched.
