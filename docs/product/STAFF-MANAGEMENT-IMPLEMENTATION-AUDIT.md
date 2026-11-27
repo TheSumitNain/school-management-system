@@ -974,3 +974,13 @@ This section supersedes older statements in this audit that describe browser ver
 - `StaffAttendanceWorkspace` uses one synchronous in-flight ref shared by individual create, existing-record update/correction and atomic bulk mutations. Its settlement handlers release the lock. Playwright deferred-request coverage confirms individual and bulk duplicate submissions are suppressed.
 - Audit note: current browser suite still lacks dedicated end-to-end assertions for same-day update, historical correction confirmation, and retry after failed attendance write. Those remain open acceptance items; no 100% page-completion claim is made.
 - No migration or persistent data change. Secure document upload remains deferred; `main` is untouched.
+
+
+## 2026-11-27 — Attendance lifecycle and responsive browser acceptance verified
+
+- Verified code checkpoint: `88607972d5b8e547bd551176d17e6c4f28b523da` on `work`.
+- Frontend CI [45939039578](https://github.com/TheSumitNain/school-management-system/actions/runs/45939039578) **PASS** with **172 Playwright tests passed**. Backend CI [45939039547](https://github.com/TheSumitNain/school-management-system/actions/runs/45939039547) **PASS**: migrations, PostgreSQL integration tests and `go vet`.
+- The attendance lifecycle browser regression now exercises an existing-record update, a failed write followed by a successful retry, and a historical correction behind its confirmation dialog; the test verifies the correction request is issued only once. Existing deferred-request tests continue to verify duplicate individual and bulk submissions are suppressed.
+- Daily and Monthly Attendance responsive tests cover 320x720, 360x800, 390x844, 768x900 and 1280x900. At narrow widths the table itself must scroll horizontally while the document must not; desktop table layout must fit without inner overflow. Staff Directory narrow-phone coverage now includes 320/360px too.
+- Previous Attendance browser acceptance gaps (same-day update, historical confirmation, failed-write retry and narrow-phone layout) are now covered by Playwright. This is evidence for those slices, not a blanket 100% completion declaration for the Attendance page or Staff Management. Remaining manual authenticated-school sign-off and wider Staff Profile/Staff Management acceptance checks remain open.
+- No backend contract, schema migration or persistent school-data change in this test-only batch. Document upload remains deferred; `main` is untouched.
