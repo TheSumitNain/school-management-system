@@ -320,11 +320,21 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 		schoolID,fmt.Sprintf("Substitution conflict leave %d",suffix),actorPrincipalID).Scan(&leaveTypeID);err!=nil{
 		t.Fatalf("create leave type for substitution overlap checks: %v",err)
 	}
+	activeCoverDate,activeDateErr:=time.Parse("2006-01-02",coverDate)
+	if activeDateErr!=nil{t.Fatalf("parse active cover date: %v",activeDateErr)}
+	activeCoverDateValue:=activeCoverDate.AddDate(0,0,14).Format("2006-01-02")
+	var activeOverlapSubstitutionID int64
+	if err=tx.QueryRow(ctx,`INSERT INTO staff_substitutions
+		(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
+		VALUES($1,$2,$3,$4::date,$5,$6,'Active coverage for leave approval guard',$5) RETURNING id`,
+		schoolID,pastEntryID,thirdPeriodID,activeCoverDateValue,secondOriginalID,substituteID).Scan(&activeOverlapSubstitutionID);err!=nil{
+		t.Fatalf("create active substitution for leave approval overlap: %v",err)
+	}
 	var pendingLeaveID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO staff_leave_requests
 		(school_id,staff_principal_id,leave_type_id,start_date,end_date,duration_type,reason,created_by_principal_id)
 		VALUES($1,$2,$3,$4::date,$4::date,'full_day','Leave overlaps substitute coverage',$5) RETURNING id`,
-		schoolID,substituteID,leaveTypeID,coverDate,actorPrincipalID).Scan(&pendingLeaveID);err!=nil{
+		schoolID,substituteID,leaveTypeID,activeCoverDateValue,actorPrincipalID).Scan(&pendingLeaveID);err!=nil{
 		t.Fatalf("create pending leave overlapping active substitute coverage: %v",err)
 	}
 	approveOverlap,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin leave approval overlap savepoint: %v",err)}
@@ -341,7 +351,7 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 
 	nextCoverDate,parseErr:=time.Parse("2006-01-02",coverDate)
 	if parseErr!=nil{t.Fatalf("parse cover date for reverse overlap test: %v",parseErr)}
-	nextCoverDateValue:=nextCoverDate.AddDate(0,0,7).Format("2006-01-02")
+	nextCoverDateValue:=nextCoverDate.AddDate(0,0,21).Format("2006-01-02")
 	var approvedLeaveID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO staff_leave_requests
 		(school_id,staff_principal_id,leave_type_id,start_date,end_date,duration_type,reason,status,decided_by_principal_id,decided_at,created_by_principal_id)
