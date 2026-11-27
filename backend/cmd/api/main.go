@@ -132,6 +132,11 @@ func setupRouterWithHandlers(
 			middleware.RequirePermission("users.read"),
 			staffHandler.List,
 		)
+		router.GET("/school/staff/:principalID",
+			authMiddleware(),
+			middleware.RequirePermission("users.read"),
+			staffHandler.GetProfile,
+		)
 		router.GET("/school/staff/directory",
 			authMiddleware(),
 			middleware.RequirePermission("users.read"),
