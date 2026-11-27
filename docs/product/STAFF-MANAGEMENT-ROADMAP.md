@@ -1417,3 +1417,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Expanded the browser regression to verify close-button and Cancel disabled state, Escape/backdrop close prevention, duplicate `requestSubmit()` suppression, successful refetch/list rendering, and re-enabling close after completion. Removed the redundant duplicate pending-button assertion.
 - Code checkpoints: `2cdc1b4a` (profile modal lifecycle guard), `ae5b27c9` (E2E fixture and acceptance coverage). CI is pending on the latest `work` code checkpoint; do not mark this batch or Staff Profile browser acceptance verified until CI completes.
 - Document upload remains explicitly deferred. Authenticated School Admin sign-off and separately documented identity-schema/leave-policy/product approval gates remain outstanding; `main` remains untouched.
+
+
+## 2026-11-27 — Staff Profile pending-save lifecycle acceptance
+
+- On code checkpoint `73e954afa24d4a8bad330b9145bbc8297e1ae605`, Backend CI [45930688479](https://github.com/TheSumitNain/school-management-system/actions/runs/45930688479) **PASS** and Frontend CI [45930688713](https://github.com/TheSumitNain/school-management-system/actions/runs/45930688713) **PASS**. Frontend verification includes TypeScript, Vite production build and the complete Playwright suite.
+- Qualifications, Certifications and Experience create/edit forms become inert while a mutation is pending. Profile tab navigation and add/edit actions are disabled; Save/Cancel and modal close controls are guarded; Escape/backdrop close is blocked. The synchronous in-flight guard rejects duplicate form submissions.
+- Playwright verifies the pending state, modal lifecycle, duplicate submission suppression, successful persisted mock record/refetch and close re-enablement. No production schema or persistent school data changed.
+- This closes the automated pending-save lifecycle regression for the implemented Staff Profile record forms; it does **not** declare the entire Staff Profile or Staff Management module complete. Authenticated School Admin sign-off and the previously documented identity/role, leave-policy and other product gates remain distinct. Documents upload remains explicitly deferred pending private storage approval; `main` remains untouched.
