@@ -1245,6 +1245,68 @@ test("staff creation keeps entered details after failure and blocks concurrent d
   await expect(page.getByRole("dialog", { name: "Share staff login credentials" })).toBeVisible();
 });
 
+test("staff creation returns server field conflicts to the correct wizard step", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [];
+  const attempts: Array<Record<string, unknown>> = [];
+  await signInAndOpenStaff(page, rows, async (_path, route) => {
+    const payload = route.request().postDataJSON() as Record<string, unknown>;
+    attempts.push(payload);
+    if (attempts.length === 1) {
+      await route.fulfill({ status: 409, json: {
+        status: "error", code: "employee_code_taken",
+        message: "This employee code is already used in this school",
+      } });
+      return;
+    }
+    const saved = {
+      id: 1, principal_id: 611, school_id: 10, username: payload.username,
+      employee_code: payload.employee_code, full_name: payload.full_name,
+      designation: payload.designation, mobile_number: payload.mobile_number,
+      staff_type: payload.staff_type, employment_status: "active",
+      profile_complete: true, status: "active", must_change_password: true,
+    };
+    rows.push(saved);
+    await route.fulfill({ status: 201, json: { staff: saved } });
+  });
+
+  await page.getByRole("button", { name: "Add staff", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Add employee" });
+  await dialog.getByLabel("Full name").fill("Conflict Teacher");
+  await dialog.getByLabel("Employee code").fill("EMP-DUP-01");
+  await dialog.getByLabel("Mobile number").fill("9876543218");
+  await dialog.getByRole("button", { name: "Staff type" }).click();
+  await dialog.getByRole("option", { name: "Teaching", exact: true }).click();
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByLabel("Designation").fill("Class Teacher");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByLabel("Login username").fill("conflict.teacher");
+  await dialog.getByLabel("Initial password").fill("E2E-Strong-Password-2026");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByRole("button", { name: "Create employee" }).click();
+
+  await expect.poll(() => attempts.length).toBe(1);
+  await expect(dialog.getByLabel("Employee code")).toBeVisible();
+  await expect(dialog.getByText("This employee code is already used in this school.")).toBeVisible();
+  await expect(dialog.getByLabel("Full name")).toHaveValue("Conflict Teacher");
+  await expect(dialog.getByLabel("Employee code")).toHaveValue("EMP-DUP-01");
+  await expect(dialog.getByLabel("Mobile number")).toHaveValue("9876543218");
+  await expect(dialog.getByLabel("Designation")).toHaveValue("Class Teacher");
+  await expect(dialog.getByLabel("Login username")).toHaveValue("conflict.teacher");
+
+  await dialog.getByLabel("Employee code").fill("EMP-UNIQUE-01");
+  await expect(dialog.getByText("This employee code is already used in this school.")).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByRole("button", { name: "Create employee" }).click();
+
+  await expect.poll(() => attempts.length).toBe(2);
+  expect(attempts[1].employee_code).toBe("EMP-UNIQUE-01");
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Share staff login credentials" })).toBeVisible();
+});
+
+
 test("disabling a staff account requires explicit confirmation and refreshes its status", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 516, school_id: 10, username: "disable.teacher",
