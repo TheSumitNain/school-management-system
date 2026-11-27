@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import "./StaffRoleAssignments.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Shield, Trash2 } from "lucide-react";
@@ -17,6 +17,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
   const [feedback, setFeedback] = useState("");
   const [roleToRevoke, setRoleToRevoke] = useState<{id:number;name:string}|null>(null);
   const [roleError, setRoleError] = useState("");
+  const assignmentInFlight = useRef(false);
   const rolesQuery = useQuery({
     queryKey: ["school-admin", "roles"],
     queryFn: ({ signal }) => getSchoolRoles(signal),
@@ -39,6 +40,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
         queryClient.invalidateQueries({ queryKey: ["staff-audit-events", staff.principal_id] }),
       ]);
     },
+    onSettled: () => { assignmentInFlight.current = false; },
   });
   const revoke = useMutation({
     mutationFn: (id: number) => revokeStaffRole(staff.principal_id, id),
@@ -73,12 +75,14 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
       setRoleError("");
       return;
     }
+    if (busy || assignmentInFlight.current) return;
     if (!roleID) {
       setRoleError("Choose a role to assign.");
       return;
     }
     setRoleError("");
     setFeedback("");
+    assignmentInFlight.current = true;
     assign.mutate();
   }
 
