@@ -46,7 +46,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
-  const [loadError, setLoadError] = useState("");
+  const [loadErrors, setLoadErrors] = useState<Record<string, string>>({});
   const [subjectDialogOpen,setSubjectDialogOpen]=useState(false);
   const [inchargeDialogOpen,setInchargeDialogOpen]=useState(false);
   const [fieldErrors,setFieldErrors]=useState<Record<string,string>>({});
@@ -57,7 +57,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setLoadError("");
+    setLoadErrors({});
     const jobs: Promise<unknown>[] = [];
     const keys: string[] = [];
     if (canReadYears) { keys.push("years"); jobs.push(api<{ academic_years: Year[] }>("/school/academic-years")); }
@@ -72,7 +72,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
     if (canReadTeacherAssignments) { keys.push("assignments"); jobs.push(getTeacherSubjectAssignments()); }
     if (canReadIncharges) { keys.push("incharges"); jobs.push(getClassInchargeAssignments()); }
     const results = await Promise.allSettled(jobs);
-    const errors: string[] = [];
+    const errors: Record<string, string> = {};
     results.forEach((result, index) => {
       if (result.status === "rejected") {
         switch (keys[index]) {
@@ -84,7 +84,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
           case "assignments": setAssignments([]); break;
           case "incharges": setIncharges([]); break;
         }
-        errors.push(result.reason instanceof Error ? result.reason.message : "Unable to load assignment data.");
+        errors[keys[index]] = result.reason instanceof Error ? result.reason.message : "Unable to load assignment data.";
         return;
       }
       const data = result.value as Record<string, unknown>;
@@ -98,13 +98,17 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
         case "incharges": setIncharges((data.assignments as ClassInchargeAssignment[]) ?? []); break;
       }
     });
-    if (errors.length) setLoadError(errors.join(" · "));
+    setLoadErrors(errors);
     setLoading(false);
   }, [canReadYears, canReadClasses, canReadSubjects, canReadTeacherAssignments, canReadIncharges]);
 
   useEffect(() => { void load(); }, [load]);
 
   const activeYears = useMemo(() => years.filter(item => item.status !== "closed"), [years]);
+  const subjectLoadError = ["years", "classes", "sections", "subjects", "teachers"].some(key => Boolean(loadErrors[key]));
+  const inchargeLoadError = ["years", "classes", "sections", "teachers"].some(key => Boolean(loadErrors[key]));
+  const subjectPrerequisitesMissing = !canReadYears || !canReadClasses || !canReadSubjects;
+  const inchargePrerequisitesMissing = !canReadYears || !canReadClasses;
   const currentYearID = String(activeYears.find(item => item.is_current)?.id ?? "");
   const listYearSelection = assignmentYearID === "current" && !currentYearID ? "all" : assignmentYearID;
   const selectedListYearID = listYearSelection === "current" ? currentYearID : listYearSelection === "all" ? "" : listYearSelection;
@@ -225,16 +229,16 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
     <div className="assignment-heading"><div><h2>Teacher assignments</h2><p>Assign active Teachers to subjects, sections and class in-charge responsibilities.</p></div><button type="button" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> Refresh</button></div>
     {(canReadTeacherAssignments || canReadIncharges) && <div className="toolbar assignment-year-filter"><label>Academic year <Select ariaLabel="Filter assignments by academic year" value={listYearSelection} onChange={setAssignmentYearID} options={[{value:"current",label:currentYearID ? "Current academic year" : "Current year (not set)"},{value:"all",label:"All academic years"},...years.map(item=>({value:String(item.id),label:item.name}))]} /></label></div>}
     {feedback && !((subjectDialogOpen||inchargeDialogOpen)&&feedback.kind==="error") && <div className={"academic-feedback " + feedback.kind} role="status">{feedback.message}</div>}
-    {loadError && <div className="academic-feedback error" role="alert">{loadError} <button type="button" onClick={() => void load()} disabled={loading}>Try again</button></div>}
+    {Object.keys(loadErrors).length > 0 && <div className="academic-feedback error" role="alert">{Object.values(loadErrors).join(" · ")} <button type="button" onClick={() => void load()} disabled={loading}>Try again</button></div>}
     {loading ? <div className="table-message">Loading teacher assignments…</div> : <>
       {canReadTeacherAssignments && <section className="table-panel assignment-panel">
         <div className="toolbar"><div><h3>Subject teachers</h3><small>{visibleAssignments.filter(item => !item.revoked_at).length} active assignments</small></div></div>
-        {canManageTeacherAssignments && <button type="button" className="primary assignment-open-dialog" disabled={loading||Boolean(loadError)} onClick={()=>{setYearID(currentYearID);setSectionID("");setFieldErrors({});setFeedback(null);setSubjectDialogOpen(true);}}><Plus size={15}/> Assign subject teacher</button>}
+        {canManageTeacherAssignments && <button type="button" className="primary assignment-open-dialog" disabled={loading||subjectLoadError||subjectPrerequisitesMissing} onClick={()=>{setYearID(currentYearID);setSectionID("");setFieldErrors({});setFeedback(null);setSubjectDialogOpen(true);}}><Plus size={15}/> Assign subject teacher</button>}
         {visibleAssignments.length === 0 ? <div className="table-message">No subject teacher assignments for this academic year.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Subject</th><th>Teacher</th><th>Status</th>{canManageTeacherAssignments && <th>Action</th>}</tr></thead><tbody>{visibleAssignments.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.subject_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageTeacherAssignments && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => setSubjectToRevoke(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
       </section>}
       {canReadIncharges && <section className="table-panel assignment-panel">
         <div className="toolbar"><div><h3>Class in-charge</h3><small>{visibleIncharges.filter(item => !item.revoked_at).length} active assignments</small></div></div>
-        {canManageIncharges && <button type="button" className="primary assignment-open-dialog" disabled={loading||Boolean(loadError)} onClick={()=>{setInchargeYearID(currentYearID);setInchargeSectionID("");setFieldErrors({});setFeedback(null);setInchargeDialogOpen(true);}}><Plus size={15}/> Assign class in-charge</button>}
+        {canManageIncharges && <button type="button" className="primary assignment-open-dialog" disabled={loading||inchargeLoadError||inchargePrerequisitesMissing} onClick={()=>{setInchargeYearID(currentYearID);setInchargeSectionID("");setFieldErrors({});setFeedback(null);setInchargeDialogOpen(true);}}><Plus size={15}/> Assign class in-charge</button>}
         {visibleIncharges.length === 0 ? <div className="table-message">No class in-charge assignments for this academic year.</div> : <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Teacher</th><th>Status</th>{canManageIncharges && <th>Action</th>}</tr></thead><tbody>{visibleIncharges.map(item => <tr key={item.id}><td>{item.class_name} · {item.section_name}</td><td>{item.teacher_username}</td><td>{item.revoked_at ? "Revoked" : "Active"}</td>{canManageIncharges && <td>{!item.revoked_at && <button className="assignment-revoke" type="button" onClick={() => setInchargeToRevoke(item)} disabled={saving}><UserRoundX size={14}/> Revoke</button>}</td>}</tr>)}</tbody></table></div>}
       </section>}
     </>}
@@ -245,7 +249,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
           <label>Section<Select ariaLabel="Subject assignment section" invalid={Boolean(fieldErrors.sectionID)} describedBy={fieldErrors.sectionID?"section-error":undefined} value={sectionID} onChange={value=>{setSectionID(value);setFieldErrors(current=>({...current,sectionID:""}));}} placeholder="Select section" disabled={!yearID} options={subjectSections.filter(item=>String(item.academic_year_id)===yearID).map(item=>({value:String(item.id),label:`${classes.find(c=>c.id===item.class_id)?.name??"Class"} · ${item.name}`}))}/>{yearID&&subjectSections.filter(item=>String(item.academic_year_id)===yearID).length===0&&<small>No active sections exist for this academic year. Create or activate a section first.</small>}{fieldErrors.sectionID&&<small className="app-field-error" id="section-error" role="alert">{fieldErrors.sectionID}</small>}</label>
           <label>Subject<Select ariaLabel="Subject" invalid={Boolean(fieldErrors.subjectID)} describedBy={fieldErrors.subjectID?"subject-error":undefined} value={subjectID} onChange={value=>{setSubjectID(value);setFieldErrors(current=>({...current,subjectID:""}));}} placeholder="Select subject" disabled={subjects.filter(item=>item.is_active).length===0} options={subjects.filter(item=>item.is_active).map(item=>({value:String(item.id),label:item.name}))}/>{subjects.filter(item=>item.is_active).length===0&&<small>No active subjects are available. Add or activate a subject first.</small>}{fieldErrors.subjectID&&<small className="app-field-error" id="subject-error" role="alert">{fieldErrors.subjectID}</small>}</label>
           <label>Teacher<Select ariaLabel="Subject assignment teacher" invalid={Boolean(fieldErrors.teacherID)} describedBy={fieldErrors.teacherID?"teacher-error":undefined} value={teacherID} onChange={value=>{setTeacherID(value);setFieldErrors(current=>({...current,teacherID:""}));}} placeholder="Select teacher" disabled={teachers.length===0} options={teachers.map(item=>({value:String(item.principal_id),label:item.username}))}/>{teachers.length===0&&<small>No eligible active Teachers are available. Create or enable a Teacher account first.</small>}{fieldErrors.teacherID&&<small className="app-field-error" id="teacher-error" role="alert">{fieldErrors.teacherID}</small>}</label>
-          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>setSubjectDialogOpen(false)} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving||loading||Boolean(loadError)||!teachers.length||!activeYears.length}>{saving?"Assigning…":"Assign subject"}</button></div>
+          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>setSubjectDialogOpen(false)} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving||loading||subjectLoadError||subjectPrerequisitesMissing||!teachers.length||!activeYears.length}>{saving?"Assigning…":"Assign subject"}</button></div>
         </form>
       </Modal>
       <Modal open={inchargeDialogOpen} title="Assign class in-charge" description="Choose an academic year, section and active teacher responsible for the class." onClose={()=>setInchargeDialogOpen(false)} closeDisabled={saving}>
@@ -254,7 +258,7 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
           <label>Academic year<Select ariaLabel="Class in-charge academic year" invalid={Boolean(fieldErrors.inchargeYearID)} describedBy={fieldErrors.inchargeYearID?"incharge-year-error":undefined} value={inchargeYearID} onChange={value=>{setInchargeYearID(value);setInchargeSectionID("");setFieldErrors(current=>({...current,inchargeYearID:"",inchargeSectionID:""}));}} placeholder="Select year" options={activeYears.map(item=>({value:String(item.id),label:item.name}))}/>{activeYears.length===0&&<small>No active academic year is available. Create or activate an academic year first.</small>}{fieldErrors.inchargeYearID&&<small className="app-field-error" id="incharge-year-error" role="alert">{fieldErrors.inchargeYearID}</small>}</label>
           <label>Section<Select ariaLabel="Class in-charge section" invalid={Boolean(fieldErrors.inchargeSectionID)} describedBy={fieldErrors.inchargeSectionID?"incharge-section-error":undefined} value={inchargeSectionID} onChange={value=>{setInchargeSectionID(value);setFieldErrors(current=>({...current,inchargeSectionID:""}));}} placeholder="Select section" disabled={!inchargeYearID} options={inchargeSections.filter(item=>String(item.academic_year_id)===inchargeYearID).map(item=>({value:String(item.id),label:`${classes.find(c=>c.id===item.class_id)?.name??"Class"} · ${item.name}`}))}/>{inchargeYearID&&inchargeSections.filter(item=>String(item.academic_year_id)===inchargeYearID).length===0&&<small>No active sections exist for this academic year. Create or activate a section first.</small>}{fieldErrors.inchargeSectionID&&<small className="app-field-error" id="incharge-section-error" role="alert">{fieldErrors.inchargeSectionID}</small>}</label>
           <label>Teacher<Select ariaLabel="Class in-charge teacher" invalid={Boolean(fieldErrors.inchargeTeacherID)} describedBy={fieldErrors.inchargeTeacherID?"incharge-teacher-error":undefined} value={inchargeTeacherID} onChange={value=>{setInchargeTeacherID(value);setFieldErrors(current=>({...current,inchargeTeacherID:""}));}} placeholder="Select teacher" disabled={teachers.length===0} options={teachers.map(item=>({value:String(item.principal_id),label:item.username}))}/>{teachers.length===0&&<small>No eligible active Teachers are available. Create or enable a Teacher account first.</small>}{fieldErrors.inchargeTeacherID&&<small className="app-field-error" id="incharge-teacher-error" role="alert">{fieldErrors.inchargeTeacherID}</small>}</label>
-          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>setInchargeDialogOpen(false)} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving||loading||Boolean(loadError)||!teachers.length||!activeYears.length}>{saving?"Assigning…":"Assign in-charge"}</button></div>
+          <div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={()=>setInchargeDialogOpen(false)} disabled={saving}>Cancel</button><button className="primary" type="submit" disabled={saving||loading||inchargeLoadError||inchargePrerequisitesMissing||!teachers.length||!activeYears.length}>{saving?"Assigning…":"Assign in-charge"}</button></div>
         </form>
       </Modal>
       <ConfirmDialog open={subjectToRevoke !== null} title="Revoke subject assignment?" description={subjectToRevoke ? `Revoke ${subjectToRevoke.teacher_username}'s ${subjectToRevoke.subject_name} assignment for ${subjectToRevoke.class_name} · ${subjectToRevoke.section_name}? The assignment history will be retained.` : ""} confirmLabel="Revoke assignment" pending={saving} error={subjectRevokeError || undefined} onCancel={() => {setSubjectToRevoke(null);setSubjectRevokeError("");}} onConfirm={() => void confirmRevokeSubject()}/>
