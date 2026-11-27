@@ -1359,6 +1359,9 @@ test("staff creation returns server field conflicts to the correct wizard step",
   await expect(dialog.getByLabel("Initial password")).toBeVisible();
   await expect(dialog.getByText("Password safety verification is temporarily unavailable. Try again shortly.")).toBeVisible();
   await expect(dialog.getByLabel("Initial password")).toHaveValue("E2E-Another-Strong-Password-2026");
+  // A server-side field error returns the wizard to Login & Access (step 3).
+  // Revalidate that step before proceeding to the final review screen.
+  await dialog.getByRole("button", { name: "Continue" }).click();
   await dialog.getByRole("button", { name: "Create employee" }).click();
 
   await expect.poll(() => attempts.length).toBe(5);
