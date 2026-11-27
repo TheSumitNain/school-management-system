@@ -3099,6 +3099,83 @@ test("substitution-history-only permission opens read-only history without loadi
   expect(staffDirectoryRequests).toEqual([]);
 });
 
+
+test("staff attendance ignores duplicate individual and bulk submissions while requests are pending", async ({ page }) => {
+  const staffRows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 612, school_id: 10, username: "attendance.guard.one", employee_code: "EMP-GUARD-01", full_name: "Guard One", designation: "Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+    { id: 2, principal_id: 613, school_id: 10, username: "attendance.guard.two", employee_code: "EMP-GUARD-02", full_name: "Guard Two", designation: "Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+  ];
+  const records = [
+    { id: null as number | null, school_id: 10, staff_principal_id: 612, employee_code: "EMP-GUARD-01", full_name: "Guard One", designation: "Teacher", attendance_date: "", status: null as string | null, remarks: "" },
+    { id: null as number | null, school_id: 10, staff_principal_id: 613, employee_code: "EMP-GUARD-02", full_name: "Guard Two", designation: "Teacher", attendance_date: "", status: null as string | null, remarks: "" },
+  ];
+  let individualPosts = 0;
+  let bulkPosts = 0;
+  let releaseIndividual: (() => void) | null = null;
+  let releaseBulk: (() => void) | null = null;
+  await signInAndOpenStaff(page, staffRows, undefined, [
+    "users.read", "staff.attendance.read", "staff.attendance.mark",
+  ]);
+  await page.route("**/api/school/staff-attendance**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() === "GET") {
+      for (const item of records) item.attendance_date = url.searchParams.get("date") ?? "";
+      await route.fulfill({ json: {
+        date: url.searchParams.get("date"),
+        data: records,
+        pagination: { limit: 50, offset: 0, total: records.length },
+      } });
+      return;
+    }
+    if (request.method() === "POST" && url.pathname.endsWith("/bulk")) {
+      bulkPosts += 1;
+      const input = request.postDataJSON() as { staff_principal_ids: number[]; status: string };
+      await new Promise<void>(resolve => { releaseBulk = resolve; });
+      for (const item of records) if (input.staff_principal_ids.includes(item.staff_principal_id)) {
+        item.id = 702;
+        item.status = input.status;
+      }
+      await route.fulfill({ status: 201, json: { created: input.staff_principal_ids.length } });
+      return;
+    }
+    if (request.method() === "POST") {
+      individualPosts += 1;
+      const input = request.postDataJSON() as { staff_principal_id: number; status: string; attendance_date: string };
+      await new Promise<void>(resolve => { releaseIndividual = resolve; });
+      const item = records.find(record => record.staff_principal_id === input.staff_principal_id);
+      if (item) { item.id = 701; item.status = input.status; item.attendance_date = input.attendance_date; }
+      await route.fulfill({ status: 201, json: { data: item } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: "Unmocked staff attendance request" } });
+  });
+
+  await page.getByRole("button", { name: "Attendance", exact: true }).click();
+  const firstRow = page.getByRole("row").filter({ hasText: "Guard One" });
+  await firstRow.getByLabel("Attendance status for Guard One").selectOption("present");
+  const individualButton = firstRow.getByRole("button", { name: "Mark", exact: true });
+  await individualButton.click();
+  await expect.poll(() => individualPosts).toBe(1);
+  await individualButton.evaluate(element => element.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  await expect.poll(() => individualPosts).toBe(1);
+  expect(bulkPosts).toBe(0);
+  releaseIndividual?.();
+  await expect(page.getByText("Staff attendance marked.")).toBeVisible();
+
+  await page.getByLabel("Bulk attendance status").selectOption("absent");
+  await page.getByRole("button", { name: "Mark 1 unmarked staff", exact: true }).click();
+  const confirmation = page.getByRole("dialog", { name: "Confirm bulk staff attendance" });
+  const confirmButton = confirmation.locator("button.app-modal-confirm");
+  await confirmButton.click();
+  await expect.poll(() => bulkPosts).toBe(1);
+  await confirmButton.evaluate(element => element.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  await expect.poll(() => bulkPosts).toBe(1);
+  expect(individualPosts).toBe(1);
+  releaseBulk?.();
+  await expect(page.getByText("Attendance marked for 1 staff members.")).toBeVisible();
+});
+
 test("staff attendance supports search, individual and atomic bulk marking, and monthly summaries", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 512, school_id: 10, username: "teacher.attendance",
