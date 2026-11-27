@@ -1258,6 +1258,14 @@ test("staff creation returns server field conflicts to the correct wizard step",
       } });
       return;
     }
+    if (attempts.length === 2) {
+      await route.fulfill({ status: 409, json: { status: "error", message: "This username is already in use" } });
+      return;
+    }
+    if (attempts.length === 3) {
+      await route.fulfill({ status: 400, json: { status: "error", message: "This password has appeared in known data breaches. Choose a different password." } });
+      return;
+    }
     const saved = {
       id: 1, principal_id: 611, school_id: 10, username: payload.username,
       employee_code: payload.employee_code, full_name: payload.full_name,
@@ -1301,7 +1309,24 @@ test("staff creation returns server field conflicts to the correct wizard step",
   await dialog.getByRole("button", { name: "Create employee" }).click();
 
   await expect.poll(() => attempts.length).toBe(2);
+  await expect(dialog.getByLabel("Login username")).toBeVisible();
+  await expect(dialog.getByText("This username is already in use.")).toBeVisible();
+  await expect(dialog.getByLabel("Login username")).toHaveValue("conflict.teacher");
+  await dialog.getByLabel("Login username").fill("unique.teacher");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByRole("button", { name: "Create employee" }).click();
+
+  await expect.poll(() => attempts.length).toBe(3);
+  await expect(dialog.getByLabel("Initial password")).toBeVisible();
+  await expect(dialog.getByText("This password has appeared in known data breaches. Choose a different password.")).toBeVisible();
+  await dialog.getByLabel("Initial password").fill("E2E-Another-Strong-Password-2026");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByRole("button", { name: "Create employee" }).click();
+
+  await expect.poll(() => attempts.length).toBe(4);
   expect(attempts[1].employee_code).toBe("EMP-UNIQUE-01");
+  expect(attempts[2].username).toBe("unique.teacher");
+  expect(attempts[3].password).toBe("E2E-Another-Strong-Password-2026");
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: "Share staff login credentials" })).toBeVisible();
 });
