@@ -16,7 +16,7 @@ import { StaffOperationalReportsWorkspace } from "../components/StaffOperational
 import { StaffIDCardsWorkspace } from "../components/StaffIDCardsWorkspace";
 import {
   useCreateSchoolStaffMutation, useDisableSchoolStaffMutation, useEnableSchoolStaffMutation,
-  useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useSchoolStaffDirectoryQuery, useSchoolStaffDirectorySummaryQuery, useUpdateSchoolStaffMutation,
+  useResetSchoolStaffPasswordMutation, useSchoolStaffQuery, useSchoolStaffProfileQuery, useSchoolStaffDirectoryQuery, useSchoolStaffDirectorySummaryQuery, useUpdateSchoolStaffMutation,
   useStaffQualificationsQuery, useStaffCertificationsQuery, useStaffExperienceQuery,
   useCreateStaffQualificationMutation, useCreateStaffCertificationMutation, useCreateStaffExperienceMutation,
   useUpdateStaffQualificationMutation, useUpdateStaffCertificationMutation, useUpdateStaffExperienceMutation,
@@ -211,7 +211,9 @@ export function StaffManagementPage({ permissions }: Props) {
   }, [directoryQuery.data?.total, directoryPageIndex]);
   const [action, setAction] = useState<Action>(null);
   const [selected, setSelected] = useState<StaffRecord | null>(null);
-  const [profileFor, setProfileFor] = useState<StaffRecord | null>(null);
+  const [profileSelection, setProfileSelection] = useState<StaffRecord | null>(null);
+  const profileDetailQuery = useSchoolStaffProfileQuery(profileSelection?.principal_id ?? 0, Boolean(profileSelection));
+  const profileFor = profileDetailQuery.data?.staff ?? null;
   const [profileTab, setProfileTab] = useState<"Overview" | "Personal Details" | "Employment" | "Qualifications & Experience" | "Documents" | "Academic Assignments" | "Account & Access" | "History & Activity" | "Workload & Timetable">("Overview");
   const staffRecordID = profileFor?.principal_id ?? 0;
   const staffRecordsEnabled = Boolean(profileFor) && profileTab === "Qualifications & Experience";
@@ -295,16 +297,17 @@ export function StaffManagementPage({ permissions }: Props) {
   const directoryTotal = directoryQuery.data?.total ?? filtered.length;
 
   function closeProfile() {
-    const principalID = profileFor?.principal_id;
+    const principalID = profileSelection?.principal_id;
     if (principalID) {
       // Staff records and audit events are employee-specific; do not retain them in
       // the shared query cache after the profile is closed.
       queryClient.removeQueries({ queryKey: [...schoolAdminQueryKeys.staff(), principalID] });
+      queryClient.removeQueries({ queryKey: [...schoolAdminQueryKeys.staff(), "profile", principalID] });
       queryClient.removeQueries({ queryKey: ["school-admin", "staff-roles", principalID] });
       queryClient.removeQueries({ queryKey: ["school-admin", "staff-overrides", principalID] });
       queryClient.removeQueries({ queryKey: ["staff-audit-events", principalID] });
     }
-    setProfileFor(null);
+    setProfileSelection(null);
     setRecordFormKind(null);
     setEditingRecordID(null);
     setRecordError("");
@@ -326,7 +329,7 @@ export function StaffManagementPage({ permissions }: Props) {
     }
     setOverridesForPrincipal(null);
   }
-  function openProfile(item: StaffRecord) { setProfileFor(item); setProfileTab("Overview"); setRecordFormKind(null); setEditingRecordID(null); setRecordError(""); setRecordFieldErrors({}); setCertificationIssueDate(""); setCertificationExpiryDate(""); setExperienceStartDate(""); setExperienceEndDate(""); }
+  function openProfile(item: StaffRecord) { setProfileSelection(item); setProfileTab("Overview"); setRecordFormKind(null); setEditingRecordID(null); setRecordError(""); setRecordFieldErrors({}); setCertificationIssueDate(""); setCertificationExpiryDate(""); setExperienceStartDate(""); setExperienceEndDate(""); }
   function openAction(next: Action, item: StaffRecord | null = null) {
     if (next !== "create" && item?.protected_school_admin) return;
     setSelected(item);
@@ -807,6 +810,8 @@ export function StaffManagementPage({ permissions }: Props) {
           </tbody></table></div>}
         {serverDirectory && directoryTotal > 50 && <div className="staff-directory-pagination"><button type="button" className="staff-secondary-button" disabled={directoryPageIndex === 0 || directoryQuery.isFetching || directoryExporting} onClick={() => setDirectoryPageIndex(value => Math.max(0, value - 1))}>Previous</button><span>Page {directoryPageIndex + 1} of {Math.ceil(directoryTotal / 50)}</span><button type="button" className="staff-secondary-button" disabled={(directoryPageIndex + 1) * 50 >= directoryTotal || directoryQuery.isFetching || directoryExporting} onClick={() => setDirectoryPageIndex(value => value + 1)}>Next</button></div>}
       </section>}
+      {profileSelection && canReadStaff && profileDetailQuery.isPending && <Modal open title="Loading staff profile" description={`Retrieving the complete profile for ${profileSelection.username}.`} onClose={closeProfile}><p role="status">Loading staff details…</p></Modal>}
+      {profileSelection && canReadStaff && profileDetailQuery.isError && <Modal open title="Unable to load staff profile" description={`The profile for ${profileSelection.username} could not be retrieved.`} onClose={closeProfile}><p className="staff-feedback error" role="alert">{profileDetailQuery.error instanceof Error ? profileDetailQuery.error.message : "Unable to load staff profile."}</p><div className="app-modal-actions"><button type="button" className="app-modal-cancel" onClick={closeProfile}>Close</button><button type="button" className="primary" onClick={() => void profileDetailQuery.refetch()} disabled={profileDetailQuery.isFetching}>{profileDetailQuery.isFetching ? "Retrying…" : "Try again"}</button></div></Modal>}
       {profileFor && canReadStaff && <Modal key={profileFor.principal_id} open title={profileFor.full_name || profileFor.username} description={`Staff profile · ${profileFor.employee_code || "Employee code not set"} · ${profileFor.username}`} onClose={closeProfile} closeDisabled={recordMutationPending}>
         <nav className="staff-profile-tabs" aria-label="Staff profile sections">
           {(["Overview","Personal Details","Employment","Qualifications & Experience","Documents","Academic Assignments",...(permissions.includes("timetable.read") ? ["Workload & Timetable" as const] : []),"Account & Access","History & Activity"] as const).map(tab => <button type="button" key={tab} className={profileTab === tab ? "active" : ""} aria-current={profileTab === tab ? "page" : undefined} disabled={recordMutationPending} onClick={() => setProfileTab(tab)}>{tab}</button>)}
