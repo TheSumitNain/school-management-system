@@ -467,6 +467,8 @@ export function StaffManagementPage({ permissions }: Props) {
         mapped.password = "This password has appeared in known data breaches. Choose a different password.";
       } else if (normalizedMessage.includes("initial password must meet the password policy")) {
         mapped.password = "Initial password does not meet the password policy. Choose a stronger password.";
+      } else if (normalizedMessage.includes("password safety verification is temporarily unavailable")) {
+        mapped.password = "Password safety verification is temporarily unavailable. Try again shortly.";
       }
       if (Object.keys(mapped).length) {
         setFieldErrors(current => ({ ...current, ...mapped }));
