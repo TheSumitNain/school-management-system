@@ -47,10 +47,10 @@ function isValidISODate(value: string): boolean {
 
 function isStaffRecordUnchanged(next: Record<string, unknown>, current: Record<string, unknown> | undefined): boolean {
   if (!current) return false;
-  return Object.entries(next).every(([key, value]) => {
-    const previous = current[key];
-    return (value == null ? "" : value) === (previous == null ? "" : previous);
-  });
+  const normalize = (value: unknown) => value == null || value === "" ? null : value;
+  return Object.entries(next).every(([key, value]) =>
+    normalize(value) === normalize(current[key])
+  );
 }
 
 function isValidStaffEmail(email: string): boolean {
