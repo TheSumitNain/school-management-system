@@ -1655,7 +1655,7 @@ test("staff profile edit uses the shared employment-status select and sends the 
   });
 
   await timezonePage.getByRole("button", { name: /Staff Directory/ }).click();
-  const teacherRow = timezonePage.locator(".staff-directory-table tbody tr").filter({ hasText: "teacher.two" });
+  const teacherRow = timezonePage.locator(".staff-directory-table tbody tr").filter({ hasText: "EMP-002" });
   await expect(teacherRow).toBeVisible();
   await teacherRow.getByRole("button", { name: "View profile for teacher.two" }).click();
   const profileDialog = timezonePage.getByRole("dialog", { name: "Teacher Two" });
@@ -1720,7 +1720,8 @@ test("staff profile edit preserves entered values after a server failure and suc
 
   await dialog.getByRole("button", { name: "Save changes" }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.locator(".staff-directory-table tbody tr").filter({ hasText: "teacher.retry" })).toContainText("Retry Teacher Updated");
+  const updatedTeacherRow = page.locator(".staff-directory-table tbody tr").filter({ hasText: "EMP-RETRY-01" });
+  await expect(updatedTeacherRow).toContainText("Retry Teacher Updated");
   expect(attempts).toBe(2);
   expect(payloads[0]).toMatchObject({ full_name: "Retry Teacher Updated", mobile_number: "9876543299" });
   expect(payloads[1]).toMatchObject({ full_name: "Retry Teacher Updated", mobile_number: "9876543299" });
