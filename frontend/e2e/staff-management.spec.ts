@@ -1382,10 +1382,14 @@ test("disabling a staff account requires explicit confirmation and refreshes its
     status: "active", must_change_password: false,
   }];
   let disableCalls = 0;
+  let holdDisable = false;
+  let releaseDisable!: () => void;
+  const pendingDisable = new Promise<void>(resolve => { releaseDisable = resolve; });
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.disable"]);
   await page.route("**/api/school/staff/516", async route => {
     if (route.request().method() === "DELETE") {
       disableCalls += 1;
+      if (holdDisable) await pendingDisable;
       rows[0].status = "disabled";
       await route.fulfill({ json: { message: "Staff account disabled." } });
       return;
@@ -1405,21 +1409,13 @@ test("disabling a staff account requires explicit confirmation and refreshes its
 
   await staffRow.getByRole("button", { name: "Disable disable.teacher" }).click();
   const confirmation = page.getByRole("dialog", { name: "Disable staff account?" });
-  let releaseDisable!: () => void;
-  const pendingDisable = new Promise<void>(resolve => { releaseDisable = resolve; });
-  await page.route("**/api/school/staff/516", async route => {
-    if (route.request().method() === "DELETE") {
-      disableCalls += 1;
-      await pendingDisable;
-      rows[0].status = "disabled";
-      await route.fulfill({ json: { message: "Staff account disabled." } });
-      return;
-    }
-    await route.fallback();
-  });
+  holdDisable = true;
   const confirmButton = confirmation.getByRole("button", { name: "Disable account" });
-  await confirmButton.evaluate((element: HTMLButtonElement) => { element.click(); element.click(); });
+  await confirmButton.click();
   await expect(confirmButton).toBeDisabled();
+  await confirmButton.evaluate((element: HTMLButtonElement) => {
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+  });
   await expect.poll(() => disableCalls).toBe(1);
   releaseDisable();
   await expect(page.getByText("disable.teacher has been disabled and active sessions revoked.")).toBeVisible();
