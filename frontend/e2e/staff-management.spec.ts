@@ -1266,6 +1266,10 @@ test("staff creation returns server field conflicts to the correct wizard step",
       await route.fulfill({ status: 400, json: { status: "error", message: "This password has appeared in known data breaches. Choose a different password." } });
       return;
     }
+    if (attempts.length === 4) {
+      await route.fulfill({ status: 503, json: { status: "error", message: "Password safety verification is temporarily unavailable. Try again shortly." } });
+      return;
+    }
     const saved = {
       id: 1, principal_id: 611, school_id: 10, username: payload.username,
       employee_code: payload.employee_code, full_name: payload.full_name,
@@ -1324,9 +1328,16 @@ test("staff creation returns server field conflicts to the correct wizard step",
   await dialog.getByRole("button", { name: "Create employee" }).click();
 
   await expect.poll(() => attempts.length).toBe(4);
+  await expect(dialog.getByLabel("Initial password")).toBeVisible();
+  await expect(dialog.getByText("Password safety verification is temporarily unavailable. Try again shortly.")).toBeVisible();
+  await expect(dialog.getByLabel("Initial password")).toHaveValue("E2E-Another-Strong-Password-2026");
+  await dialog.getByRole("button", { name: "Create employee" }).click();
+
+  await expect.poll(() => attempts.length).toBe(5);
   expect(attempts[1].employee_code).toBe("EMP-UNIQUE-01");
   expect(attempts[2].username).toBe("unique.teacher");
   expect(attempts[3].initial_password).toBe("E2E-Another-Strong-Password-2026");
+  expect(attempts[4].initial_password).toBe("E2E-Another-Strong-Password-2026");
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: "Share staff login credentials" })).toBeVisible();
 });
