@@ -2925,7 +2925,7 @@ test("staff profile history does not request audit events without school.audit.r
     await route.fulfill({ json: { events: [] } });
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Read Only History Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.history.readonly" }).click();
   const dialog = page.getByRole("dialog", { name: "Read Only History Teacher" });
   await dialog.getByRole("button", { name: "History & Activity" }).click();
   await expect(dialog.getByText("You do not have permission to view audit history.")).toBeVisible();
@@ -2959,7 +2959,7 @@ test("staff profile history is permission-gated and renders staff audit events",
     ] } });
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "History Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.history" }).click();
   const dialog = page.getByRole("dialog", { name: "History Teacher" });
   await dialog.getByRole("button", { name: "History & Activity" }).click();
   await expect(dialog.getByText("Profile updated")).toBeVisible();
