@@ -910,3 +910,12 @@ This section supersedes older statements in this audit that describe browser ver
 - Source audit found the Staff Directory and profile Overview still rendered ordinary edit, password-reset, disable and re-enable controls for peer School Admin accounts, even though the backend correctly rejects those mutations. The role and permission-override panels were already read-only, but that did not cover account lifecycle actions.
 - Staff list and paginated directory responses now expose a server-derived 'protected_school_admin' flag based on the active same-school system role assignment. The frontend uses it to hide ordinary lifecycle controls and independently guards action-opening/submit paths; role and override panels remain visible read-only.
 - Added PostgreSQL assertions for the protected flag in both list APIs and Playwright coverage for active and disabled protected School Admin rows. Backend and frontend CI must pass before this batch is considered verified.
+
+
+## 2026-11-27 follow-up — duplicate-submit protection and regression coverage
+
+- Added synchronous in-flight guards to the Qualifications / Certifications / Experience record form and the employee account action form. Repeated submit events, including keyboard-triggered form submissions while a request is pending, are ignored until the active request settles.
+- Added Playwright regression coverage for a pending staff-record save and extended the staff-create retry scenario to hold the successful retry, issue a second form submit, and assert that no third create request is sent.
+- Existing pending-state UI disables the relevant Save / Create button; failed requests continue to preserve entered values for retry. Backend API contracts and database schema are unchanged.
+- Verification is pending on the latest `work` commit; do not treat this batch as CI-verified until the latest Backend CI and Frontend CI complete successfully. `main` remains untouched.
+- Staff Profile acceptance is still in progress. Secure document upload remains deferred pending the private storage service decision.

@@ -1389,3 +1389,12 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Strengthened the backend HTTP handler test so the fake create service captures the `StaffProfile` payload. The test now verifies Staff Type, Employee Code, Full Name, Designation, Mobile Number, optional Email/Joining Date and active employment status are forwarded, while the response still excludes plaintext credentials and password hashes.
 - Backend CI [45811766096](https://github.com/TheSumitNain/school-management-system/actions/runs/45811766096) **PASS** on `4762ec3a471525084898bd05db3e0a6959cba3ac`: full migrations, Go/PostgreSQL integration tests and `go vet`.
 - No production code, migration or persistent data changed. This verifies the existing login-backed create request contract; it does not implement profile-only onboarding or automatic role assignment, which remain blocked on the separately documented identity-schema and role-mapping approvals.
+
+
+## 2026-11-27 follow-up — duplicate-submit protection and regression coverage
+
+- Added synchronous in-flight guards to the Qualifications / Certifications / Experience record form and the employee account action form. Repeated submit events, including keyboard-triggered form submissions while a request is pending, are ignored until the active request settles.
+- Added Playwright regression coverage for a pending staff-record save and extended the staff-create retry scenario to hold the successful retry, issue a second form submit, and assert that no third create request is sent.
+- Existing pending-state UI disables the relevant Save / Create button; failed requests continue to preserve entered values for retry. Backend API contracts and database schema are unchanged.
+- Verification is pending on the latest `work` commit; do not treat this batch as CI-verified until the latest Backend CI and Frontend CI complete successfully. `main` remains untouched.
+- Staff Profile acceptance is still in progress. Secure document upload remains deferred pending the private storage service decision.
