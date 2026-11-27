@@ -566,6 +566,8 @@ test("staff directory filters stay within mobile, tablet and desktop layouts", a
   await expect(labels).toHaveCount(4);
 
   for (const viewport of [
+    { width: 320, height: 720 },
+    { width: 360, height: 800 },
     { width: 390, height: 844 },
     { width: 768, height: 900 },
     { width: 1280, height: 900 },
@@ -3240,7 +3242,8 @@ test("staff attendance updates existing records, retries failed writes, and conf
   await expect.poll(() => patchCalls).toBe(2);
   releaseSameDay?.();
   await expect(page.getByText("Staff attendance updated.")).toBeVisible();
-  await expect(updateButton).toBeEnabled(); // Wait for query invalidation and onSettled to release the shared write lock.
+  const statusSelect = row.getByLabel("Attendance status for Lifecycle Teacher");
+  await expect(statusSelect).toBeEnabled(); // Mutation settlement waits for query invalidation before releasing the shared write lock.
 
   // Move to a past date, then verify the explicit correction confirmation and duplicate guard.
   await page.getByLabel("Staff attendance date").click();
@@ -4916,6 +4919,8 @@ test("staff attendance workspace remains usable on mobile, tablet and desktop", 
   await expect(tableWrap).toBeVisible();
 
   for (const viewport of [
+    { width: 320, height: 720 },
+    { width: 360, height: 800 },
     { width: 390, height: 844 },
     { width: 768, height: 900 },
     { width: 1280, height: 900 },
@@ -4925,7 +4930,11 @@ test("staff attendance workspace remains usable on mobile, tablet and desktop", 
     await expect(workspace.getByLabel("Search staff attendance")).toBeVisible();
     await expect(workspace.getByLabel("Filter staff attendance status")).toBeVisible();
     await expect(workspace.getByLabel("Attendance status for Responsive Attendance Teacher")).toBeVisible();
-    await expect.poll(() => tableWrap.evaluate(element => element.scrollWidth >= element.clientWidth)).toBe(true);
+    if (viewport.width <= 768) {
+      await expect.poll(() => tableWrap.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+    } else {
+      await expect.poll(() => tableWrap.evaluate(element => element.scrollWidth === element.clientWidth)).toBe(true);
+    }
   }
   await workspace.getByLabel("Search staff attendance").fill("Second Attendance");
   await expect(workspace.getByRole("row").filter({ hasText: "Second Attendance Teacher" })).toBeVisible();
