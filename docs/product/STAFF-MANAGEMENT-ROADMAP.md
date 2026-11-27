@@ -1398,3 +1398,12 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Existing pending-state UI disables the relevant Save / Create button; failed requests continue to preserve entered values for retry. Backend API contracts and database schema are unchanged.
 - Verification is pending on the latest `work` commit; do not treat this batch as CI-verified until the latest Backend CI and Frontend CI complete successfully. `main` remains untouched.
 - Staff Profile acceptance is still in progress. Secure document upload remains deferred pending the private storage service decision.
+
+
+## 2026-11-27 CI follow-up — pending-submit regression
+
+- The latest browser acceptance run on `6692b4d7` completed with 166 tests passing and one failure in `staff record save prevents duplicate submissions while the request is pending`.
+- Failure cause was the test retaining the old `Save record` locator after the UI correctly renamed the disabled button to `Saving…`; the failure was a stale test locator, not a duplicate API request or a production mutation failure.
+- Updated the regression test to assert the current `Saving…` button is disabled before issuing a programmatic second form submission. The assertion still verifies the actual pending UI state and the request-count guard.
+- Fix commit: `92d70b76`. Backend and Frontend CI for this fix are pending; do not mark browser acceptance green until the rerun completes.
+- Document upload remains explicitly deferred; Staff Profile is not yet declared 100% complete.
