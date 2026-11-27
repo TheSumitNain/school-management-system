@@ -249,3 +249,15 @@
 
 .staff-management-page .staff-directory-pagination{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:14px 0;color:var(--color-text-muted);font-size:11px}.staff-management-page .staff-directory-pagination button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:480px){.staff-management-page .staff-directory-pagination{justify-content:space-between;flex-wrap:wrap}}
+
+/* Staff directory keeps the default list intentionally compact at every viewport. */
+.staff-management-page .staff-directory-table{width:100%;min-width:0;table-layout:fixed}
+.staff-management-page .staff-directory-table th,.staff-management-page .staff-directory-table td{overflow-wrap:anywhere}
+.staff-management-page .staff-directory-table th:first-child{width:32%}
+.staff-management-page .staff-directory-table th:nth-child(2){width:25%}
+.staff-management-page .staff-directory-table th:nth-child(3){width:17%}
+.staff-management-page .staff-directory-table th:nth-child(4){width:26%}
+.staff-directory-name{display:block;color:var(--color-text);font-size:12px;font-weight:650}
+.staff-directory-table .staff-id{font-size:10px}
+.staff-row-actions .staff-directory-view{display:inline-flex;width:auto;min-width:48px;height:30px;padding:0 9px;font-size:11px;font-weight:650}
+@media(max-width:520px){.staff-management-page .staff-directory-table th:first-child{width:48%}.staff-management-page .staff-directory-table th:nth-child(3){width:25%}.staff-management-page .staff-directory-table th:nth-child(4){width:27%}.staff-management-page .staff-directory-table .staff-directory-designation{display:none}.staff-management-page .staff-directory-table td{padding:9px 7px}.staff-management-page .staff-row-actions{gap:4px;flex-wrap:wrap}.staff-management-page .staff-row-actions button{min-width:30px}.staff-management-page .staff-row-actions .staff-directory-view{min-width:46px}}
