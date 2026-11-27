@@ -5820,3 +5820,111 @@ test("substitute coverage workspace remains usable on narrow phones and landscap
     expect(dimensions.workspaceWidth).toBeGreaterThan(0);
   }
 });
+
+
+test("staff attendance daily register remains fully paginated beyond 1,000 employees", async ({ page }) => {
+  const directoryRows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 690, school_id: 10, username: "attendance.scale.admin",
+    employee_code: "EMP-ATT-SCALE-ADMIN", full_name: "Attendance Scale Admin", designation: "Administrator",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, directoryRows, undefined, [
+    "users.read", "staff.attendance.read", "staff.attendance.mark",
+  ]);
+  const all = Array.from({ length: 1001 }, (_, index) => ({
+    id: null,
+    school_id: 10,
+    staff_principal_id: 7000 + index,
+    employee_code: `EMP-ATT-SCALE-${String(index + 1).padStart(4, "0")}`,
+    full_name: `Attendance Scale Staff ${String(index + 1).padStart(4, "0")}`,
+    designation: "Teacher",
+    attendance_date: "2026-11-27",
+    status: null,
+  }));
+  await page.route("**/api/school/staff-attendance?*", async route => {
+    const url = new URL(route.request().url());
+    const search = (url.searchParams.get("search") ?? "").toLocaleLowerCase();
+    const status = url.searchParams.get("status") ?? "all";
+    const filtered = all.filter(item => {
+      const matchesSearch = !search || [item.full_name, item.employee_code, item.designation]
+        .some(value => value.toLocaleLowerCase().includes(search));
+      const matchesStatus = status === "all" || (status === "unmarked" ? !item.status : item.status === status);
+      return matchesSearch && matchesStatus;
+    });
+    const limit = Number(url.searchParams.get("limit") ?? 50);
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    await route.fulfill({
+      json: {
+        date: url.searchParams.get("date"),
+        data: filtered.slice(offset, offset + limit),
+        pagination: { limit, offset, total: filtered.length },
+      },
+    });
+  });
+
+  await page.getByRole("button", { name: "Attendance", exact: true }).click();
+  await expect(page.getByText("Showing 1–50 of 1001 staff matching filters")).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByText("Showing 51–100 of 1001 staff matching filters")).toBeVisible();
+  for (let pageNumber = 2; pageNumber < 21; pageNumber++) {
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+  }
+  await expect(page.getByText("Showing 1001–1001 of 1001 staff matching filters")).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "Attendance Scale Staff 1001" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mark 1 unmarked staff", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "Previous", exact: true }).click();
+  await expect(page.getByText("Showing 951–1000 of 1001 staff matching filters")).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "Attendance Scale Staff 0951" })).toBeVisible();
+});
+
+test("staff monthly attendance CSV export verifies every page for more than 1,000 staff", async ({ page }) => {
+  const directoryRows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 691, school_id: 10, username: "attendance.export.scale.admin",
+    employee_code: "EMP-ATT-EXPORT-ADMIN", full_name: "Attendance Export Scale Admin", designation: "Administrator",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, directoryRows, undefined, ["users.read", "staff.attendance.read"]);
+  const all = Array.from({ length: 1001 }, (_, index) => ({
+    staff_principal_id: 8000 + index,
+    employee_code: `EMP-ATT-EXPORT-${String(index + 1).padStart(4, "0")}`,
+    full_name: `Monthly Scale Staff ${String(index + 1).padStart(4, "0")}`,
+    designation: "Teacher",
+    present_days: 1,
+    absent_days: 0,
+    late_days: 0,
+    half_days: 0,
+    records: [{ id: 90000 + index, date: "2026-11-03", status: "present" as const }],
+  }));
+  const exportOffsets: number[] = [];
+  await page.route("**/api/school/staff-attendance/month?*", async route => {
+    const url = new URL(route.request().url());
+    const limit = Number(url.searchParams.get("limit") ?? 50);
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    if (limit === 100) exportOffsets.push(offset);
+    await route.fulfill({
+      json: {
+        month: url.searchParams.get("month"),
+        data: all.slice(offset, offset + limit),
+        pagination: { limit, offset, total: all.length },
+      },
+    });
+  });
+
+  await page.getByRole("button", { name: "Attendance", exact: true }).click();
+  await page.getByRole("button", { name: "Monthly summary", exact: true }).click();
+  await expect(page.getByText("Showing 1–50 of 1001 staff")).toBeVisible();
+  const month = await page.getByLabel("Attendance month").inputValue();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download complete monthly report" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe(`staff-attendance-${month}.csv`);
+  const downloadPath = await download.path();
+  expect(downloadPath).toBeTruthy();
+  const csv = await readFile(downloadPath!, "utf8");
+  expect(csv.startsWith("\\uFEFF")).toBe(true);
+  expect(csv).toContain("Monthly Scale Staff 0001");
+  expect(csv).toContain("Monthly Scale Staff 1001");
+  expect(csv).toContain("EMP-ATT-EXPORT-1001");
+  expect(csv.split(/\\r?\\n/).length).toBe(2003);
+  expect(exportOffsets).toEqual([0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]);
+});
