@@ -1458,6 +1458,39 @@ test("staff password reset validates a strong temporary password and requires ne
   expect(submittedPayload).toEqual({ new_password: "StrongTempPass!2026" });
 });
 
+test("staff password reset ignores a second submit while the request is pending", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 520, school_id: 10, username: "reset.double",
+    employee_code: "EMP-RESET-DOUBLE", full_name: "Reset Double", designation: "Teacher",
+    mobile_number: "9876543219", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  let resetCalls = 0;
+  let releaseReset!: () => void;
+  const pendingReset = new Promise<void>(resolve => { releaseReset = resolve; });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.password_reset"]);
+  await page.route("**/api/school/staff/520/password/reset", async route => {
+    if (route.request().method() !== "POST") { await route.fallback(); return; }
+    resetCalls += 1;
+    await pendingReset;
+    await route.fulfill({ json: { message: "Password reset." } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Reset password for reset.double" }).click();
+  const dialog = page.getByRole("dialog", { name: "Reset staff password" });
+  await dialog.getByLabel("New temporary password").fill("StrongTempPass!2026");
+  const submit = dialog.getByRole("button", { name: "Reset password", exact: true });
+  await submit.click();
+  await expect(dialog.getByRole("button", { name: "Saving…" })).toBeDisabled();
+  await dialog.locator("form").evaluate((form: HTMLFormElement) => form.requestSubmit());
+  await expect.poll(() => resetCalls).toBe(1);
+  await expect.poll(() => resetCalls).toBe(1);
+  releaseReset();
+  await expect(page.getByText("Password reset. The staff member must change it at next sign-in.")).toBeVisible();
+  expect(resetCalls).toBe(1);
+});
+
 test("enabling a disabled staff account validates a temporary password and enforces next sign-in change", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 518, school_id: 10, username: "enable.teacher",
@@ -1496,6 +1529,42 @@ test("enabling a disabled staff account validates a temporary password and enfor
   await expect(page.locator("tr").filter({ hasText: "enable.teacher" })).toContainText("active");
   await expect(page.getByText("Change required")).toBeVisible();
   await expect(page.getByRole("button", { name: "Enable enable.teacher" })).toHaveCount(0);
+});
+
+test("enabling a staff account ignores a second submit while the request is pending", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 521, school_id: 10, username: "enable.double",
+    employee_code: "EMP-ENABLE-DOUBLE", full_name: "Enable Double", designation: "Teacher",
+    mobile_number: "9876543220", employment_status: "active", profile_complete: true,
+    status: "disabled", must_change_password: false,
+  }];
+  let enableCalls = 0;
+  let releaseEnable!: () => void;
+  const pendingEnable = new Promise<void>(resolve => { releaseEnable = resolve; });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.update"]);
+  await page.route("**/api/school/staff/521/enable", async route => {
+    if (route.request().method() !== "POST") { await route.fallback(); return; }
+    enableCalls += 1;
+    await pendingEnable;
+    rows[0].status = "active";
+    rows[0].must_change_password = true;
+    await route.fulfill({ json: { message: "Staff account enabled." } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  const staffRow = page.locator("tr").filter({ hasText: "enable.double" });
+  await expect(staffRow).toBeVisible();
+  await staffRow.getByRole("button", { name: "Enable enable.double" }).click();
+  const dialog = page.getByRole("dialog", { name: "Enable staff account" });
+  await dialog.getByLabel("Temporary password").fill("EnableTempPass!2026");
+  const submit = dialog.getByRole("button", { name: "Enable account", exact: true });
+  await submit.click();
+  await expect(dialog.getByRole("button", { name: "Saving…" })).toBeDisabled();
+  await dialog.locator("form").evaluate((form: HTMLFormElement) => form.requestSubmit());
+  await expect.poll(() => enableCalls).toBe(1);
+  releaseEnable();
+  await expect(page.getByText("Staff account enabled. A password change is required at next sign-in.")).toBeVisible();
+  expect(enableCalls).toBe(1);
 });
 
 test("staff account re-enable keeps the dialog open and explains an inactive employee conflict", async ({ page }) => {
