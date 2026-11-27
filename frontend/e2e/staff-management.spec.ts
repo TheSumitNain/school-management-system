@@ -319,6 +319,10 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
         return;
       }
       if (method === "PATCH" && staffRecordMatch[3]) {
+        if (onStaffRecordMutation) {
+          await onStaffRecordMutation(collection, route);
+          return;
+        }
         const payload = request.postDataJSON() as Record<string, unknown>;
         const recordID = Number(staffRecordMatch[3]);
         const index = staffRecords[collection].findIndex(item => item.id === recordID);
@@ -1628,6 +1632,71 @@ test("staff profile creates education, certification and experience records", as
   await dialog.locator('input[name="record_designation"]').fill("Senior Science Teacher");
   await dialog.getByRole("button", { name: "Save changes" }).click();
   await expect(dialog.getByText("Senior Science Teacher")).toBeVisible();
+});
+
+test("staff qualification, certification and experience edits preserve values after failure and retry", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 619, school_id: 10, username: "teacher.record-edit-retry",
+    employee_code: "EMP-RECORD-EDIT", full_name: "Record Edit Retry Teacher",
+    designation: "Teacher", mobile_number: "9876543221", employment_status: "active",
+    profile_complete: true, status: "active", must_change_password: false,
+  }];
+  const savedRecords: Record<"qualifications" | "certifications" | "experience", Array<Record<string, unknown>>> = {
+    qualifications: [{ id: 911, staff_principal_id: 619, qualification_type: "undergraduate", qualification_name: "B.Ed.", institution: "Old University", verification_status: "pending" }],
+    certifications: [{ id: 912, staff_principal_id: 619, certificate_name: "First Aid", issuing_organization: "Old Board", verification_status: "pending" }],
+    experience: [{ id: 913, staff_principal_id: 619, employer_name: "Old School", designation: "Teacher", employment_type: "permanent", start_date: "2019-04-01", end_date: "2022-03-31", is_current: false, verification_status: "pending" }],
+  };
+  const attempts: Record<string, number> = { qualifications: 0, certifications: 0, experience: 0 };
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update"], async (collection, route) => {
+    expect(route.request().method()).toBe("PATCH");
+    attempts[collection] += 1;
+    const payload = route.request().postDataJSON() as Record<string, unknown>;
+    if (attempts[collection] === 1) {
+      await route.fulfill({ status: 503, json: { message: "Record update is temporarily unavailable. Please retry." } });
+      return;
+    }
+    const recordID = Number(new URL(route.request().url()).pathname.split("/").pop());
+    const target = savedRecords[collection as keyof typeof savedRecords].find(item => item.id === recordID);
+    expect(target).toBeTruthy();
+    Object.assign(target!, payload);
+    await route.fulfill({ status: 200, json: {
+      [collection === "qualifications" ? "qualification" : collection === "certifications" ? "certification" : "experience"]: target,
+    } });
+  }, undefined, savedRecords);
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Record Edit Retry Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Record Edit Retry Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+
+  const qualification = dialog.locator(".staff-record-card").filter({ hasText: "B.Ed." });
+  await qualification.getByRole("button", { name: "Edit" }).click();
+  await dialog.locator('input[name="institution"]').fill("Updated University");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog.getByText("Record update is temporarily unavailable. Please retry.")).toBeVisible();
+  await expect(dialog.locator('input[name="institution"]')).toHaveValue("Updated University");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog.getByText("Updated University")).toBeVisible();
+
+  const certification = dialog.locator(".staff-record-card").filter({ hasText: "First Aid" });
+  await certification.getByRole("button", { name: "Edit" }).click();
+  await dialog.locator('input[name="issuing_organization"]').fill("Updated Board");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog.getByText("Record update is temporarily unavailable. Please retry.")).toBeVisible();
+  await expect(dialog.locator('input[name="issuing_organization"]')).toHaveValue("Updated Board");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog.getByText("Updated Board")).toBeVisible();
+
+  const experience = dialog.locator(".staff-record-card").filter({ hasText: "Old School" });
+  await experience.getByRole("button", { name: "Edit" }).click();
+  await dialog.locator('input[name="record_designation"]').fill("Senior Teacher");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog.getByText("Record update is temporarily unavailable. Please retry.")).toBeVisible();
+  await expect(dialog.locator('input[name="record_designation"]')).toHaveValue("Senior Teacher");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog.getByText("Senior Teacher")).toBeVisible();
+
+  expect(attempts).toEqual({ qualifications: 2, certifications: 2, experience: 2 });
 });
 
 test("staff qualification form preserves values after a failed save and succeeds on retry", async ({ page }) => {
