@@ -3240,6 +3240,7 @@ test("staff attendance updates existing records, retries failed writes, and conf
   await expect.poll(() => patchCalls).toBe(2);
   releaseSameDay?.();
   await expect(page.getByText("Staff attendance updated.")).toBeVisible();
+  await expect(updateButton).toBeEnabled(); // Wait for query invalidation and onSettled to release the shared write lock.
 
   // Move to a past date, then verify the explicit correction confirmation and duplicate guard.
   await page.getByLabel("Staff attendance date").click();
