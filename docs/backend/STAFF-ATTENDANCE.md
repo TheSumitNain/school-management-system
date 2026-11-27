@@ -1,3 +1,15 @@
+## 2026-11-27 — 1,001+ staff pagination and complete-export verification
+
+- Daily Attendance browser coverage now traverses a 1,001-employee roster through all 21 UI pages (50 rows per page), verifies the final employee and confirms bulk marking remains scoped to the visible final page.
+- Monthly Attendance CSV browser coverage exports 1,001 staff across all 11 API pages (100 rows per export page), verifies exact offsets, the final employee, the UTF-8 BOM and all 2,003 CSV lines (header plus one summary and one entry per employee).
+- A real PostgreSQL integration test inserts 1,001 additional staff profiles and walks every Daily and Monthly page at the 100-row API limit. It asserts exact totals (1,004 including the fixture's three staff profiles), expected page lengths, and no missing or duplicate principal IDs.
+- The 1,000-record bulk-mark limit remains an API request-size safety ceiling; it is not a roster-size or attendance-history limit. The School Admin UI continues to bulk-mark only the visible, unmarked page (50 rows by default) after count confirmation.
+- Frontend CI [45947477220](https://github.com/TheSumitNain/school-management-system/actions/runs/45947477220) **PASS**: TypeScript, Vite production build, design-token check and **182 Playwright tests passed**.
+- Backend CI [45947590210](https://github.com/TheSumitNain/school-management-system/actions/runs/45947590210) **PASS**: full migration chain, Go tests including PostgreSQL integration and `go vet ./...`.
+- No production schema or persistent school data changed. Verification commits remain on `work`; `main` is untouched. Automated technical verification is complete for this scale batch; authenticated School Admin/manual acceptance remains required before declaring the Attendance page 100% complete.
+
+---
+
 ## 2026-11-26 — employment lifecycle serialization and bounded bulk-write performance
 
 - Single and bulk attendance writes now take shared locks on all target active staff profiles, in ascending principal-ID order, until the attendance rows and audit events commit. Concurrent employment inactivation therefore either completes first (and the attendance write is rejected) or waits until an already-started attendance transaction commits; bulk lock ordering avoids deadlocks between overlapping target sets.
