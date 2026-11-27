@@ -456,8 +456,17 @@ export function StaffManagementPage({ permissions }: Props) {
           if (error.fieldErrors[key]) mapped[key === "initial_password" ? "password" : key] = error.fieldErrors[key];
         }
       }
-      if (message.toLowerCase().includes("employee code")) {
+      const normalizedMessage = message.toLowerCase();
+      if (normalizedMessage.includes("employee code")) {
         mapped.employee_code = "This employee code is already used in this school.";
+      }
+      if (normalizedMessage.includes("username is already in use")) {
+        mapped.username = "This username is already in use.";
+      }
+      if (normalizedMessage.includes("password has appeared in known data breaches")) {
+        mapped.password = "This password has appeared in known data breaches. Choose a different password.";
+      } else if (normalizedMessage.includes("initial password must meet the password policy")) {
+        mapped.password = "Initial password does not meet the password policy. Choose a stronger password.";
       }
       if (Object.keys(mapped).length) {
         setFieldErrors(current => ({ ...current, ...mapped }));
