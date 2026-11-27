@@ -229,6 +229,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [createStep, setCreateStep] = useState(1);
   const wizardFormRef = useRef<HTMLFormElement>(null);
+  const accountSubmitInFlight = useRef(false);
   const [createReview, setCreateReview] = useState<{fullName:string;employeeCode:string;mobileNumber:string;email:string;designation:string;staffType:string;joiningDate:string;username:string} | null>(null);
   const [credentialHandoff, setCredentialHandoff] = useState<{ fullName: string; username: string; password: string } | null>(null);
   const [joiningDate, setJoiningDate] = useState("");
@@ -381,6 +382,7 @@ export function StaffManagementPage({ permissions }: Props) {
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (accountSubmitInFlight.current) return;
     if (!actionAllowed) { closeAction(); setFeedback({ kind: "error", message: "Your permission to perform this staff account action is no longer available." }); return; }
     const form = new FormData(event.currentTarget);
     if (action === "create" && createStep < 4) { advanceCreateStep(event.currentTarget); return; }
@@ -425,6 +427,7 @@ export function StaffManagementPage({ permissions }: Props) {
       }
     }
     setFeedback(null);
+    accountSubmitInFlight.current = true;
     try {
       if (action === "create") {
         await create.mutateAsync({ username, initial_password: password, full_name: fullName, employee_code: employeeCode, designation, staff_type: selectedStaffType as "teaching" | "non_teaching", mobile_number: mobileNumber, email, joining_date: joiningDate || undefined });
@@ -463,6 +466,8 @@ export function StaffManagementPage({ permissions }: Props) {
         setFeedback({ kind: "error", message });
       }
       notifyToast("error", message);
+    } finally {
+      accountSubmitInFlight.current = false;
     }
   }
   async function copyCredentialHandoff() {
