@@ -6017,6 +6017,63 @@ test("staff directory shows a compact four-column list and an explicit View acti
 });
 
 
+
+test("editing a directory employee fetches the complete profile before pre-filling the form", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 992, school_id: 10, username: "edit.detail.teacher",
+    employee_code: "EMP-EDIT-DETAIL", full_name: "Edit Detail Teacher",
+    designation: "Physics Teacher", staff_type: "teaching",
+    mobile_number: "9876543292", email: "edit.detail@example.test",
+    joining_date: "2024-04-01", employment_status: "active",
+    profile_complete: true, status: "active", must_change_password: false,
+    protected_school_admin: false,
+  }];
+  await signInAndOpenStaff(page, rows);
+  await page.getByRole("button", { name: "Staff Directory", exact: true }).click();
+  const row = page.locator(".staff-directory-table tbody tr").filter({ hasText: "Edit Detail Teacher" });
+  const detailRequest = page.waitForRequest(request => request.method() === "GET" && new URL(request.url()).pathname.endsWith("/school/staff/992"));
+  await row.getByRole("button", { name: "Edit employee profile for edit.detail.teacher" }).click();
+  await detailRequest;
+  const dialog = page.getByRole("dialog", { name: "Edit employee profile" });
+  await expect(dialog.getByLabel("Full name")).toHaveValue("Edit Detail Teacher");
+  await expect(dialog.getByLabel("Mobile number")).toHaveValue("9876543292");
+  await expect(dialog.getByLabel("Email address")).toHaveValue("edit.detail@example.test");
+  await expect(dialog.getByLabel("Designation")).toHaveValue("Physics Teacher");
+});
+
+
+test("staff profile detail errors show a retry action and recover without opening partial data", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 993, school_id: 10, username: "retry.detail.teacher",
+    employee_code: "EMP-RETRY-DETAIL", full_name: "Retry Detail Teacher",
+    designation: "Teacher", mobile_number: "9876543293",
+    email: "retry.detail@example.test", employment_status: "active",
+    profile_complete: true, status: "active", must_change_password: false,
+    protected_school_admin: false,
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
+  let failOnce = true;
+  await page.route("**/api/school/staff/993", async route => {
+    if (failOnce) {
+      failOnce = false;
+      await route.fulfill({ status: 503, json: { message: "Temporary profile service error" } });
+      return;
+    }
+    await route.fulfill({ json: { staff: rows[0] } });
+  });
+  await page.getByRole("button", { name: "Staff Directory", exact: true }).click();
+  const row = page.locator(".staff-directory-table tbody tr").filter({ hasText: "Retry Detail Teacher" });
+  await row.getByRole("button", { name: "View profile for retry.detail.teacher" }).click();
+  const errorDialog = page.getByRole("dialog", { name: "Unable to load staff profile" });
+  await expect(errorDialog.getByRole("alert")).toContainText("Temporary profile service error");
+  await errorDialog.getByRole("button", { name: "Try again" }).click();
+  const profile = page.getByRole("dialog", { name: "Retry Detail Teacher" });
+  await expect(profile.getByRole("button", { name: "Personal Details" })).toBeVisible();
+  await profile.getByRole("button", { name: "Personal Details" }).click();
+  await expect(profile.getByText("retry.detail@example.test")).toBeVisible();
+});
+
+
 test("adding qualifications, certifications and experience scrolls to and focuses each new form", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 632, school_id: 10, username: "teacher.record-focus",
