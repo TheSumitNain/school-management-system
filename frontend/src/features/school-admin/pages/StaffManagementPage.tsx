@@ -179,10 +179,12 @@ export function StaffManagementPage({ permissions }: Props) {
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       setDebouncedSearch(search);
-      setDirectoryPageIndex(0);
     }, 350);
     return () => window.clearTimeout(timeout);
   }, [search]);
+  useEffect(() => {
+    setDirectoryPageIndex(0);
+  }, [debouncedSearch]);
   const [staffTypeFilter, setStaffTypeFilter] = useState("all");
   const [employmentFilter, setEmploymentFilter] = useState("all");
   const [accountFilter, setAccountFilter] = useState("all");
