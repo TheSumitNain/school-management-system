@@ -255,6 +255,71 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
             failedCreateUsers, failedCreateProfiles, failedCreateAudits, failedCreateRoleAssignments)
     }
 
+    // A failed audit write for the automatically assigned Teacher role must
+    // roll back the new login, employee profile, role assignment and audit row.
+    roleAuditFailureUsername := "teacher-role-audit-fail-" + suffix
+    roleAuditFailureCode := "EMP-ROLE-AUDIT-FAIL-" + suffix
+    if _, err := tx.Exec(ctx, `
+        CREATE OR REPLACE FUNCTION public.test_staff_teacher_role_audit_failure()
+        RETURNS trigger LANGUAGE plpgsql AS $body$
+        BEGIN
+            IF NEW.action = 'school.staff.role_assigned'
+               AND NEW.metadata->>'assignment_source' = 'staff_onboarding' THEN
+                RAISE EXCEPTION 'forced default Teacher role audit failure';
+            END IF;
+            RETURN NEW;
+        END;
+        $body$;
+        CREATE TRIGGER trg_test_staff_teacher_role_audit_failure
+        BEFORE INSERT ON public.audit_events
+        FOR EACH ROW EXECUTE FUNCTION public.test_staff_teacher_role_audit_failure();
+    `); err != nil {
+        t.Fatalf("install Teacher role audit failure trigger: %v", err)
+    }
+    roleAuditFailureProfile := profile
+    roleAuditFailureProfile.EmployeeCode = roleAuditFailureCode
+    if _, err := repo.CreateStaffAccountWithProfile(ctx, actorPrincipalID, schoolID,
+        roleAuditFailureUsername, "teacher-role-audit-failure-password-hash", roleAuditFailureProfile); err == nil {
+        t.Fatal("teaching staff creation unexpectedly succeeded when default role audit failed")
+    }
+    if _, err := tx.Exec(ctx, `
+        DROP TRIGGER trg_test_staff_teacher_role_audit_failure ON public.audit_events;
+        DROP FUNCTION public.test_staff_teacher_role_audit_failure();
+    `); err != nil {
+        t.Fatalf("remove Teacher role audit failure trigger: %v", err)
+    }
+    var roleAuditFailureUsers, roleAuditFailureProfiles, roleAuditFailureAssignments, roleAuditFailureEvents int
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*) FROM users WHERE school_id = $1 AND username = $2
+    `, schoolID, roleAuditFailureUsername).Scan(&roleAuditFailureUsers); err != nil {
+        t.Fatalf("count login after Teacher role audit failure: %v", err)
+    }
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*) FROM staff_profiles WHERE school_id = $1 AND employee_code = $2
+    `, schoolID, roleAuditFailureCode).Scan(&roleAuditFailureProfiles); err != nil {
+        t.Fatalf("count profile after Teacher role audit failure: %v", err)
+    }
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*) FROM principal_roles pr
+          JOIN users u ON u.principal_id = pr.principal_id
+         WHERE u.school_id = $1 AND u.username = $2 AND pr.revoked_at IS NULL
+    `, schoolID, roleAuditFailureUsername).Scan(&roleAuditFailureAssignments); err != nil {
+        t.Fatalf("count role assignment after Teacher role audit failure: %v", err)
+    }
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*) FROM audit_events
+         WHERE actor_principal_id = $1 AND school_id = $2
+           AND action = 'school.staff.role_assigned'
+           AND metadata->>'assignment_source' = 'staff_onboarding'
+    `, actorPrincipalID, schoolID).Scan(&roleAuditFailureEvents); err != nil {
+        t.Fatalf("count Teacher role audit events after forced failure: %v", err)
+    }
+    if roleAuditFailureUsers != 0 || roleAuditFailureProfiles != 0 ||
+        roleAuditFailureAssignments != 0 || roleAuditFailureEvents != 1 {
+        t.Fatalf("Teacher role audit failure left partial state: users=%d profiles=%d assignments=%d onboarding_role_audits=%d (want 0,0,0,1 existing)",
+            roleAuditFailureUsers, roleAuditFailureProfiles, roleAuditFailureAssignments, roleAuditFailureEvents)
+    }
+
     // Updating an existing profile to another employee's code must be
     // rejected without partially changing the profile or recording success.
     duplicateCodeUpdate := profile
