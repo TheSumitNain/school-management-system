@@ -1190,6 +1190,34 @@ test("staff creation uses the shared IST date picker and clears the credential h
   await expect(deferredHandoff).toBeVisible();
   await deferredHandoff.getByRole("button", { name: "Do this later" }).click();
   await expect(deferredHandoff).toHaveCount(0);
+
+  // A clipboard denial must not falsely report success or discard the one-time handoff.
+  await page.getByRole("button", { name: "Add staff" }).click();
+  const thirdDialog = page.getByRole("dialog", { name: "Add employee" });
+  await thirdDialog.getByLabel("Full name").fill("Teacher Three");
+  await thirdDialog.getByLabel("Employee code").fill("EMP-003");
+  await thirdDialog.getByLabel("Mobile number").fill("9876543213");
+  await thirdDialog.getByRole("button", { name: "Staff type" }).click();
+  await thirdDialog.getByRole("option", { name: "Teaching", exact: true }).click();
+  await thirdDialog.getByRole("button", { name: "Continue" }).click();
+  await thirdDialog.getByLabel("Designation").fill("Science Teacher");
+  await thirdDialog.getByRole("button", { name: "Continue" }).click();
+  await thirdDialog.getByLabel("Login username").fill("teacher.three");
+  await thirdDialog.getByLabel("Initial password").fill("E2E-Strong-Password-2028");
+  await thirdDialog.getByRole("button", { name: "Continue" }).click();
+  await thirdDialog.getByRole("button", { name: "Create employee" }).click();
+  await expect.poll(() => created.length).toBe(3);
+  const failedCopyHandoff = page.getByRole("dialog", { name: "Share staff login credentials" });
+  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText: async () => { throw new Error("Clipboard permission denied"); } },
+  }));
+  await failedCopyHandoff.getByRole("button", { name: "Copy credentials" }).click();
+  await expect(page.getByText("Clipboard access is unavailable. Use the password-reset flow if needed.")).toBeVisible();
+  await expect(failedCopyHandoff).toBeVisible();
+  await expect(failedCopyHandoff.getByText("teacher.three")).toBeVisible();
+  await failedCopyHandoff.getByRole("button", { name: "Do this later" }).click();
+  await expect(failedCopyHandoff).toHaveCount(0);
   await expect(page.locator('input[type="date"]')).toHaveCount(0);
 });
 
