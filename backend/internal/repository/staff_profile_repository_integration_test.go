@@ -92,6 +92,35 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
     if user == nil || !user.ProfileComplete || user.StaffType != profile.StaffType || user.EmployeeCode != profile.EmployeeCode || user.FullName != profile.FullName {
         t.Fatalf("created staff profile not returned: %+v", user)
     }
+    var teacherRoleAssignments int
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*)
+          FROM principal_roles pr
+          JOIN roles r ON r.id = pr.role_id
+         WHERE pr.principal_id = $1 AND pr.revoked_at IS NULL
+           AND r.school_id = $2 AND r.role_key = 'teacher'
+           AND r.principal_type = 'staff' AND r.scope_type = 'school'
+           AND r.is_system = TRUE
+    `, user.PrincipalID, schoolID).Scan(&teacherRoleAssignments); err != nil {
+        t.Fatalf("count default Teacher role assignments: %v", err)
+    }
+    if teacherRoleAssignments != 1 {
+        t.Fatalf("teaching staff onboarding created %d active Teacher role assignments, want 1", teacherRoleAssignments)
+    }
+    var teacherRoleAuditCount int
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*) FROM audit_events
+         WHERE actor_principal_id = $1 AND school_id = $2
+           AND action = 'school.staff.role_assigned'
+           AND resource_id = $3
+           AND metadata->>'role_key' = 'teacher'
+           AND metadata->>'assignment_source' = 'staff_onboarding'
+    `, actorPrincipalID, schoolID, fmt.Sprint(user.PrincipalID)).Scan(&teacherRoleAuditCount); err != nil {
+        t.Fatalf("count default Teacher role audit events: %v", err)
+    }
+    if teacherRoleAuditCount != 1 {
+        t.Fatalf("teaching staff onboarding created %d Teacher role audit events, want 1", teacherRoleAuditCount)
+    }
 
     // The profile update must not cross a tenant boundary, even when the
     // caller knows the target principal identifier.
@@ -130,6 +159,7 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
 
     // Optional email may be omitted during initial onboarding as well as cleared later.
     blankEmailProfile := profile
+    blankEmailProfile.StaffType = "non_teaching"
     blankEmailProfile.EmployeeCode = "EMP-BLANK-" + suffix
     blankEmailProfile.Email = ""
     blankEmailUser, err := repo.CreateStaffAccountWithProfile(ctx, actorPrincipalID, schoolID,
@@ -144,6 +174,21 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
     }
     if !blankEmailIsNull || blankEmailUser.Email != "" {
         t.Fatalf("omitted optional email was not represented as empty in API and NULL in storage: is_null=%v email=%q", blankEmailIsNull, blankEmailUser.Email)
+    }
+    var nonTeachingTeacherRoles int
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*)
+          FROM principal_roles pr
+          JOIN roles r ON r.id = pr.role_id
+         WHERE pr.principal_id = $1 AND pr.revoked_at IS NULL
+           AND r.school_id = $2 AND r.role_key = 'teacher'
+           AND r.principal_type = 'staff' AND r.scope_type = 'school'
+           AND r.is_system = TRUE
+    `, blankEmailUser.PrincipalID, schoolID).Scan(&nonTeachingTeacherRoles); err != nil {
+        t.Fatalf("count Teacher roles for non-teaching employee: %v", err)
+    }
+    if nonTeachingTeacherRoles != 0 {
+        t.Fatalf("non-teaching employee received %d active Teacher roles, want 0", nonTeachingTeacherRoles)
     }
 
     // Account + employee-profile onboarding is one transaction: an audit
@@ -196,9 +241,18 @@ func TestStaffProfileRepositoryPostgresIntegration(t *testing.T) {
     `, actorPrincipalID, schoolID, createFailureUsername).Scan(&failedCreateAudits); err != nil {
         t.Fatalf("count audit after profile creation audit failure: %v", err)
     }
-    if failedCreateUsers != 0 || failedCreateProfiles != 0 || failedCreateAudits != 0 {
-        t.Fatalf("profile creation audit failure left partial state: users=%d profiles=%d audits=%d",
-            failedCreateUsers, failedCreateProfiles, failedCreateAudits)
+    var failedCreateRoleAssignments int
+    if err := tx.QueryRow(ctx, `
+        SELECT COUNT(*)
+          FROM principal_roles pr
+          JOIN users u ON u.principal_id = pr.principal_id
+         WHERE u.school_id = $1 AND u.username = $2 AND pr.revoked_at IS NULL
+    `, schoolID, createFailureUsername).Scan(&failedCreateRoleAssignments); err != nil {
+        t.Fatalf("count role assignments after failed profile creation: %v", err)
+    }
+    if failedCreateUsers != 0 || failedCreateProfiles != 0 || failedCreateAudits != 0 || failedCreateRoleAssignments != 0 {
+        t.Fatalf("profile creation audit failure left partial state: users=%d profiles=%d audits=%d role_assignments=%d",
+            failedCreateUsers, failedCreateProfiles, failedCreateAudits, failedCreateRoleAssignments)
     }
 
     // Updating an existing profile to another employee's code must be
