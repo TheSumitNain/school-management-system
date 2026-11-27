@@ -1430,6 +1430,48 @@ test("staff profile edit uses the shared employment-status select and sends the 
   await timezoneContext.close();
 });
 
+
+test("staff profile edit preserves entered values after a server failure and succeeds on retry", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 302, school_id: 10, username: "teacher.retry",
+    employee_code: "EMP-RETRY-01", full_name: "Retry Teacher", designation: "Science Teacher",
+    mobile_number: "9876543212", email: "retry.teacher@example.com", joining_date: "2025-04-01",
+    employment_status: "active", staff_type: "teaching", profile_complete: true, status: "active",
+    must_change_password: false,
+  }];
+  let attempts = 0;
+  const payloads: Array<Record<string, unknown>> = [];
+  await signInAndOpenStaff(page, rows, async (_path, route) => {
+    attempts += 1;
+    payloads.push(route.request().postDataJSON() as Record<string, unknown>);
+    if (attempts === 1) {
+      await route.fulfill({ status: 503, json: { message: "Staff profile is temporarily unavailable. Please try again." } });
+      return;
+    }
+    await route.fulfill({ json: { staff: { ...rows[0], ...payloads[1] }, message: "Updated" } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Edit employee profile for teacher.retry" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit employee profile" });
+  await dialog.getByLabel(/Full name/).fill("Retry Teacher Updated");
+  await dialog.getByLabel(/Mobile number/).fill("9876543299");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("Staff profile is temporarily unavailable. Please try again.")).toBeVisible();
+  await expect(dialog.getByLabel(/Full name/)).toHaveValue("Retry Teacher Updated");
+  await expect(dialog.getByLabel(/Mobile number/)).toHaveValue("9876543299");
+  expect(attempts).toBe(1);
+
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Retry Teacher Updated" })).toBeVisible();
+  expect(attempts).toBe(2);
+  expect(payloads[0]).toMatchObject({ full_name: "Retry Teacher Updated", mobile_number: "9876543299" });
+  expect(payloads[1]).toMatchObject({ full_name: "Retry Teacher Updated", mobile_number: "9876543299" });
+});
+
 test("staff record server field errors render under the matching field and preserve entered values", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 612, school_id: 10, username: "teacher.record-validation",
