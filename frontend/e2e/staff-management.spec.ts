@@ -1410,9 +1410,15 @@ test("disabling a staff account requires explicit confirmation and refreshes its
   await staffRow.getByRole("button", { name: "Disable disable.teacher" }).click();
   const confirmation = page.getByRole("dialog", { name: "Disable staff account?" });
   holdDisable = true;
-  const confirmButton = confirmation.getByRole("button", { name: "Disable account" });
+  const confirmButton = confirmation.locator("button.app-modal-confirm");
   await confirmButton.click();
   await expect(confirmButton).toBeDisabled();
+  await expect(confirmation.getByRole("button", { name: "Close dialog" })).toBeDisabled();
+  await expect(confirmation.getByRole("button", { name: "Cancel", exact: true })).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await expect(confirmation).toBeVisible();
+  await page.locator(".app-modal-backdrop").last().click({ position: { x: 4, y: 4 } });
+  await expect(confirmation).toBeVisible();
   await confirmButton.evaluate((element: HTMLButtonElement) => {
     element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
   });
