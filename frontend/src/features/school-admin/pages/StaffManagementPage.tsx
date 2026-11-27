@@ -175,6 +175,11 @@ export function StaffManagementPage({ permissions }: Props) {
     if (!activeTabAllowed) setActiveTab(initialTab);
   }, [activeTabAllowed, initialTab]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search), 350);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
   const [staffTypeFilter, setStaffTypeFilter] = useState("all");
   const [employmentFilter, setEmploymentFilter] = useState("all");
   const [accountFilter, setAccountFilter] = useState("all");
@@ -182,7 +187,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const [directoryPageIndex, setDirectoryPageIndex] = useState(0);
   const [directoryExporting,setDirectoryExporting]=useState(false);
   const directoryFilters: StaffDirectoryFilters = {
-    search,
+    search: debouncedSearch,
     staffType: staffTypeFilter === "all" ? "" : staffTypeFilter,
     employmentStatus: employmentFilter === "all" ? "" : employmentFilter,
     accountStatus: accountFilter === "all" ? "" : accountFilter,
@@ -191,7 +196,7 @@ export function StaffManagementPage({ permissions }: Props) {
     offset: directoryPageIndex * 50,
   };
   const directoryQuery = useSchoolStaffDirectoryQuery(canReadStaff && activeTab === "directory", directoryFilters);
-  useEffect(() => { setDirectoryPageIndex(0); }, [search, staffTypeFilter, employmentFilter, accountFilter, profileFilter]);
+  useEffect(() => { setDirectoryPageIndex(0); }, [debouncedSearch, staffTypeFilter, employmentFilter, accountFilter, profileFilter]);
   useEffect(() => {
     const total = directoryQuery.data?.total;
     if (total === undefined) return;
@@ -245,7 +250,7 @@ export function StaffManagementPage({ permissions }: Props) {
   const staff = canReadStaff ? query.data?.staff ?? [] : [];
   const filtered = useMemo(() => {
     if (typeof directoryQuery.data?.total === "number") return directoryQuery.data.staff;
-    const term = search.trim().toLowerCase();
+    const term = debouncedSearch.trim().toLowerCase();
     return staff.filter(item => {
       const matchesSearch = !term || [item.username, item.full_name, item.employee_code, item.designation, item.mobile_number, item.status, item.employment_status].some(value => value?.toLowerCase().includes(term));
       const matchesEmployment = employmentFilter === "all" || item.employment_status === employmentFilter;
@@ -255,7 +260,7 @@ export function StaffManagementPage({ permissions }: Props) {
         (profileFilter === "complete" ? item.profile_complete === true : item.profile_complete !== true);
       return matchesSearch && matchesEmployment && matchesAccount && matchesProfile;
     });
-  }, [directoryQuery.data, staff, search, employmentFilter, accountFilter, profileFilter]);
+  }, [directoryQuery.data, staff, debouncedSearch, employmentFilter, accountFilter, profileFilter]);
   const serverDirectory = typeof directoryQuery.data?.total === "number";
   const runDirectoryExport=async(rows:StaffRecord[],filters?:StaffDirectoryFilters)=>{
     if(directoryExporting)return;
