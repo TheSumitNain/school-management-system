@@ -5741,23 +5741,25 @@ test("staff substitution cancellation suppresses duplicate confirmations while t
   let releaseRequest!: () => void;
   const requestGate = new Promise<void>(resolve => { releaseRequest = resolve; });
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.substitutions.read", "staff.substitutions.manage"]);
+  const substitution: Record<string, unknown> = {
+    id: 91, timetable_entry_id: 700, cover_date: schoolDateValue(),
+    original_teacher_principal_id: 501, original_teacher_name: "Original Teacher",
+    substitute_teacher_principal_id: 502, substitute_teacher_name: "Substitute Teacher",
+    approved_leave_request_id: null, reason: "Cancellation duplicate guard", status: "active",
+    section_name: "A", class_name: "Class 6", subject_name: "Mathematics",
+    period_number: 2, period_name: "Period 2", starts_at: "09:40", ends_at: "10:20",
+    room: "Room 12", created_by_principal_id: 101, created_at: "2026-11-27T00:00:00.000Z",
+  };
   await page.route("**/api/school/staff-substitutions?*", async route => {
     if (route.request().method() !== "GET") { await route.fallback(); return; }
-    await route.fulfill({ json: { substitutions: [{
-      id: 91, timetable_entry_id: 700, cover_date: schoolDateValue(),
-      original_teacher_principal_id: 501, original_teacher_name: "Original Teacher",
-      substitute_teacher_principal_id: 502, substitute_teacher_name: "Substitute Teacher",
-      approved_leave_request_id: null, reason: "Cancellation duplicate guard", status: "active",
-      section_name: "A", class_name: "Class 6", subject_name: "Mathematics",
-      period_number: 2, period_name: "Period 2", starts_at: "09:40", ends_at: "10:20",
-      room: "Room 12", created_by_principal_id: 101, created_at: "2026-11-27T00:00:00.000Z",
-    }], pagination: { page: 1, page_size: 50, total: 1 } } });
+    await route.fulfill({ json: { substitutions: [substitution], pagination: { page: 1, page_size: 50, total: 1 } } });
   });
   await page.route("**/api/school/staff-substitutions/91/cancel", async route => {
     if (route.request().method() !== "POST") { await route.fallback(); return; }
     attempts += 1;
     await requestGate;
-    await route.fallback();
+    substitution.status = "cancelled";
+    await route.fulfill({ json: { message: "Substitution cancelled" } });
   });
   await page.getByRole("button", { name: "Substitutions" }).click();
   const record = page.locator(".staff-substitution-record").filter({ hasText: "Cancellation duplicate guard" });
@@ -5772,4 +5774,5 @@ test("staff substitution cancellation suppresses duplicate confirmations while t
   await expect.poll(() => attempts).toBe(1);
   releaseRequest();
   await expect(page.getByText("Substitution cancelled. Its history has been retained.")).toBeVisible();
+  await expect(record).toContainText("Cancelled");
 });
