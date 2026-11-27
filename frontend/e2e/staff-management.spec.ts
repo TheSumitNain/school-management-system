@@ -1877,9 +1877,7 @@ test("staff record server field errors render under the matching field and prese
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await expect(page.getByText("1–1 of 1 staff members")).toBeVisible();
-  const staffRow = page.locator("tr").filter({ hasText: "teacher.record-validation" });
-  await expect(staffRow).toBeVisible();
-  await staffRow.locator("button.staff-profile-link").click();
+  await page.getByRole("button", { name: "View profile for teacher.record-validation" }).click();
   const dialog = page.getByRole("dialog", { name: "Record Validation Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await dialog.getByRole("button", { name: "Add qualification" }).click();
@@ -2021,7 +2019,7 @@ test("staff qualification, certification and experience edits preserve values af
   }, undefined, savedRecords);
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Record Edit Retry Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.record-edit-retry" }).click();
   const dialog = page.getByRole("dialog", { name: "Record Edit Retry Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
 
