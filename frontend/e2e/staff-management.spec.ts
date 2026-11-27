@@ -896,7 +896,7 @@ test("staff directory opens the eight-tab employee profile and shows saved profi
   }];
   await signInAndOpenStaff(page, rows);
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Profile Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.profile" }).click();
   const dialog = page.getByRole("dialog", { name: "Profile Teacher" });
   await expect(dialog.getByRole("navigation", { name: "Staff profile sections" }).getByRole("button")).toHaveCount(8);
   await expect(dialog.getByText("EMP-PRO-01").first()).toBeVisible();
