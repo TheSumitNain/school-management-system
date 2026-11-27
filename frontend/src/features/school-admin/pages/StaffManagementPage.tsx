@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { notifyToast } from "../../../shared/notifications";
-import { BarChart3, BookOpen, CalendarDays, Download, FileText, KeyRound, LayoutDashboard, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
+import { BarChart3, BookOpen, CalendarDays, Download, Eye, FileText, KeyRound, LayoutDashboard, LockKeyhole, Pencil, Plus, Search, Shield, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { StaffRoleAssignments } from "../components/StaffRoleAssignments";
 import { StaffPermissionOverrides } from "../components/StaffPermissionOverrides";
 import { TeacherAssignmentsPage } from "./TeacherAssignmentsPage";
@@ -781,7 +781,7 @@ export function StaffManagementPage({ permissions }: Props) {
           : filtered.length === 0 ? <div className="table-message">{directoryTotal === 0 && !search.trim() && employmentFilter === "all" && accountFilter === "all" && profileFilter === "all" ? "No staff accounts yet. Add the first staff account to get started." : "No staff match the current search and filters."}</div>
           : <div className="table-scroll staff-directory-table-wrap"><table className="staff-directory-table"><thead><tr><th>Employee</th><th className="staff-directory-designation">Designation</th><th>Employment</th><th>Actions</th></tr></thead><tbody>
             {filtered.map(item => <Fragment key={item.principal_id}><tr><td><strong className="staff-directory-name">{item.full_name || "Profile incomplete"}</strong><small className="staff-id">{item.employee_code || "Employee code not set"}</small></td><td className="staff-directory-designation">{item.designation || "—"}</td><td>{item.employment_status ? <span className={`pill ${item.employment_status === "active" ? "active" : "inactive"}`}>{item.employment_status === "active" ? "Active" : "Inactive"}</span> : "Profile pending"}</td><td><div className="staff-row-actions">
-              <button type="button" className="staff-directory-view" onClick={() => openProfile(item)} aria-label={`View profile for ${item.username}`}>View</button>
+              <button type="button" className="staff-directory-view" onClick={() => openProfile(item)} title="View all details" aria-label={`View profile for ${item.username}`}><Eye size={16} aria-hidden="true"/></button>
               {canUpdate && !item.protected_school_admin && <button type="button" onClick={() => openAction("edit", item)} title="Edit employee profile" aria-label={`Edit employee profile for ${item.username}`}><Pencil size={15}/></button>}
               {canReset && !item.protected_school_admin && item.status === "active" && <button type="button" onClick={() => openAction("reset", item)} title="Reset password" aria-label={`Reset password for ${item.username}`}><KeyRound size={15}/></button>}
               {canReadRoles && item.status === "active" && <button type="button" className={rolesForPrincipal === item.principal_id ? "selected" : ""} onClick={() => setRolesForPrincipal(item.principal_id)} title="Manage roles" aria-label={`Manage roles for ${item.username}`} aria-expanded={rolesForPrincipal === item.principal_id}><Shield size={15}/></button>}
