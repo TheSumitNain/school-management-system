@@ -1565,18 +1565,24 @@ test("staff record save prevents duplicate submissions while the request is pend
     designation: "Teacher", mobile_number: "9876543223", employment_status: "active",
     profile_complete: true, status: "active", must_change_password: false,
   }];
+  const recordRows: Record<"qualifications" | "certifications" | "experience", Array<Record<string, unknown>>> = {
+    qualifications: [], certifications: [], experience: [],
+  };
   let mutationRequests = 0;
   let releaseRequest!: () => void;
   const requestGate = new Promise<void>(resolve => { releaseRequest = resolve; });
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update"], async (collection, route) => {
     mutationRequests += 1;
     expect(collection).toBe("qualifications");
+    const payload = route.request().postDataJSON() as Record<string, unknown>;
     await requestGate;
-    await route.fulfill({ status: 201, json: { qualification: {
-      id: 924, staff_principal_id: 621, qualification_type: "undergraduate",
-      qualification_name: "B.Ed.", institution: "State University", verification_status: "pending",
-    } } });
-  });
+    const saved = {
+      ...payload, id: 924, staff_principal_id: 621, verification_status: "pending",
+      created_at: "2026-11-21T00:00:00.000Z", updated_at: "2026-11-21T00:00:00.000Z",
+    };
+    recordRows.qualifications.push(saved);
+    await route.fulfill({ status: 201, json: { qualification: saved } });
+  }, undefined, recordRows);
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await page.getByRole("button", { name: "Pending Record Teacher" }).click();
@@ -1590,14 +1596,19 @@ test("staff record save prevents duplicate submissions while the request is pend
   await saveButton.click();
   await expect(dialog.getByRole("button", { name: "Saving…" })).toBeDisabled();
   expect(mutationRequests).toBe(1);
-  // The submit button is renamed to "Saving…" while the mutation is pending.
-  // Assert the current accessible control state rather than the stale pre-submit locator.
-  await expect(dialog.getByRole("button", { name: "Saving…" })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "Close dialog" })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "Cancel", exact: true })).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await page.locator(".app-modal-backdrop").last().click({ position: { x: 4, y: 4 } });
+  await expect(dialog).toBeVisible();
+
   await dialog.locator("form.staff-record-form").evaluate(form => (form as HTMLFormElement).requestSubmit());
   expect(mutationRequests).toBe(1);
 
   releaseRequest();
   await expect(dialog.getByText("B.Ed.")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Close dialog" })).toBeEnabled();
   expect(mutationRequests).toBe(1);
 });
 
