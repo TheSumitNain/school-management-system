@@ -19,6 +19,7 @@ import (
 type StaffAccountManagementService interface {
 	Create(ctx context.Context, actorPrincipalID, schoolID int64, username, initialPassword string) (*models.User, error)
 	List(ctx context.Context, actorPrincipalID, schoolID int64) ([]models.User, error)
+	GetProfile(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) (*models.User, error)
 	Disable(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) error
 	Update(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, username string) (*models.User, error)
 	Enable(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64, temporaryPassword string) error
@@ -141,6 +142,45 @@ func (h *StaffHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Staff account creation is not authorized"})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to create staff account"})
+	}
+}
+
+func (h *StaffHandler) GetProfile(c *gin.Context) {
+	actorValue, actorExists := c.Get(middleware.ContextPrincipalIDKey)
+	actorID, actorOK := actorValue.(int64)
+	schoolValue, schoolExists := c.Get(middleware.ContextSchoolIDKey)
+	schoolID, schoolOK := schoolValue.(int64)
+	if !actorExists || !actorOK || actorID <= 0 || !schoolExists || !schoolOK || schoolID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "School staff authentication required"})
+		return
+	}
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Staff profile detail is unavailable"})
+		return
+	}
+	targetID, err := strconv.ParseInt(c.Param("principalID"), 10, 64)
+	if err != nil || targetID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid target principal ID"})
+		return
+	}
+	user, err := h.service.GetProfile(c.Request.Context(), actorID, schoolID, targetID)
+	switch {
+	case errors.Is(err, repository.ErrRolePermissionDenied):
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Staff profile access is not authorized"})
+	case errors.Is(err, repository.ErrUserNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Staff profile was not found"})
+	case err != nil || user == nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unable to load staff profile"})
+	default:
+		c.JSON(http.StatusOK, gin.H{"status": "success", "staff": gin.H{
+			"id": user.ID, "principal_id": user.PrincipalID, "school_id": user.SchoolID,
+			"username": user.Username, "status": user.Status, "must_change_password": user.MustChangePassword,
+			"created_at": user.CreatedAt, "updated_at": user.UpdatedAt,
+			"employee_code": user.EmployeeCode, "full_name": user.FullName, "designation": user.Designation,
+			"mobile_number": user.MobileNumber, "email": user.Email, "joining_date": user.JoiningDate,
+			"employment_status": user.EmploymentStatus, "staff_type": user.StaffType,
+			"profile_complete": user.ProfileComplete, "protected_school_admin": user.ProtectedSchoolAdmin,
+		}})
 	}
 }
 
