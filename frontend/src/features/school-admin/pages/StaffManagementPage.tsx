@@ -176,15 +176,16 @@ export function StaffManagementPage({ permissions }: Props) {
   }, [activeTabAllowed, initialTab]);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const previousSearch = useRef(search);
   useEffect(() => {
+    if (previousSearch.current === search) return;
+    previousSearch.current = search;
     const timeout = window.setTimeout(() => {
       setDebouncedSearch(search);
+      setDirectoryPageIndex(0);
     }, 350);
     return () => window.clearTimeout(timeout);
   }, [search]);
-  useEffect(() => {
-    setDirectoryPageIndex(0);
-  }, [debouncedSearch]);
   const [staffTypeFilter, setStaffTypeFilter] = useState("all");
   const [employmentFilter, setEmploymentFilter] = useState("all");
   const [accountFilter, setAccountFilter] = useState("all");
