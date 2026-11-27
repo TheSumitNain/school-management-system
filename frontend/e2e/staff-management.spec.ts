@@ -1193,8 +1193,9 @@ test("staff creation uses the shared IST date picker and clears the credential h
   await expect(page.locator('input[type="date"]')).toHaveCount(0);
 });
 
-test("staff creation keeps entered details available after a temporary server failure so the admin can retry", async ({ page }) => {
+test("staff creation keeps entered details after failure and blocks concurrent duplicate submits", async ({ page }) => {
   let attempts = 0;
+  let releaseCreate: (() => void) | undefined;
   await signInAndOpenStaff(page, [], async (_path, route) => {
     attempts += 1;
     if (attempts === 1) {
@@ -1202,6 +1203,7 @@ test("staff creation keeps entered details available after a temporary server fa
       return;
     }
     const payload = route.request().postDataJSON() as Record<string, unknown>;
+    await new Promise<void>(resolve => { releaseCreate = resolve; });
     await route.fulfill({ status: 201, json: { staff: {
       id: 1, principal_id: 601, school_id: 10, username: payload.username,
       employee_code: payload.employee_code, full_name: payload.full_name,
@@ -1234,6 +1236,11 @@ test("staff creation keeps entered details available after a temporary server fa
 
   await dialog.getByRole("button", { name: "Create employee" }).click();
   await expect.poll(() => attempts).toBe(2);
+  const createButton = dialog.getByRole("button", { name: "Creating…" });
+  await expect(createButton).toBeDisabled();
+  await dialog.locator("form").evaluate(form => (form as HTMLFormElement).requestSubmit());
+  expect(attempts).toBe(2);
+  releaseCreate?.();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: "Share staff login credentials" })).toBeVisible();
 });
