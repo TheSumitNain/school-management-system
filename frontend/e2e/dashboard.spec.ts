@@ -242,7 +242,7 @@ test("dashboard shows a helpful empty state when the account has no overview per
   await page.getByRole("button", { name: /Continue/ }).click();
 
   await expect(page.getByRole("status")).toContainText("No overview metrics available");
-  await expect(page.getByRole("status")).toContainText("No additional workspaces are assigned to this account yet.");
+  await expect(page.getByText("No additional workspaces are assigned to this account yet.")).toBeVisible();
 
   await expect(page.locator(".stat")).toHaveCount(0);
   expect(unexpectedRequests).toEqual([]);
