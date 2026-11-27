@@ -1484,8 +1484,8 @@ test("staff password reset ignores a second submit while the request is pending"
   await submit.click();
   await expect(dialog.getByRole("button", { name: "Saving…" })).toBeDisabled();
   await dialog.locator("form").evaluate((form: HTMLFormElement) => form.requestSubmit());
-  await expect.poll(() => resetCalls).toBe(1);
-  await expect.poll(() => resetCalls).toBe(1);
+  await page.waitForTimeout(150);
+  expect(resetCalls).toBe(1);
   releaseReset();
   await expect(page.getByText("Password reset. The staff member must change it at next sign-in.")).toBeVisible();
   expect(resetCalls).toBe(1);
@@ -1561,7 +1561,8 @@ test("enabling a staff account ignores a second submit while the request is pend
   await submit.click();
   await expect(dialog.getByRole("button", { name: "Saving…" })).toBeDisabled();
   await dialog.locator("form").evaluate((form: HTMLFormElement) => form.requestSubmit());
-  await expect.poll(() => enableCalls).toBe(1);
+  await page.waitForTimeout(150);
+  expect(enableCalls).toBe(1);
   releaseEnable();
   await expect(page.getByText("Staff account enabled. A password change is required at next sign-in.")).toBeVisible();
   expect(enableCalls).toBe(1);
