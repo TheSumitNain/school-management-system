@@ -39,7 +39,7 @@ func TestStaffLeaveApprovalAndSubstitutionAssignmentShareSlotLockPostgresIntegra
 	var originalID int64
 	if err := f.pool.QueryRow(ctx, `INSERT INTO users(school_id,username,password_hash,status)
 		VALUES($1,$2,'integration-password-hash','active') RETURNING principal_id`,
-		f.schoolID, "leave-cover-original-"+suffix).Scan(&originalID); err != nil {
+		f.schoolID, "lc-orig-"+suffix).Scan(&originalID); err != nil {
 		t.Fatalf("create original teacher account: %v", err)
 	}
 	if _, err := f.pool.Exec(ctx, `INSERT INTO staff_profiles
