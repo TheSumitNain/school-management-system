@@ -1472,6 +1472,30 @@ test("staff profile edit preserves entered values after a server failure and suc
   expect(payloads[1]).toMatchObject({ full_name: "Retry Teacher Updated", mobile_number: "9876543299" });
 });
 
+test("staff profile edit skips the API and shows a no-changes toast when values are unchanged", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 303, school_id: 10, username: "teacher.unchanged",
+    employee_code: "EMP-UNCHANGED", full_name: "Unchanged Teacher", designation: "English Teacher",
+    mobile_number: "9876543213", email: "unchanged.teacher@example.com", joining_date: "2025-04-01",
+    employment_status: "active", staff_type: "teaching", profile_complete: true, status: "active",
+    must_change_password: false,
+  }];
+  let updateRequests = 0;
+  await signInAndOpenStaff(page, rows, async (_path, route) => {
+    updateRequests += 1;
+    await route.fulfill({ json: { staff: rows[0], message: "Unexpected update" } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Edit employee profile for teacher.unchanged" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit employee profile" });
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(dialog).toBeVisible();
+  await expect(page.getByText("No changes to save.", { exact: true })).toBeVisible();
+  expect(updateRequests).toBe(0);
+});
+
 test("staff record server field errors render under the matching field and preserve entered values", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 612, school_id: 10, username: "teacher.record-validation",
