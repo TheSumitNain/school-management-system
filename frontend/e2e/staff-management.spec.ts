@@ -5657,8 +5657,8 @@ test("protected School Admin staff records expose no ordinary account lifecycle 
   ]);
   await page.getByRole("button", { name: /Staff Directory/ }).click();
 
-  const activeRow = page.locator("tr").filter({ hasText: "Protected Admin" });
-  const disabledRow = page.locator("tr").filter({ hasText: "Disabled Protected Admin" });
+  const activeRow = page.getByRole("row", { name: /^Protected Admin ADM-941\\b/ });
+  const disabledRow = page.getByRole("row", { name: /^Disabled Protected Admin ADM-942\\b/ });
   await expect(activeRow).toBeVisible();
   await expect(disabledRow).toBeVisible();
   for (const [row, username] of [[activeRow, "protected.admin"], [disabledRow, "protected.disabled"]] as const) {
