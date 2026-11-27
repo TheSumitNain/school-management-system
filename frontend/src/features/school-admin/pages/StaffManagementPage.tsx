@@ -461,6 +461,14 @@ export function StaffManagementPage({ permissions }: Props) {
       }
       if (Object.keys(mapped).length) {
         setFieldErrors(current => ({ ...current, ...mapped }));
+        if (action === "create") {
+          const firstStepOneField = ["full_name", "employee_code", "staff_type", "mobile_number", "email"];
+          const stepTwoFields = ["designation", "joining_date"];
+          const stepThreeFields = ["username", "password"];
+          if (Object.keys(mapped).some(key => firstStepOneField.includes(key))) setCreateStep(1);
+          else if (Object.keys(mapped).some(key => stepTwoFields.includes(key))) setCreateStep(2);
+          else if (Object.keys(mapped).some(key => stepThreeFields.includes(key))) setCreateStep(3);
+        }
         setFeedback(null);
       } else {
         setFeedback({ kind: "error", message });
