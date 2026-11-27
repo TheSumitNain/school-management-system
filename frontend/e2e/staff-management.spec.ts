@@ -2318,7 +2318,7 @@ test("staff profile shows only the selected employee's academic assignments and 
     ] } });
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Profile Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.profile" }).click();
   const dialog = page.getByRole("dialog", { name: "Profile Teacher" });
   await dialog.getByRole("button", { name: "Academic Assignments" }).click();
   await expect(dialog.getByRole("heading", { name: "Subject teaching" })).toBeVisible();
@@ -2350,7 +2350,7 @@ test("staff profile clears the previous employee's academic assignments while th
     }
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "First Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.first" }).click();
   let dialog = page.getByRole("dialog", { name: "First Teacher" });
   const firstAssignmentRequest = page.waitForRequest(request => {
     const url = new URL(request.url());
@@ -2359,7 +2359,7 @@ test("staff profile clears the previous employee's academic assignments while th
   await dialog.getByRole("button", { name: "Academic Assignments" }).click();
   await firstAssignmentRequest;
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Second Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.second" }).click();
   dialog = page.getByRole("dialog", { name: "Second Teacher" });
   const secondAssignmentRequest = page.waitForRequest(request => {
     const url = new URL(request.url());
@@ -2403,7 +2403,7 @@ test("staff profile does not retain the previous employee's timetable while the 
     }
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Workload First" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.load.first" }).click();
   let dialog = page.getByRole("dialog", { name: "Workload First" });
   const firstTimetableRequest = page.waitForRequest(request => {
     const url = new URL(request.url());
@@ -2412,7 +2412,7 @@ test("staff profile does not retain the previous employee's timetable while the 
   await dialog.getByRole("button", { name: "Workload & Timetable" }).click();
   await firstTimetableRequest;
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Workload Second" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.load.second" }).click();
   dialog = page.getByRole("dialog", { name: "Workload Second" });
   const secondTimetableRequest = page.waitForRequest(request => {
     const url = new URL(request.url());
@@ -2445,13 +2445,13 @@ test("staff profile does not retain the previous employee's qualifications while
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Qualification First" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.qualification.first" }).click();
   let dialog = page.getByRole("dialog", { name: "Qualification First" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await expect(dialog.getByText("First Employee Private Qualification")).toBeVisible();
 
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Qualification Second" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.qualification.second" }).click();
   dialog = page.getByRole("dialog", { name: "Qualification Second" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await expect(dialog.getByRole("status").filter({ hasText: "Loading qualifications" })).toBeVisible();
@@ -2483,14 +2483,14 @@ test("staff profile does not retain the previous employee's certifications or ex
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Records First" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.records.first" }).click();
   let dialog = page.getByRole("dialog", { name: "Records First" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await expect(dialog.getByText("First Employee Private Certificate")).toBeVisible();
   await expect(dialog.getByText("First Employee Private School")).toBeVisible();
 
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Records Second" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.records.second" }).click();
   dialog = page.getByRole("dialog", { name: "Records Second" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await expect(dialog.getByRole("status").filter({ hasText: "Loading certifications" })).toBeVisible();
