@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 )
 
 // TestStaffLeaveApprovalAndSubstitutionAssignmentShareSlotLockPostgresIntegration
@@ -194,5 +193,4 @@ func TestStaffLeaveApprovalAndSubstitutionAssignmentShareSlotLockPostgresIntegra
 		t.Fatalf("race persisted approved leaves=%d and active covers=%d; exactly one must exist", approvedLeaves, activeCovers)
 	}
 
-	_ = pgx.ErrNoRows // keep pgx imported for parity with neighboring integration fixtures
 }
