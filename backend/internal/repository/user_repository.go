@@ -355,6 +355,44 @@ func (r *UserRepository) CreateStaffAccountWithProfile(
     user.EmploymentStatus = "active"
     user.ProfileComplete = true
 
+    // Teaching employees receive the school-scoped Teacher system role as part
+    // of onboarding. The role's permissions remain subject to assignment-level
+    // checks in the protected APIs. Non-teaching employees deliberately receive
+    // no teaching permissions by default.
+    if profile.StaffType == "teaching" {
+        var teacherRoleID int64
+        if err := tx.QueryRow(ctx, `
+            SELECT id
+              FROM roles
+             WHERE school_id = $1
+               AND principal_type = 'staff'
+               AND scope_type = 'school'
+               AND role_key = 'teacher'
+               AND is_system = TRUE
+        `, schoolID).Scan(&teacherRoleID); err != nil {
+            return nil, fmt.Errorf("load school Teacher system role: %w", err)
+        }
+
+        var assignmentID int64
+        if err := tx.QueryRow(ctx, `
+            INSERT INTO principal_roles (principal_id, role_id, assigned_by)
+            VALUES ($1, $2, $3)
+            RETURNING id
+        `, user.PrincipalID, teacherRoleID, actorPrincipalID).Scan(&assignmentID); err != nil {
+            return nil, fmt.Errorf("assign default Teacher role: %w", err)
+        }
+
+        if _, err := tx.Exec(ctx, `
+            INSERT INTO audit_events
+                (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
+            VALUES ($1, $2, 'school.staff.role_assigned', 'staff_principal', $3, 'success',
+                    jsonb_build_object('role_id', $4::bigint, 'role_key', 'teacher', 'assignment_source', 'staff_onboarding'))
+        `, actorPrincipalID, schoolID, fmt.Sprint(user.PrincipalID), teacherRoleID); err != nil {
+            return nil, fmt.Errorf("audit default Teacher role assignment: %w", err)
+        }
+        _ = assignmentID
+    }
+
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO audit_events
 		    (actor_principal_id, school_id, action, resource_type, resource_id, outcome, metadata)
