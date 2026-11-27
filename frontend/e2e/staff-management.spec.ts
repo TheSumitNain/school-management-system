@@ -3675,9 +3675,11 @@ test("staff leave decisions suppress duplicate confirmation while the decision i
   await page.getByRole("button", { name: "Approve" }).click();
   const dialog = page.getByRole("dialog", { name: "Approve leave request" });
   const confirm = dialog.getByRole("button", { name: "Confirm approval" });
-  await confirm.click();
+  await confirm.evaluate(element => {
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+  });
   await expect.poll(() => attempts).toBe(1);
-  await confirm.evaluate(element => element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
   expect(attempts).toBe(1);
   releaseRequest();
   await expect(page.getByText("Leave request approved.")).toBeVisible();
