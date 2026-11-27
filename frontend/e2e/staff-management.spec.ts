@@ -479,13 +479,15 @@ test("staff directory filters independently narrow staff type, employment, login
 });
 
 
-test("staff directory uses server-side search and stable pagination", async ({ page }) => {
+test("staff directory uses debounced server-side search and stable pagination", async ({ page }) => {
   await signInAndOpenStaff(page, []);
+  const requestedSearches: string[] = [];
   await page.route(url => url.pathname === "/api/school/staff" && url.searchParams.has("limit"), async route => {
     const url = new URL(route.request().url());
     const limit = Number(url.searchParams.get("limit"));
     const offset = Number(url.searchParams.get("offset"));
     const search = url.searchParams.get("search") ?? "";
+    requestedSearches.push(search);
     const all = Array.from({ length: 120 }, (_, index) => ({
       id: index + 1,
       principal_id: index + 1001,
@@ -515,8 +517,9 @@ test("staff directory uses server-side search and stable pagination", async ({ p
   await expect(page.getByRole("button", { name: "Directory Employee 051" })).toBeVisible();
 
   const search = page.getByRole("textbox", { name: "Search staff by name, code, designation, mobile or username" });
-  await search.fill("Directory Employee 075");
+  await search.pressSequentially("Directory Employee 075", { delay: 20 });
   await expect(page.getByText("1–1 of 1 staff members")).toBeVisible();
+  expect(requestedSearches.filter(Boolean)).toEqual(["Directory Employee 075"]);
   await expect(page.getByRole("button", { name: "Directory Employee 075" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Previous" })).toHaveCount(0);
 });
