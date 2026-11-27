@@ -128,3 +128,17 @@ func TestStaffSubstitutionCancelHandlerMapsServiceResults(t *testing.T) {
 	}
 }
 
+
+
+func TestStaffSubstitutionConflictExplainsApprovedLeave(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	staffSubstitutionError(ctx, repository.ErrStaffSubstitutionConflict)
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("status=%d want=%d body=%s", recorder.Code, http.StatusConflict, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), "approved leave") {
+		t.Fatalf("conflict message must explain approved leave: %s", recorder.Body.String())
+	}
+}
