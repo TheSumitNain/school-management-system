@@ -2510,6 +2510,9 @@ test("staff role assignment and removal require the delegated permission and exp
   let revokeCalls = 0;
   let roleAssignmentReads = 0;
   let auditReads = 0;
+  let releaseAssignment: (() => void) | null = null;
+  let notifyAssignmentStarted: (() => void) | null = null;
+  const assignmentStarted = new Promise<void>(resolve => { notifyAssignmentStarted = resolve; });
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "roles.read", "roles.assign", "school.audit.read"]);
   await page.route("**/api/school/staff/514/audit-events**", async route => {
     auditReads += 1;
@@ -2535,6 +2538,10 @@ test("staff role assignment and removal require the delegated permission and exp
     }
     if (path === "/school/staff/514/roles/5" && route.request().method() === "POST") {
       assignCalls += 1;
+      await new Promise<void>(resolve => {
+        releaseAssignment = resolve;
+        notifyAssignmentStarted?.();
+      });
       assignedRoles.push({ role_id: 5, role_key: "librarian", name: "Librarian", is_system: false, assigned_at: "2026-11-22T00:00:00Z" });
       await route.fulfill({ json: { message: "Role assigned." } });
       return;
@@ -2567,10 +2574,15 @@ test("staff role assignment and removal require the delegated permission and exp
   const roleSelect = reopenedProfile.locator('button[aria-label="Role to assign to teacher.role-admin"]');
   await roleSelect.click();
   await profile.getByRole("option", { name: "Librarian (custom)" }).click();
-  await profile.getByRole("button", { name: "Assign", exact: true }).click();
-  await expect(profile.getByText("Role assigned. New permissions apply on the next protected request.")).toBeVisible();
-  await expect(profile.getByText("Librarian", { exact: true })).toBeVisible();
+  await reopenedProfile.getByRole("button", { name: "Assign", exact: true }).click();
+  await assignmentStarted;
+  await expect(reopenedProfile.getByRole("button", { name: "Assigning…" })).toBeDisabled();
+  await reopenedProfile.locator("form.staff-role-assign").evaluate((form: HTMLFormElement) => form.requestSubmit());
+  await page.waitForTimeout(150);
   expect(assignCalls).toBe(1);
+  releaseAssignment?.();
+  await expect(reopenedProfile.getByText("Role assigned. New permissions apply on the next protected request.")).toBeVisible();
+  await expect(reopenedProfile.getByText("Librarian", { exact: true })).toBeVisible();
 
   await profile.getByRole("button", { name: "Remove Librarian role" }).click();
   const cancelRemoval = page.getByRole("dialog", { name: "Remove staff role?" });
