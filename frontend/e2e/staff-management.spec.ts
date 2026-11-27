@@ -3434,7 +3434,7 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
   expect(monthlyCSV).toContain("Leave 101");
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Attendance Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.attendance" }).click();
   const refreshedAttendanceProfile = page.getByRole("dialog", { name: "Attendance Teacher" });
   await refreshedAttendanceProfile.getByRole("button", { name: "History & Activity" }).click();
   await expect.poll(() => auditReads).toBeGreaterThan(firstAttendanceAuditRead);
