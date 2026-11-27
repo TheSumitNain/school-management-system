@@ -70,6 +70,11 @@ test("dashboard shows permission-scoped staff, class and current-year enrollment
   expect(requested).toContain("/school/enrollments?academic_year_id=7");
   expect(requested).toContain("/school/staff/summary");
   expect(requested).not.toContain("/school/staff");
+  const staffShortcut = page.getByRole("button", { name: "Staff →" });
+  await expect(staffShortcut).toBeVisible();
+  await staffShortcut.click();
+  await expect(page).toHaveURL(/\/staff$/);
+
 });
 
 
@@ -237,6 +242,8 @@ test("dashboard shows a helpful empty state when the account has no overview per
   await page.getByRole("button", { name: /Continue/ }).click();
 
   await expect(page.getByRole("status")).toContainText("No overview metrics available");
+  await expect(page.getByRole("status")).toContainText("No additional workspaces are assigned to this account yet.");
+
   await expect(page.locator(".stat")).toHaveCount(0);
   expect(unexpectedRequests).toEqual([]);
 });
