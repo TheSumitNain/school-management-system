@@ -6003,3 +6003,32 @@ test("staff directory shows a compact four-column list and an explicit View acti
   await profile.getByRole("button", { name: "Personal Details" }).click();
   await expect(profile.getByText("compact.directory@example.test")).toBeVisible();
 });
+
+
+test("adding qualifications, certifications and experience scrolls to and focuses each new form", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 632, school_id: 10, username: "teacher.record-focus",
+    employee_code: "EMP-RECORD-FOCUS", full_name: "Record Focus Teacher",
+    designation: "Teacher", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, rows);
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Record Focus Teacher" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Record Focus Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+
+  for (const item of [
+    { add: "Add qualification", field: 'select[name="qualification_type"]' },
+    { add: "Add certification", field: 'input[name="certificate_name"]' },
+    { add: "Add experience", field: 'input[name="employer_name"]' },
+  ]) {
+    await dialog.getByRole("button", { name: item.add }).click();
+    const form = dialog.locator(".staff-record-form");
+    await expect(form).toBeInViewport();
+    await expect(dialog.locator(item.field)).toBeFocused();
+    await form.locator(".staff-record-form-actions").getByRole("button", { name: "Cancel" }).click();
+    await expect(form).toHaveCount(0);
+  }
+});
