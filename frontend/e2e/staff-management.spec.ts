@@ -1590,7 +1590,9 @@ test("staff record save prevents duplicate submissions while the request is pend
   await saveButton.click();
   await expect(dialog.getByRole("button", { name: "Saving…" })).toBeDisabled();
   expect(mutationRequests).toBe(1);
-  await expect(saveButton).toBeDisabled();
+  // The submit button is renamed to "Saving…" while the mutation is pending.
+  // Assert the current accessible control state rather than the stale pre-submit locator.
+  await expect(dialog.getByRole("button", { name: "Saving…" })).toBeDisabled();
   await dialog.locator("form.staff-record-form").evaluate(form => (form as HTMLFormElement).requestSubmit());
   expect(mutationRequests).toBe(1);
 
