@@ -920,7 +920,7 @@ test("read-only staff profile hides every employee edit action", async ({ page }
   await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await expect(page.getByRole("button", { name: /Edit employee profile for teacher.readonly/ })).toHaveCount(0);
-  await page.getByRole("button", { name: "Read Only Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.readonly" }).click();
 
   const dialog = page.getByRole("dialog", { name: "Read Only Teacher" });
   await expect(dialog.getByRole("button", { name: "Edit employee details" })).toHaveCount(0);
@@ -1655,9 +1655,9 @@ test("staff profile edit uses the shared employment-status select and sends the 
   });
 
   await timezonePage.getByRole("button", { name: /Staff Directory/ }).click();
-  const teacherRow = timezonePage.locator("tr").filter({ hasText: "teacher.two" });
-  await expect(teacherRow).toContainText("1 Apr 2026");
-  await timezonePage.getByRole("button", { name: "Teacher Two", exact: true }).click();
+  const teacherRow = timezonePage.locator(".staff-directory-table tbody tr").filter({ hasText: "teacher.two" });
+  await expect(teacherRow).toBeVisible();
+  await teacherRow.getByRole("button", { name: "View profile for teacher.two" }).click();
   const profileDialog = timezonePage.getByRole("dialog", { name: "Teacher Two" });
   await profileDialog.getByRole("button", { name: "Employment" }).click();
   await expect(profileDialog.getByText("1 Apr 2026")).toBeVisible();
@@ -1720,7 +1720,7 @@ test("staff profile edit preserves entered values after a server failure and suc
 
   await dialog.getByRole("button", { name: "Save changes" }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Retry Teacher Updated" })).toBeVisible();
+  await expect(page.locator(".staff-directory-table tbody tr").filter({ hasText: "teacher.retry" })).toContainText("Retry Teacher Updated");
   expect(attempts).toBe(2);
   expect(payloads[0]).toMatchObject({ full_name: "Retry Teacher Updated", mobile_number: "9876543299" });
   expect(payloads[1]).toMatchObject({ full_name: "Retry Teacher Updated", mobile_number: "9876543299" });
