@@ -4964,6 +4964,8 @@ test("staff monthly attendance summary remains contained and readable across vie
   await expect(workspace.getByRole("cell", { name: "Monthly Responsive Teacher" })).toBeVisible();
   const tableWrap = workspace.locator(".staff-attendance-table-wrap");
   for (const viewport of [
+    { width: 320, height: 720 },
+    { width: 360, height: 800 },
     { width: 390, height: 844 },
     { width: 768, height: 900 },
     { width: 1280, height: 900 },
