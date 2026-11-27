@@ -984,3 +984,11 @@ This section supersedes older statements in this audit that describe browser ver
 - Daily and Monthly Attendance responsive tests cover 320x720, 360x800, 390x844, 768x900 and 1280x900. At narrow widths the table itself must scroll horizontally while the document must not; desktop table layout must fit without inner overflow. Staff Directory narrow-phone coverage now includes 320/360px too.
 - Previous Attendance browser acceptance gaps (same-day update, historical confirmation, failed-write retry and narrow-phone layout) are now covered by Playwright. This is evidence for those slices, not a blanket 100% completion declaration for the Attendance page or Staff Management. Remaining manual authenticated-school sign-off and wider Staff Profile/Staff Management acceptance checks remain open.
 - No backend contract, schema migration or persistent school-data change in this test-only batch. Document upload remains deferred; `main` is untouched.
+
+
+## 2026-11-27 — Leave & Holidays duplicate-submit regression closed
+
+- Implementation checkpoint: `5e4e866b6f1bee56db79d2fae9342f37d539d007` (`work`). Frontend CI [45940558979](https://github.com/TheSumitNain/school-management-system/actions/runs/45940558979) **PASS** with **177 Playwright tests passed**; backend CI [45940558964](https://github.com/TheSumitNain/school-management-system/actions/runs/45940558964) **PASS** including PostgreSQL integration and `go vet`.
+- Five deferred-response E2E cases cover duplicate submit/confirm attempts for leave request create, approve/reject decision, cancellation, leave-type create and holiday create. Each asserts a single mutation while the first request remains pending.
+- The full browser run also passed the existing Leave & Holidays flows for validation, rejection comment, explicit destructive confirmations, permission isolation, filter/date validation, bounded pagination, full CSV export integrity and narrow responsive layout.
+- Scope note: these results close the duplicate-submit audit item, not the entire page. Authenticated-school acceptance and recorded policy/product approvals remain gates before 100% completion. Document upload is explicitly out of scope/deferred. No migration or persistent school-data change; `main` is untouched.
