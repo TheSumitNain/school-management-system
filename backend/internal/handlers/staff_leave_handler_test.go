@@ -243,7 +243,7 @@ func TestStaffLeaveHandlerMapsServiceErrorsToStableHTTPStatuses(t *testing.T) {
 		{"leave permission denied", repository.ErrStaffLeaveAccessDenied, http.StatusForbidden, "You are not authorized to manage staff leave or holidays"},
 		{"role permission denied", repository.ErrRolePermissionDenied, http.StatusForbidden, "You are not authorized to manage staff leave or holidays"},
 		{"record not found", repository.ErrStaffLeaveNotFound, http.StatusNotFound, "Staff leave record, leave type or employee not found"},
-		{"overlap conflict", repository.ErrStaffLeaveConflict, http.StatusConflict, "This leave request overlaps another pending or approved leave request, or an active substitute coverage assignment"},
+		{"overlap conflict", repository.ErrStaffLeaveConflict, http.StatusConflict, "An overlapping leave request or substitute assignment conflicts with this date, or a school record with these details already exists"},
 		{"repository validation", repository.ErrInvalidStaffLeave, http.StatusBadRequest, "Check the leave or holiday fields"},
 		{"service validation", services.ErrInvalidStaffLeave, http.StatusBadRequest, "Check the leave or holiday fields"},
 		{"unexpected internal error", errors.New("sensitive database detail"), http.StatusInternalServerError, "Unable to process staff leave or holiday"},
