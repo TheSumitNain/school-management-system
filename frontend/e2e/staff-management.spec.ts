@@ -1326,7 +1326,7 @@ test("staff creation returns server field conflicts to the correct wizard step",
   await expect.poll(() => attempts.length).toBe(4);
   expect(attempts[1].employee_code).toBe("EMP-UNIQUE-01");
   expect(attempts[2].username).toBe("unique.teacher");
-  expect(attempts[3].password).toBe("E2E-Another-Strong-Password-2026");
+  expect(attempts[3].initial_password).toBe("E2E-Another-Strong-Password-2026");
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: "Share staff login credentials" })).toBeVisible();
 });
