@@ -26,6 +26,10 @@ export function getSchoolStaff(signal?: AbortSignal) {
   return api<StaffListResponse>("/school/staff", { signal });
 }
 
+export function getSchoolStaffProfile(principalID: number, signal?: AbortSignal) {
+  return api<{ staff: StaffRecord }>(`/school/staff/${principalID}`, { signal });
+}
+
 export type StaffDirectoryResponse = StaffListResponse & { total: number; limit: number; offset: number };
 export type StaffDirectorySummary = {
   total: number;
