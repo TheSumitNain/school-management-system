@@ -5657,8 +5657,8 @@ test("protected School Admin staff records expose no ordinary account lifecycle 
   ]);
   await page.getByRole("button", { name: /Staff Directory/ }).click();
 
-  const activeRow = page.locator("tr").filter({ has: page.getByRole("button", { name: "Protected Admin", exact: true }) });
-  const disabledRow = page.locator("tr").filter({ has: page.getByRole("button", { name: "Disabled Protected Admin", exact: true }) });
+  const activeRow = page.locator("tr").filter({ hasText: "Protected Admin" });
+  const disabledRow = page.locator("tr").filter({ hasText: "Disabled Protected Admin" });
   await expect(activeRow).toBeVisible();
   await expect(disabledRow).toBeVisible();
   for (const [row, username] of [[activeRow, "protected.admin"], [disabledRow, "protected.disabled"]] as const) {
@@ -5668,7 +5668,7 @@ test("protected School Admin staff records expose no ordinary account lifecycle 
     await expect(row.getByRole("button", { name: "Enable " + username })).toHaveCount(0);
   }
 
-  await activeRow.getByRole("button", { name: "Protected Admin", exact: true }).click();
+  await activeRow.getByRole("button", { name: "View profile for protected.admin" }).click();
   const profile = page.getByRole("dialog", { name: "Protected Admin" });
   await expect(profile.getByRole("button", { name: "Edit employee details" })).toHaveCount(0);
   await expect(profile.getByRole("button", { name: "Edit personal details" })).toHaveCount(0);
