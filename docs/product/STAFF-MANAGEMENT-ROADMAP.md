@@ -1444,3 +1444,12 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Backend CI [45933605721](https://github.com/TheSumitNain/school-management-system/actions/runs/45933605721) **PASS**: full migration chain, Go/PostgreSQL integration tests and `go vet`.
 - Role Assignment and Permission Override save handlers have synchronous in-flight guards in addition to disabled pending-state buttons. Browser regressions simulate repeated form submission while the request is deliberately held and verify a single mutation request plus successful completion.
 - This closes only the duplicate-submit acceptance item for these two Account & Access operations. It does not close all Account & Access requirements or declare Staff Profile/Staff Management complete. Authenticated School Admin sign-off and the recorded product approval gates remain outstanding. Documents upload remains deferred; `main` is untouched.
+
+
+## 2026-11-27 — Attendance duplicate-write protection
+
+- Verified code checkpoint: `bf8afa8caf1da613dd378e5e113e986952951c14` on `work`.
+- Frontend CI [45937271014](https://github.com/TheSumitNain/school-management-system/actions/runs/45937271014) **PASS** and Backend CI [45937271059](https://github.com/TheSumitNain/school-management-system/actions/runs/45937271059) **PASS**.
+- A shared synchronous in-flight guard now serializes individual attendance marks, existing-record updates/historical corrections and bulk marking. Playwright holds individual and bulk requests open and verifies that repeated submit events issue only one request.
+- Attendance still has explicit browser acceptance work outstanding: same-day update flow, historical-correction confirmation flow, and failed-write retry. Do not mark Attendance or Staff Management complete until those and the remaining page-level acceptance criteria are verified.
+- No migration or schema change. Document upload remains deferred pending private-storage selection; `main` remains untouched.
