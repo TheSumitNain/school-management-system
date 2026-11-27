@@ -400,6 +400,21 @@ export function StaffManagementPage({ permissions }: Props) {
     if (action !== "edit" && password.length < 12) nextErrors.password = "Password must contain at least 12 characters.";
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
+    if (action === "edit" && selected) {
+      const unchanged =
+        fullName === (selected.full_name ?? "").trim() &&
+        employeeCode === (selected.employee_code ?? "").trim() &&
+        designation === (selected.designation ?? "").trim() &&
+        selectedStaffType === (selected.staff_type ?? "") &&
+        mobileNumber === (selected.mobile_number ?? "").trim() &&
+        email === (selected.email ?? "").trim() &&
+        joiningDate === (selected.joining_date ?? "").slice(0, 10) &&
+        employmentStatus === (selected.employment_status ?? "active");
+      if (unchanged) {
+        notifyToast("info", "No changes to save.");
+        return;
+      }
+    }
     setFeedback(null);
     try {
       if (action === "create") {
