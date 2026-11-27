@@ -3706,10 +3706,13 @@ test("staff leave cancellation suppresses duplicate confirmation while cancellat
   await page.getByRole("button", { name: "Cancel request" }).click();
   const dialog = page.getByRole("dialog", { name: "Cancel leave request?" });
   const confirm = dialog.getByRole("button", { name: "Cancel request", exact: true });
-  await confirm.click();
+  await confirm.evaluate(element => {
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+  });
   await expect.poll(() => attempts).toBe(1);
-  await confirm.evaluate(element => element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
   expect(attempts).toBe(1);
+  await expect(dialog.locator("button.app-modal-confirm")).toBeDisabled();
   releaseRequest();
   await expect(page.getByText("Leave request cancelled.")).toBeVisible();
 });
