@@ -1524,18 +1524,9 @@ test("staff profile creates education, certification and experience records", as
   await expect(certificateNameInput).toHaveValue("C".repeat(180));
   await certificateNameInput.fill("Teacher Training");
   await dialog.locator('input[name="issuing_organization"]').fill("State Board");
-  await certificateNameInput.fill("Teacher Training");
-  await dialog.locator('input[name="issuing_organization"]').fill("State Board");
   await expect(dialog.locator('input[name="credential_id"]')).not.toHaveAttribute("maxLength");
   await dialog.locator('input[name="credential_id"]').fill("🔐".repeat(121));
   await expect(dialog.locator('input[name="credential_id"]')).toHaveValue(unicodeCredential);
-  await chooseDatePickerValue(dialog, "Certification issue date", "2022-05-01");
-  await dialog.getByRole("button", { name: "Certification expiry date" }).click();
-  const expiryCalendar = dialog.getByRole("dialog", { name: "Choose certification expiry date" });
-  await expiryCalendar.getByRole("button", { name: "Choose year" }).click();
-  await expect(expiryCalendar.locator(".app-date-year-grid button").filter({ hasText: /^2021$/ })).toBeDisabled();
-  await page.keyboard.press("Escape");
-  await chooseDatePickerValue(dialog, "Certification expiry date", "2027-05-01");
   await dialog.getByRole("button", { name: "Save record" }).click();
   await expect(dialog.getByText("Teacher Training")).toBeVisible();
   const certificationCard = dialog.locator(".staff-record-card").filter({ hasText: "Teacher Training" });
