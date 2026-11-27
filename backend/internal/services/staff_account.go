@@ -16,6 +16,7 @@ var ErrInvalidStaffAccount = errors.New("invalid staff account details")
 type staffAccountRepository interface {
 	CreateStaffAccount(ctx context.Context, actorPrincipalID, schoolID int64, username, passwordHash string) (*models.User, error)
 	ListStaffAccounts(ctx context.Context, actorPrincipalID, schoolID int64) ([]models.User, error)
+	GetStaffAccount(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) (*models.User, error)
 	ListStaffDirectoryPage(ctx context.Context, actorPrincipalID, schoolID int64, filter models.StaffDirectoryFilter) (*models.StaffDirectoryPage, error)
 	GetStaffDirectorySummary(ctx context.Context, actorPrincipalID, schoolID int64) (*models.StaffDirectorySummary, error)
 	DisableStaffAccount(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) error
@@ -170,6 +171,14 @@ func (s *StaffAccountService) List(ctx context.Context, actorPrincipalID, school
 		return nil, ErrInvalidStaffAccount
 	}
 	return s.repository.ListStaffAccounts(ctx, actorPrincipalID, schoolID)
+}
+
+// GetProfile loads one complete same-school staff profile for the authorized directory actor.
+func (s *StaffAccountService) GetProfile(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) (*models.User, error) {
+	if s == nil || s.repository == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 {
+		return nil, ErrInvalidStaffAccount
+	}
+	return s.repository.GetStaffAccount(ctx, actorPrincipalID, schoolID, targetPrincipalID)
 }
 
 func (s *StaffAccountService) GetDirectorySummary(ctx context.Context, actorPrincipalID, schoolID int64) (*models.StaffDirectorySummary, error) {
