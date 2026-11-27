@@ -3176,6 +3176,90 @@ test("staff attendance ignores duplicate individual and bulk submissions while r
   await expect(page.getByText("Attendance marked for 1 staff members.")).toBeVisible();
 });
 
+test("staff attendance updates existing records, retries failed writes, and confirms historical corrections once", async ({ page }) => {
+  const staffRows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 622, school_id: 10, username: "attendance.lifecycle", employee_code: "EMP-LIFE-01", full_name: "Lifecycle Teacher", designation: "Teacher", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+  ];
+  const record = {
+    id: 881, school_id: 10, staff_principal_id: 622, employee_code: "EMP-LIFE-01",
+    full_name: "Lifecycle Teacher", designation: "Teacher", attendance_date: "",
+    status: "present" as string | null, remarks: "",
+  };
+  let patchCalls = 0;
+  let releaseSameDay: (() => void) | null = null;
+  let releaseHistorical: (() => void) | null = null;
+  await signInAndOpenStaff(page, staffRows, undefined, [
+    "users.read", "staff.attendance.read", "staff.attendance.mark",
+    "staff.attendance.update_same_day", "staff.attendance.correct_past",
+  ]);
+  await page.route("**/api/school/staff-attendance**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() === "GET") {
+      record.attendance_date = url.searchParams.get("date") ?? "";
+      await route.fulfill({ json: {
+        date: record.attendance_date,
+        data: [{ ...record }],
+        pagination: { limit: 50, offset: 0, total: 1 },
+      } });
+      return;
+    }
+    if (request.method() === "PATCH") {
+      patchCalls += 1;
+      const input = request.postDataJSON() as { status: string; remarks?: string };
+      if (patchCalls === 1) {
+        await route.fulfill({ status: 500, json: { message: "Temporary write failure" } });
+        return;
+      }
+      if (patchCalls === 2) {
+        await new Promise<void>(resolve => { releaseSameDay = resolve; });
+      } else {
+        await new Promise<void>(resolve => { releaseHistorical = resolve; });
+      }
+      record.status = input.status;
+      record.remarks = input.remarks ?? "";
+      await route.fulfill({ status: 200, json: { data: { ...record } } });
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: "Unmocked staff attendance request" } });
+  });
+
+  await page.getByRole("button", { name: "Attendance", exact: true }).click();
+  const row = page.getByRole("row").filter({ hasText: "Lifecycle Teacher" });
+  await expect(row).toBeVisible();
+  await row.getByLabel("Attendance status for Lifecycle Teacher").selectOption("absent");
+  const updateButton = row.getByRole("button", { name: "Update", exact: true });
+
+  // A failed request must release the synchronous lock so a user can retry.
+  await updateButton.click();
+  await expect(page.getByText("Attendance could not be updated. Check the correction permission.")).toBeVisible();
+  await expect(updateButton).toBeEnabled();
+  await updateButton.click();
+  await expect.poll(() => patchCalls).toBe(2);
+  await updateButton.evaluate(element => element.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  await expect.poll(() => patchCalls).toBe(2);
+  releaseSameDay?.();
+  await expect(page.getByText("Staff attendance updated.")).toBeVisible();
+
+  // Move to a past date, then verify the explicit correction confirmation and duplicate guard.
+  await page.getByLabel("Attendance date").click();
+  await page.getByRole("button", { name: "Previous month" }).click();
+  await page.locator(".app-date-day").first().click();
+  const historicalRow = page.getByRole("row").filter({ hasText: "Lifecycle Teacher" });
+  await expect(historicalRow).toBeVisible();
+  await historicalRow.getByLabel("Attendance status for Lifecycle Teacher").selectOption("late");
+  await historicalRow.getByRole("button", { name: "Update", exact: true }).click();
+  const correctionDialog = page.getByRole("dialog", { name: "Confirm historical attendance correction" });
+  const confirmCorrection = correctionDialog.locator("button.app-modal-confirm");
+  await expect(confirmCorrection).toBeVisible();
+  await confirmCorrection.click();
+  await expect.poll(() => patchCalls).toBe(3);
+  await confirmCorrection.evaluate(element => element.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  await expect.poll(() => patchCalls).toBe(3);
+  releaseHistorical?.();
+  await expect(page.getByText("Staff attendance updated.")).toBeVisible();
+});
+
 test("staff attendance supports search, individual and atomic bulk marking, and monthly summaries", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 512, school_id: 10, username: "teacher.attendance",
