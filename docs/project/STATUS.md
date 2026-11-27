@@ -2976,3 +2976,13 @@ This update supersedes older status bullets that listed the following database-b
 - Staff attendance now shares a synchronous in-flight write guard across individual marks, same-day updates/historical corrections and bulk marking. Deferred-request Playwright coverage verifies that repeated individual and bulk submit events produce exactly one request.
 - Remaining Attendance acceptance gap: explicit browser flows for updating an existing same-day record, confirming a historical correction, and retry after a failed write still need dedicated regression coverage. Therefore the Attendance page is **not** declared 100% complete.
 - No schema migration or persistent school-data change. Document upload remains deferred; current work stays on `work`, and `main` remains untouched.
+
+
+## 2026-11-27 — Attendance lifecycle and narrow-viewport acceptance verified
+
+- Verified implementation checkpoint: `88607972d5b8e547bd551176d17e6c4f28b523da` on `work`.
+- Frontend CI [45939039578](https://github.com/TheSumitNain/school-management-system/actions/runs/45939039578) **PASS**: TypeScript/Vite production build and **172 Playwright tests passed**.
+- Backend CI [45939039547](https://github.com/TheSumitNain/school-management-system/actions/runs/45939039547) **PASS**: complete migration chain, PostgreSQL integration suite and `go vet`.
+- Attendance browser regressions now cover existing-record updates, retry after a failed write, one-time historical correction confirmation, and duplicate individual/bulk submissions while requests are pending. Daily and Monthly Attendance responsive coverage includes 320, 360, 390, 768 and 1280px viewports; mobile table scrolling is verified without page-level horizontal overflow. Staff Directory narrow-phone responsive coverage also includes 320/360px.
+- This verifies the listed Attendance implementation and browser-regression slices; it does **not** certify the entire Attendance page, Staff Profile or Staff Management as 100% complete. Remaining manual authenticated-school sign-off and broader Staff Management acceptance criteria still need review. Document upload remains deferred.
+- No schema migration or persistent school-data change in this test-fix batch. Changes remain on `work`; `main` remains untouched.
