@@ -6013,8 +6013,9 @@ test("adding qualifications, certifications and experience scrolls to and focuse
     status: "active", must_change_password: false,
   }];
   await signInAndOpenStaff(page, rows);
-  await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Record Focus Teacher" }).click();
+  await page.getByRole("button", { name: "Staff Directory", exact: true }).click();
+  const row = page.locator(".staff-directory-table tbody tr").filter({ hasText: "Record Focus Teacher" });
+  await row.getByRole("button", { name: "View profile for teacher.record-focus" }).click();
 
   const dialog = page.getByRole("dialog", { name: "Record Focus Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
