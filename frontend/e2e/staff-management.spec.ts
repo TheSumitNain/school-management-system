@@ -5237,7 +5237,7 @@ test("staff profile dialog and section navigation remain responsive on mobile, t
   }];
   await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Responsive Profile Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for profile.responsive" }).click();
   const dialog = page.getByRole("dialog", { name: "Responsive Profile Teacher" });
   const navigation = dialog.getByRole("navigation", { name: "Staff profile sections" });
   await expect(navigation.getByRole("button")).toHaveCount(8);
