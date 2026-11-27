@@ -1489,6 +1489,11 @@ test("staff password reset ignores a second submit while the request is pending"
   const submit = dialog.getByRole("button", { name: "Reset password", exact: true });
   await submit.click();
   await expect(dialog.getByRole("button", { name: "Saving…" })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "Close dialog" })).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await page.locator(".app-modal-backdrop").last().click({ position: { x: 4, y: 4 } });
+  await expect(dialog).toBeVisible();
   await dialog.locator("form").evaluate((form: HTMLFormElement) => form.requestSubmit());
   await page.waitForTimeout(150);
   expect(resetCalls).toBe(1);
@@ -1566,6 +1571,11 @@ test("enabling a staff account ignores a second submit while the request is pend
   const submit = dialog.getByRole("button", { name: "Enable account", exact: true });
   await submit.click();
   await expect(dialog.getByRole("button", { name: "Saving…" })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "Close dialog" })).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await page.locator(".app-modal-backdrop").last().click({ position: { x: 4, y: 4 } });
+  await expect(dialog).toBeVisible();
   await dialog.locator("form").evaluate((form: HTMLFormElement) => form.requestSubmit());
   await page.waitForTimeout(150);
   expect(enableCalls).toBe(1);
