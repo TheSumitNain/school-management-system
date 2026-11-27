@@ -938,3 +938,11 @@ This section supersedes older statements in this audit that describe browser ver
 - Expanded the browser regression to verify close-button and Cancel disabled state, Escape/backdrop close prevention, duplicate `requestSubmit()` suppression, successful refetch/list rendering, and re-enabling close after completion. Removed the redundant duplicate pending-button assertion.
 - Code checkpoints: `2cdc1b4a` (profile modal lifecycle guard), `ae5b27c9` (E2E fixture and acceptance coverage). CI is pending on the latest `work` code checkpoint; do not mark this batch or Staff Profile browser acceptance verified until CI completes.
 - Document upload remains explicitly deferred. Authenticated School Admin sign-off and separately documented identity-schema/leave-policy/product approval gates remain outstanding; `main` remains untouched.
+
+
+## 2026-11-27 final CI follow-up — pending record-save lifecycle
+
+- Latest code checkpoint `73e954afa24d4a8bad330b9145bbc8297e1ae605`: Backend CI [45930688479](https://github.com/TheSumitNain/school-management-system/actions/runs/45930688479) **PASS**; Frontend CI [45930688713](https://github.com/TheSumitNain/school-management-system/actions/runs/45930688713) **PASS** (TypeScript, Vite build and complete Playwright browser acceptance).
+- Source audit confirms record mutation pending state covers all six qualification/certification/experience create/update mutations. The form is marked `inert`; profile tab switching and record add/edit actions are disabled; modal close, Escape, backdrop and both Cancel controls are guarded. Synchronous in-flight protection remains in place against repeated `requestSubmit()` calls.
+- Browser regression confirms exactly one mutation request, pending controls and inert form, no close through Escape/backdrop, successful record visibility after refetch and close re-enabled after settlement. Test fixture persists its successful mock POST in the backing in-memory collection before the subsequent GET.
+- This verifies the pending-save lifecycle slice only. It is not a declaration that Staff Profile or Staff Management is 100% complete. Authenticated School Admin sign-off and previously recorded approval gates remain open; document upload remains deferred. No migration or persistent school-data change; `main` remains untouched.
