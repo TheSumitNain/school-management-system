@@ -1903,7 +1903,7 @@ test("staff profile creates education, certification and experience records", as
   }];
   await signInAndOpenStaff(page, rows);
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Records Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.records" }).click();
   const dialog = page.getByRole("dialog", { name: "Records Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
 
@@ -2078,7 +2078,7 @@ test("staff qualification form preserves values after a failed save and succeeds
   }, undefined, savedRecords);
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Qualification Retry Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.qualification-retry" }).click();
   const dialog = page.getByRole("dialog", { name: "Qualification Retry Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await dialog.getByRole("button", { name: "Add qualification" }).click();
@@ -2166,7 +2166,7 @@ test("staff experience form preserves values after a failed save and succeeds on
   }, undefined, savedRecords);
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Experience Retry Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.experience-retry" }).click();
   const dialog = page.getByRole("dialog", { name: "Experience Retry Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await dialog.getByRole("button", { name: "Add experience" }).click();
