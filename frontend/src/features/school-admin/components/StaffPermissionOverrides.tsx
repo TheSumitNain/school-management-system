@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import "./StaffPermissionOverrides.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LockKeyhole, Trash2 } from "lucide-react";
@@ -19,6 +19,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
   const [feedback, setFeedback] = useState("");
   const [overrideToRemove, setOverrideToRemove] = useState<{key:string;effect:string}|null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string,string>>({});
+  const saveInFlight = useRef(false);
   const permissionsQuery = useQuery({
     queryKey: ["school-admin", "permissions"],
     queryFn: ({ signal }) => getSchoolPermissions(signal),
@@ -60,6 +61,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
         queryClient.invalidateQueries({ queryKey: ["staff-audit-events", staff.principal_id] }),
       ]);
     },
+    onSettled: () => { saveInFlight.current = false; },
   });
   const remove = useMutation({
     mutationFn: (key: string) => deleteStaffPermissionOverride(staff.principal_id, key),
@@ -75,7 +77,7 @@ export function StaffPermissionOverrides({ staff }: Props) {
   const busy = save.isPending || remove.isPending;
   const loading = permissionsQuery.isPending || delegationsQuery.isPending || targetRolesQuery.isPending || overridesQuery.isPending;
   const error = permissionsQuery.error ?? delegationsQuery.error ?? targetRolesQuery.error ?? overridesQuery.error;
-  function submitOverride(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (protectedSchoolAdmin) { setFieldErrors({}); setOverrideToRemove(null); return; } const errors:Record<string,string>={}; if(!permissionKey||!selectedDelegation)errors.permissionKey="Choose a permission delegated for individual overrides."; if(!reason.trim())errors.reason="Explain why this permission exception is needed."; setFieldErrors(errors); if(Object.keys(errors).length)return;setFeedback("");save.mutate(); }
+  function submitOverride(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (protectedSchoolAdmin) { setFieldErrors({}); setOverrideToRemove(null); return; } if (busy || saveInFlight.current) return; const errors:Record<string,string>={}; if(!permissionKey||!selectedDelegation)errors.permissionKey="Choose a permission delegated for individual overrides."; if(!reason.trim())errors.reason="Explain why this permission exception is needed."; setFieldErrors(errors); if(Object.keys(errors).length)return;setFeedback("");saveInFlight.current=true;save.mutate(); }
 
   return (
     <section className="staff-override-panel" aria-label={`Permission overrides for ${staff.username}`}>
