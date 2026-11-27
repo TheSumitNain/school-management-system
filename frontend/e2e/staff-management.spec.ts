@@ -2190,13 +2190,13 @@ test("staff experience form preserves values after a failed save and succeeds on
 test("staff certification rejects impossible calendar dates before saving", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 612, school_id: 10, username: "teacher.date-check",
-    employee_code: "EMP-DATE-01", full_name: "View profile for teacher.date-check", designation: "Teacher",
+    employee_code: "EMP-DATE-01", full_name: "Date Check Teacher", designation: "Teacher",
     mobile_number: "9876543214", employment_status: "active", profile_complete: true,
     status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
   }];
   await signInAndOpenStaff(page, rows);
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Date Check Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.date-check" }).click();
   const dialog = page.getByRole("dialog", { name: "Date Check Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await dialog.getByRole("button", { name: "Add certification" }).click();
@@ -2214,13 +2214,13 @@ test("staff certification rejects impossible calendar dates before saving", asyn
 test("staff certification saves valid issue and expiry dates selected from the date pickers", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 613, school_id: 10, username: "teacher.valid-date",
-    employee_code: "EMP-DATE-02", full_name: "View profile for teacher.valid-date", designation: "Teacher",
+    employee_code: "EMP-DATE-02", full_name: "Valid Date Teacher", designation: "Teacher",
     mobile_number: "9876543215", employment_status: "active", profile_complete: true,
     status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
   }];
   await signInAndOpenStaff(page, rows);
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Valid Date Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.valid-date" }).click();
   const dialog = page.getByRole("dialog", { name: "Valid Date Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await dialog.getByRole("button", { name: "Add certification" }).click();
@@ -2242,7 +2242,7 @@ test("staff certification rejects expiry dates earlier than issue dates without 
   let mutationCalls = 0;
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 614, school_id: 10, username: "teacher.date-order",
-    employee_code: "EMP-DATE-03", full_name: "View profile for teacher.date-order", designation: "Teacher",
+    employee_code: "EMP-DATE-03", full_name: "Date Order Teacher", designation: "Teacher",
     mobile_number: "9876543216", employment_status: "active", profile_complete: true,
     status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
   }];
@@ -2251,7 +2251,7 @@ test("staff certification rejects expiry dates earlier than issue dates without 
     await route.fulfill({ status: 201, json: { certification: { id: 1 } } });
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Date Order Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.date-order" }).click();
   const dialog = page.getByRole("dialog", { name: "Date Order Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await dialog.getByRole("button", { name: "Add certification" }).click();
@@ -2269,7 +2269,7 @@ test("staff experience rejects end dates before start dates without an API reque
   let mutationCalls = 0;
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 615, school_id: 10, username: "teacher.experience-order",
-    employee_code: "EMP-EXP-01", full_name: "View profile for teacher.experience-order", designation: "Teacher",
+    employee_code: "EMP-EXP-01", full_name: "Experience Order Teacher", designation: "Teacher",
     mobile_number: "9876543217", employment_status: "active", profile_complete: true,
     status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
   }];
@@ -2278,7 +2278,7 @@ test("staff experience rejects end dates before start dates without an API reque
     await route.fulfill({ status: 201, json: { experience: { id: 1 } } });
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Experience Order Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.experience-order" }).click();
   const dialog = page.getByRole("dialog", { name: "Experience Order Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await dialog.getByRole("button", { name: "Add experience" }).click();
