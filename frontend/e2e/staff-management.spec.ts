@@ -1584,6 +1584,8 @@ test("staff record save prevents duplicate submissions while the request is pend
   await expect(dialog.getByRole("button", { name: "Saving…" })).toBeDisabled();
   expect(mutationRequests).toBe(1);
   await expect(saveButton).toBeDisabled();
+  await dialog.locator("form.staff-record-form").evaluate(form => (form as HTMLFormElement).requestSubmit());
+  expect(mutationRequests).toBe(1);
 
   releaseRequest();
   await expect(dialog.getByText("B.Ed.")).toBeVisible();
