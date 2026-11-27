@@ -5994,7 +5994,10 @@ test("staff directory shows a compact four-column list and an explicit View acti
   await expect(table.locator("thead th")).toHaveCount(4);
   await expect(table.getByRole("columnheader", { name: "Designation" })).toBeHidden();
   const row = table.locator("tbody tr").filter({ hasText: "Compact Directory Teacher" });
-  await row.getByRole("button", { name: "View profile for compact.directory" }).click();
+  const viewButton = row.getByRole("button", { name: "View profile for compact.directory" });
+  await expect(viewButton).toHaveAttribute("title", "View all details");
+  await expect(viewButton.locator("svg")).toBeVisible();
+  await viewButton.click();
   const profile = page.getByRole("dialog", { name: "Compact Directory Teacher" });
   await expect(profile.getByRole("button", { name: "Personal Details" })).toBeVisible();
   await profile.getByRole("button", { name: "Personal Details" }).click();
