@@ -46,8 +46,8 @@ const staffUser = {
   school_id: 10,
 };
 
-async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>, onStaffMutation?: (path: string, route: Route) => Promise<void>, permissions = ["users.read", "users.create", "users.update"], onStaffRecordMutation?: (collection: string, route: Route) => Promise<void>, leaveRequestRows?: Array<Record<string, unknown>>) {
-  const staffRecords: Record<string, Array<Record<string, unknown>>> = { qualifications: [], certifications: [], experience: [] };
+async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>, onStaffMutation?: (path: string, route: Route) => Promise<void>, permissions = ["users.read", "users.create", "users.update"], onStaffRecordMutation?: (collection: string, route: Route) => Promise<void>, leaveRequestRows?: Array<Record<string, unknown>>, staffRecordRows?: Record<"qualifications" | "certifications" | "experience", Array<Record<string, unknown>>>) {
+  const staffRecords: Record<string, Array<Record<string, unknown>>> = staffRecordRows ?? { qualifications: [], certifications: [], experience: [] };
   const leaveTypes: Array<Record<string, unknown>> = [{ id: 1, name: "Casual Leave", is_paid: true, requires_approval: true, is_active: true }];
   const leaveRequests: Array<Record<string, unknown>> = leaveRequestRows ?? [{
     id: 21, staff_principal_id: 501, employee_code: "EMP-LEAVE-01", staff_name: "Leave Teacher",
@@ -1448,7 +1448,8 @@ test("staff profile edit preserves entered values after a server failure and suc
       await route.fulfill({ status: 503, json: { message: "Staff profile is temporarily unavailable. Please try again." } });
       return;
     }
-    await route.fulfill({ json: { staff: { ...rows[0], ...payloads[1] }, message: "Updated" } });
+    Object.assign(rows[0], payloads[1]);
+    await route.fulfill({ json: { staff: rows[0], message: "Updated" } });
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
@@ -1638,6 +1639,7 @@ test("staff qualification form preserves values after a failed save and succeeds
   }];
   let attempts = 0;
   const payloads: Array<Record<string, unknown>> = [];
+  const savedRecords: Record<"qualifications" | "certifications" | "experience", Array<Record<string, unknown>>> = { qualifications: [], certifications: [], experience: [] };
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update"], async (collection, route) => {
     expect(collection).toBe("qualifications");
     attempts += 1;
@@ -1646,8 +1648,10 @@ test("staff qualification form preserves values after a failed save and succeeds
       await route.fulfill({ status: 503, json: { message: "Qualification service is temporarily unavailable. Please retry." } });
       return;
     }
-    await route.fulfill({ status: 201, json: { qualification: { id: 901, ...payloads[1] } } });
-  });
+    const saved = { id: 901, staff_principal_id: rows[0].principal_id, ...payloads[1], verification_status: "pending", created_at: "2026-11-27T00:00:00.000Z", updated_at: "2026-11-27T00:00:00.000Z" };
+    savedRecords.qualifications.push(saved);
+    await route.fulfill({ status: 201, json: { qualification: saved } });
+  }, undefined, savedRecords);
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await page.getByRole("button", { name: "Qualification Retry Teacher" }).click();
@@ -1679,6 +1683,7 @@ test("staff certification form preserves values after a failed save and succeeds
   }];
   let attempts = 0;
   const payloads: Array<Record<string, unknown>> = [];
+  const savedRecords: Record<"qualifications" | "certifications" | "experience", Array<Record<string, unknown>>> = { qualifications: [], certifications: [], experience: [] };
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update"], async (collection, route) => {
     expect(collection).toBe("certifications");
     attempts += 1;
@@ -1687,8 +1692,10 @@ test("staff certification form preserves values after a failed save and succeeds
       await route.fulfill({ status: 503, json: { message: "Certification service is temporarily unavailable. Please retry." } });
       return;
     }
-    await route.fulfill({ status: 201, json: { certification: { id: 902, ...payloads[1] } } });
-  });
+    const saved = { id: 902, staff_principal_id: rows[0].principal_id, ...payloads[1], verification_status: "pending", created_at: "2026-11-27T00:00:00.000Z", updated_at: "2026-11-27T00:00:00.000Z" };
+    savedRecords.certifications.push(saved);
+    await route.fulfill({ status: 201, json: { certification: saved } });
+  }, undefined, savedRecords);
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await page.getByRole("button", { name: "Certification Retry Teacher" }).click();
@@ -1720,6 +1727,7 @@ test("staff experience form preserves values after a failed save and succeeds on
   }];
   let attempts = 0;
   const payloads: Array<Record<string, unknown>> = [];
+  const savedRecords: Record<"qualifications" | "certifications" | "experience", Array<Record<string, unknown>>> = { qualifications: [], certifications: [], experience: [] };
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.create", "users.update"], async (collection, route) => {
     expect(collection).toBe("experience");
     attempts += 1;
@@ -1728,8 +1736,10 @@ test("staff experience form preserves values after a failed save and succeeds on
       await route.fulfill({ status: 503, json: { message: "Experience service is temporarily unavailable. Please retry." } });
       return;
     }
-    await route.fulfill({ status: 201, json: { experience: { id: 903, ...payloads[1] } } });
-  });
+    const saved = { id: 903, staff_principal_id: rows[0].principal_id, ...payloads[1], verification_status: "pending", created_at: "2026-11-27T00:00:00.000Z", updated_at: "2026-11-27T00:00:00.000Z" };
+    savedRecords.experience.push(saved);
+    await route.fulfill({ status: 201, json: { experience: saved } });
+  }, undefined, savedRecords);
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await page.getByRole("button", { name: "Experience Retry Teacher" }).click();
