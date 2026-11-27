@@ -5983,10 +5983,10 @@ test("staff directory shows a compact four-column list and an explicit View acti
 
   const table = page.locator(".staff-directory-table");
   await expect(table.locator("thead th")).toHaveCount(4);
-  await expect(table.getByRole("columnheader", { name: "Employee" })).toBeVisible();
-  await expect(table.getByRole("columnheader", { name: "Designation" })).toBeVisible();
-  await expect(table.getByRole("columnheader", { name: "Employment" })).toBeVisible();
-  await expect(table.getByRole("columnheader", { name: "Actions" })).toBeVisible();
+  await expect(table.locator("thead th").nth(0)).toHaveText("Employee");
+  await expect(table.locator("thead th").nth(1)).toHaveText("Designation");
+  await expect(table.locator("thead th").nth(2)).toHaveText("Employment");
+  await expect(table.locator("thead th").nth(3)).toHaveText("Actions");
   await expect(table).not.toContainText("9876543291");
   await expect(table).not.toContainText("compact.directory@example.test");
 
