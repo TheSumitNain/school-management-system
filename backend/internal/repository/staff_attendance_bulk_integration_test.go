@@ -553,3 +553,92 @@ func TestStaffAttendanceBulkMarkSupportsOneThousandRecordsPostgresIntegration(t 
 		t.Fatalf("1000-record batch left records=%d audits=%d; want exactly 1000 each", records, audits)
 	}
 }
+
+
+// Exercise the real PostgreSQL count/page queries across more than 1,000
+// employees. This protects against accidental hard LIMITs and unstable page
+// ordering that a mocked browser test cannot detect.
+func TestStaffAttendanceDailyAndMonthlyPaginationAcrossThousandStaffPostgresIntegration(t *testing.T) {
+	f := newStaffAttendanceIntegrationFixture(t)
+	suffix := fmt.Sprint(time.Now().UnixNano() % 1_000_000_000)
+	tag, err := f.pool.Exec(f.ctx, `
+		WITH created_users AS (
+			INSERT INTO users(school_id, username, password_hash, status)
+			SELECT $1,
+			       'att-scale-' || substr(md5(clock_timestamp()::text || g::text || txid_current()::text), 1, 16),
+			       'integration-password-hash',
+			       'active'
+			FROM generate_series(1, 1001) AS g
+			RETURNING principal_id
+		)
+		INSERT INTO staff_profiles(
+			principal_id, school_id, employee_code, full_name, designation, mobile_number
+		)
+		SELECT principal_id, $1,
+		       'ATT-SCALE-' || $2 || '-' || principal_id,
+		       'Scale Attendance Staff ' || principal_id,
+		       'Teacher', '9876543211'
+		FROM created_users
+	`, f.schoolID, suffix)
+	if err != nil {
+		t.Fatalf("create 1,001 scale-test staff profiles: %v", err)
+	}
+	if tag.RowsAffected() != 1001 {
+		t.Fatalf("created scale-test staff profiles=%d; want 1001", tag.RowsAffected())
+	}
+
+	day, err := time.Parse("2006-01-02", schooltime.TodayDate())
+	if err != nil {
+		t.Fatalf("parse school-local attendance date: %v", err)
+	}
+	// The fixture itself contributes one School Admin and two staff profiles.
+	const expectedTotal = 1004
+	const pageSize = 100
+
+	dailySeen := make(map[int64]struct{}, expectedTotal)
+	for offset := 0; offset < expectedTotal; offset += pageSize {
+		page, total, err := f.repo.ListDailyFilteredPage(
+			f.ctx, f.actorID, f.schoolID, day,
+			StaffAttendanceDailyFilter{Status: "all"}, pageSize, offset,
+		)
+		expectedPageSize := pageSize
+		if remaining := expectedTotal - offset; remaining < expectedPageSize {
+			expectedPageSize = remaining
+		}
+		if err != nil || total != expectedTotal || len(page) != expectedPageSize {
+			t.Fatalf("daily page offset=%d rows=%d total=%d err=%v; want rows=%d total=%d",
+				offset, len(page), total, err, expectedPageSize, expectedTotal)
+		}
+		for _, item := range page {
+			if _, exists := dailySeen[item.StaffPrincipalID]; exists {
+				t.Fatalf("daily pagination repeated staff principal %d at offset %d", item.StaffPrincipalID, offset)
+			}
+			dailySeen[item.StaffPrincipalID] = struct{}{}
+		}
+	}
+	if len(dailySeen) != expectedTotal {
+		t.Fatalf("daily pagination returned %d unique staff; want %d", len(dailySeen), expectedTotal)
+	}
+
+	monthlySeen := make(map[int64]struct{}, expectedTotal)
+	for offset := 0; offset < expectedTotal; offset += pageSize {
+		page, total, err := f.repo.ListMonthlyPage(f.ctx, f.actorID, f.schoolID, day, pageSize, offset)
+		expectedPageSize := pageSize
+		if remaining := expectedTotal - offset; remaining < expectedPageSize {
+			expectedPageSize = remaining
+		}
+		if err != nil || total != expectedTotal || len(page) != expectedPageSize {
+			t.Fatalf("monthly page offset=%d rows=%d total=%d err=%v; want rows=%d total=%d",
+				offset, len(page), total, err, expectedPageSize, expectedTotal)
+		}
+		for _, item := range page {
+			if _, exists := monthlySeen[item.StaffPrincipalID]; exists {
+				t.Fatalf("monthly pagination repeated staff principal %d at offset %d", item.StaffPrincipalID, offset)
+			}
+			monthlySeen[item.StaffPrincipalID] = struct{}{}
+		}
+	}
+	if len(monthlySeen) != expectedTotal {
+		t.Fatalf("monthly pagination returned %d unique staff; want %d", len(monthlySeen), expectedTotal)
+	}
+}
