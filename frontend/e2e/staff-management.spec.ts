@@ -3295,7 +3295,7 @@ test("staff attendance supports search, individual and atomic bulk marking, and 
     await route.fulfill({ json: { events: [] } });
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Attendance Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.attendance" }).click();
   const attendanceProfile = page.getByRole("dialog", { name: "Attendance Teacher" });
   await attendanceProfile.getByRole("button", { name: "History & Activity" }).click();
   await expect(attendanceProfile.getByText("No audited activity is recorded for this employee yet.")).toBeVisible();
@@ -3489,7 +3489,10 @@ test("attendance drafts stay scoped to their selected date", async ({ page }) =>
   const selectedDate = schoolDateValue();
   const [year, month, day] = selectedDate.split("-").map(Number);
   const previousDate = new Date(year, month - 1, day - 1, 12);
-  const previousLabel = previousDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const calendarDateOptions: Intl.DateTimeFormatOptions = {
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
+  };
+  const previousLabel = previousDate.toLocaleDateString("en-US", calendarDateOptions);
   await page.getByLabel("Staff attendance date").click();
   const calendar = page.getByRole("dialog", { name: "Choose staff attendance date" });
   if (previousDate.getMonth() !== month - 1 || previousDate.getFullYear() !== year) {
@@ -3502,7 +3505,9 @@ test("attendance drafts stay scoped to their selected date", async ({ page }) =>
   if (previousDate.getMonth() !== month - 1 || previousDate.getFullYear() !== year) {
     await returnCalendar.getByRole("button", { name: "Next month" }).click();
   }
-  await returnCalendar.getByRole("button", { name: new Date(year, month - 1, day, 12).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }) }).click();
+  const selectedDateLabel = new Date(year, month - 1, day, 12)
+    .toLocaleDateString("en-US", calendarDateOptions);
+  await returnCalendar.getByRole("button", { name: selectedDateLabel }).click();
   await expect(page.getByLabel("Attendance status for Date Draft Teacher")).toHaveValue("late");
 });
 
