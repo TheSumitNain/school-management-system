@@ -1829,7 +1829,7 @@ test("staff record save prevents duplicate submissions while the request is pend
   }, undefined, recordRows);
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Pending Record Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.record-pending" }).click();
   const dialog = page.getByRole("dialog", { name: "Pending Record Teacher" });
   await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
   await dialog.getByRole("button", { name: "Add qualification" }).click();
