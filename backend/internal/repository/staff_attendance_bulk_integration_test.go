@@ -37,7 +37,7 @@ func newStaffAttendanceIntegrationFixture(t *testing.T) *staffAttendanceIntegrat
 	f := &staffAttendanceIntegrationFixture{pool: pool, repo: NewStaffAttendanceRepository(pool), ctx: ctx, schoolID: schoolID, actorID: actorID}
 	for i := 0; i < 2; i++ {
 		var staffID int64
-		username := fmt.Sprintf("att-%06d-%d", time.Now().UnixNano()%1000000, i)
+		username := fmt.Sprintf("att-%d-%d", time.Now().UnixNano(), i)
 		if err := pool.QueryRow(ctx, `INSERT INTO users(school_id,username,password_hash,status) VALUES($1,$2,'integration-password-hash','active') RETURNING principal_id`, schoolID, username).Scan(&staffID); err != nil { t.Fatalf("create attendance staff account: %v", err) }
 		if _, err := pool.Exec(ctx, `INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number) VALUES($1,$2,$3,$4,'Teacher','9876543211')`, staffID, schoolID, fmt.Sprintf("ATT-%d-%d", time.Now().UnixNano(), i), fmt.Sprintf("Attendance Staff %d", i)); err != nil { t.Fatalf("create attendance staff profile: %v", err) }
 		f.staffIDs = append(f.staffIDs, staffID)
