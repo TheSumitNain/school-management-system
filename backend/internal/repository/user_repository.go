@@ -373,12 +373,10 @@ func (r *UserRepository) CreateStaffAccountWithProfile(
             return nil, fmt.Errorf("load school Teacher system role: %w", err)
         }
 
-        var assignmentID int64
-        if err := tx.QueryRow(ctx, `
+        if _, err := tx.Exec(ctx, `
             INSERT INTO principal_roles (principal_id, role_id, assigned_by)
             VALUES ($1, $2, $3)
-            RETURNING id
-        `, user.PrincipalID, teacherRoleID, actorPrincipalID).Scan(&assignmentID); err != nil {
+        `, user.PrincipalID, teacherRoleID, actorPrincipalID); err != nil {
             return nil, fmt.Errorf("assign default Teacher role: %w", err)
         }
 
@@ -390,7 +388,6 @@ func (r *UserRepository) CreateStaffAccountWithProfile(
         `, actorPrincipalID, schoolID, fmt.Sprint(user.PrincipalID), teacherRoleID); err != nil {
             return nil, fmt.Errorf("audit default Teacher role assignment: %w", err)
         }
-        _ = assignmentID
     }
 
 	if _, err := tx.Exec(ctx, `
