@@ -366,6 +366,7 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 		schoolID,timetableEntryID,periodID,nextCoverDateValue,originalID,substituteID)
 	if rollbackErr:=assignDuringLeave.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback substitution during approved leave savepoint: %v",rollbackErr)}
 	if assignmentOverlapErr==nil{t.Fatal("substitute assignment was created during approved leave")}
+if err=(&AcademicRepository{db:tx}).CancelStaffSubstitution(ctx,actorPrincipalID,schoolID,activeOverlapSubstitutionID);err!=nil{t.Fatalf("cancel active leave-overlap fixture substitution: %v",err)}
 
 	if _,err=tx.Exec(ctx,`UPDATE auth_principals SET status='disabled' WHERE id=$1`,substituteID);err!=nil{t.Fatalf("disable canonical substitute principal after completed cover: %v",err)}
 	canonicalStatus,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin canonical principal validation savepoint: %v",err)}
