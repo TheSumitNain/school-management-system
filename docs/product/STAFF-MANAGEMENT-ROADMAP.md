@@ -1463,3 +1463,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Daily and Monthly Attendance browser layouts are checked at 320, 360, 390, 768 and 1280px, including inner-table horizontal scrolling on narrow screens and no document-level horizontal overflow. Staff Directory also gained 320/360px coverage.
 - These tests close the previously listed Attendance browser-flow gaps, but do not alone declare Attendance, Staff Profile or the Staff Management module fully complete. Continue with the remaining page acceptance audit and manual authenticated-school sign-off. Document upload remains deferred pending private-storage selection.
 - No schema/API change or persistent data change in this batch; `main` remains untouched.
+
+
+## 2026-11-27 — Leave & Holidays duplicate-submit acceptance verified
+
+- Verified implementation checkpoint `5e4e866b6f1bee56db79d2fae9342f37d539d007` on `work`.
+- Frontend CI [45940558979](https://github.com/TheSumitNain/school-management-system/actions/runs/45940558979) **PASS** with **177 Playwright tests passed**; TypeScript and Vite production build passed. Backend CI [45940558964](https://github.com/TheSumitNain/school-management-system/actions/runs/45940558964) **PASS** with full migrations, PostgreSQL integration tests and `go vet`.
+- Five deferred-request browser regressions now prove one mutation per in-flight operation for leave request creation, leave decision, cancellation, leave-type creation and holiday creation. Existing leave/holiday validation, permissions, confirmation dialogs, filters, pagination, CSV integrity and responsive layout regressions also passed.
+- This closes the recorded duplicate-submit browser gap for these Leave & Holidays operations, not every acceptance requirement for the page. Keep the page short of 100% until authenticated-school sign-off and outstanding product/policy decisions are closed. Document upload remains deferred. No schema or persistent data change; `main` remains untouched.
