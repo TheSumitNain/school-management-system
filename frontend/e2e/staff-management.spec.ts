@@ -1586,6 +1586,33 @@ test("staff certification rejects impossible calendar dates before saving", asyn
   await expect(dialog.locator('input[name="certificate_name"]')).toHaveValue("Impossible Date Certificate");
 });
 
+
+test("staff certification saves valid issue and expiry dates selected from the date pickers", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 613, school_id: 10, username: "teacher.valid-date",
+    employee_code: "EMP-DATE-02", full_name: "Valid Date Teacher", designation: "Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false, created_at: "2026-04-01T00:00:00.000Z",
+  }];
+  await signInAndOpenStaff(page, rows);
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Valid Date Teacher" }).click();
+  const dialog = page.getByRole("dialog", { name: "Valid Date Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  await dialog.getByRole("button", { name: "Add certification" }).click();
+  await dialog.locator('input[name="certificate_name"]').fill("Valid Calendar Certificate");
+  await dialog.locator('input[name="issuing_organization"]').fill("State Board");
+  await chooseDatePickerValue(dialog, "Certification issue date", "2020-01-15");
+  await chooseDatePickerValue(dialog, "Certification expiry date", "2025-01-15");
+  await expect(dialog.locator('input[name="issue_date"]')).toHaveValue("2020-01-15");
+  await expect(dialog.locator('input[name="expiry_date"]')).toHaveValue("2025-01-15");
+  await dialog.getByRole("button", { name: "Save record" }).click();
+  await expect(dialog.getByText("Valid Calendar Certificate")).toBeVisible();
+  const card = dialog.locator(".staff-record-card").filter({ hasText: "Valid Calendar Certificate" });
+  await expect(card).toContainText("2020-01-15");
+  await expect(card).toContainText("2025-01-15");
+});
+
 test("staff profile shows only the selected employee's academic assignments and retained history", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 411, school_id: 10, username: "teacher.profile",
