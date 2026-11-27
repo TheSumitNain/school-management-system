@@ -278,7 +278,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
         <label><span>Filter by status</span><select aria-label="Filter staff attendance status" value={statusFilter} onChange={event => { setStatusFilter(event.target.value as "all" | "unmarked" | Status); setDailyOffset(0); }}>
           <option value="all">All statuses</option><option value="unmarked">Not marked</option>{statuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
         </select></label>
-        <button type="button" className="staff-secondary-button" onClick={() => void daily.refetch()} disabled={daily.isFetching}><RefreshCw size={15}/> Refresh</button>
+        <button type="button" className="staff-secondary-button" onClick={() => { setDrafts(current => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith(`${date}:`)))); void daily.refetch(); }} disabled={daily.isFetching}><RefreshCw size={15}/> Refresh</button>
       </div>
       <div className="staff-attendance-totals" aria-live="polite" aria-label="Attendance totals for current page">
         <span>Current page totals</span><span>Present <strong>{totals.present}</strong></span><span>Absent <strong>{totals.absent}</strong></span><span>Late <strong>{totals.late}</strong></span><span>Half day <strong>{totals.half_day}</strong></span><span>Not marked <strong>{totals.unmarked}</strong></span>

@@ -5928,3 +5928,39 @@ test("staff monthly attendance CSV export verifies every page for more than 1,00
   expect(csv.split(/\r?\n/).length).toBe(2003);
   expect(exportOffsets).toEqual([0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]);
 });
+
+
+test("refreshing the daily attendance register discards unsaved drafts in favor of server state", async ({ page }) => {
+  const staffRows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 944, school_id: 10, username: "attendance.refresh",
+    employee_code: "EMP-REFRESH-01", full_name: "Refresh Teacher", designation: "Teacher",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  let serverStatus = "present";
+  await signInAndOpenStaff(page, staffRows, undefined, [
+    "users.read", "staff.attendance.read", "staff.attendance.mark", "staff.attendance.update_same_day",
+  ]);
+  await page.route("**/api/school/staff-attendance?*", async route => {
+    const url = new URL(route.request().url());
+    await route.fulfill({ json: {
+      date: url.searchParams.get("date"),
+      data: [{
+        id: 994, school_id: 10, staff_principal_id: 944, employee_code: "EMP-REFRESH-01",
+        full_name: "Refresh Teacher", designation: "Teacher",
+        attendance_date: url.searchParams.get("date"), status: serverStatus, remarks: "",
+      }],
+      pagination: { limit: 50, offset: 0, total: 1 },
+    } });
+  });
+
+  await page.getByRole("button", { name: "Attendance", exact: true }).click();
+  const status = page.getByLabel("Attendance status for Refresh Teacher");
+  await expect(status).toHaveValue("present");
+  await status.selectOption("late");
+  await expect(page.getByRole("button", { name: "Update", exact: true })).toBeEnabled();
+
+  serverStatus = "absent";
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(status).toHaveValue("absent");
+  await expect(page.getByRole("button", { name: "Update", exact: true })).toBeDisabled();
+});
