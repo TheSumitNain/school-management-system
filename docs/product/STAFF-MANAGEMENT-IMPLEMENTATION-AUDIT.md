@@ -965,3 +965,12 @@ This section supersedes older statements in this audit that describe browser ver
 - Backend CI [45933605721](https://github.com/TheSumitNain/school-management-system/actions/runs/45933605721) **PASS**: full migration chain, Go/PostgreSQL integration tests and `go vet`.
 - Staff Role Assignment and Permission Override components use synchronous in-flight refs to reject repeated submit events before React pending state can update. Playwright holds each POST open, verifies the pending button, programmatically invokes a second `requestSubmit()`, asserts exactly one POST, then releases the request and verifies the successful role/override state.
 - No backend contract or schema change in this UI hardening. This closes the duplicate-submit test slice only; Account & Access and Staff Profile are not declared fully complete. Authenticated School Admin sign-off and documented approval gates remain open. Document upload remains deferred; `main` remains untouched.
+
+
+## 2026-11-27 — Attendance duplicate-write protection
+
+- Verified implementation checkpoint: `bf8afa8caf1da613dd378e5e113e986952951c14` on `work`.
+- Frontend CI [45937271014](https://github.com/TheSumitNain/school-management-system/actions/runs/45937271014) **PASS**; Backend CI [45937271059](https://github.com/TheSumitNain/school-management-system/actions/runs/45937271059) **PASS**.
+- `StaffAttendanceWorkspace` uses one synchronous in-flight ref shared by individual create, existing-record update/correction and atomic bulk mutations. Its settlement handlers release the lock. Playwright deferred-request coverage confirms individual and bulk duplicate submissions are suppressed.
+- Audit note: current browser suite still lacks dedicated end-to-end assertions for same-day update, historical correction confirmation, and retry after failed attendance write. Those remain open acceptance items; no 100% page-completion claim is made.
+- No migration or persistent data change. Secure document upload remains deferred; `main` is untouched.
