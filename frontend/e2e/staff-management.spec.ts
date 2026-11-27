@@ -3242,7 +3242,7 @@ test("staff attendance updates existing records, retries failed writes, and conf
   await expect(page.getByText("Staff attendance updated.")).toBeVisible();
 
   // Move to a past date, then verify the explicit correction confirmation and duplicate guard.
-  await page.getByLabel("Attendance date").click();
+  await page.getByLabel("Staff attendance date").click();
   await page.getByRole("button", { name: "Previous month" }).click();
   await page.locator(".app-date-day").first().click();
   const historicalRow = page.getByRole("row").filter({ hasText: "Lifecycle Teacher" });
