@@ -230,6 +230,46 @@ func (r *UserRepository) CreateStaffAccount(
 		return nil, ErrRolePermissionDenied
 	}
 
+    // Teaching onboarding also needs the actor's effective roles.assign grant.
+    // Check it before creating any rows so a DENY override produces a clear
+    // authorization error rather than a generic database-trigger failure.
+    if profile.StaffType == "teaching" {
+        var canAssignTeacherRole bool
+        err = tx.QueryRow(ctx, `
+            SELECT EXISTS (
+                SELECT 1
+                  FROM auth_principals ap
+                  JOIN users actor ON actor.principal_id = ap.id
+                  JOIN schools school ON school.id = actor.school_id AND school.status = 'active'
+                  JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
+                  JOIN roles role ON role.id = pr.role_id
+                  JOIN role_permissions rp ON rp.role_id = role.id
+                  JOIN permissions permission ON permission.id = rp.permission_id
+                 WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
+                   AND actor.status = 'active' AND actor.school_id = $2
+                   AND role.school_id = $2 AND role.scope_type = 'school'
+                   AND role.principal_type = 'staff' AND role.role_key = 'school_admin'
+                   AND role.is_system = TRUE
+                   AND permission.permission_key = 'roles.assign'
+                   AND permission.scope_type = 'school' AND permission.is_active = TRUE
+                   AND NOT EXISTS (
+                       SELECT 1
+                         FROM user_permission_overrides denied
+                        WHERE denied.principal_id = ap.id
+                          AND denied.school_id = $2
+                          AND denied.permission_id = permission.id
+                          AND denied.effect = 'deny'
+                   )
+            )
+        `, actorPrincipalID, schoolID).Scan(&canAssignTeacherRole)
+        if err != nil {
+            return nil, fmt.Errorf("authorize default Teacher role assignment: %w", err)
+        }
+        if !canAssignTeacherRole {
+            return nil, ErrRolePermissionDenied
+        }
+    }
+
 	var user models.User
 	err = tx.QueryRow(ctx, `
 		INSERT INTO users (school_id, username, password_hash, status)
