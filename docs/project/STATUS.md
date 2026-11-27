@@ -2986,3 +2986,13 @@ This update supersedes older status bullets that listed the following database-b
 - Attendance browser regressions now cover existing-record updates, retry after a failed write, one-time historical correction confirmation, and duplicate individual/bulk submissions while requests are pending. Daily and Monthly Attendance responsive coverage includes 320, 360, 390, 768 and 1280px viewports; mobile table scrolling is verified without page-level horizontal overflow. Staff Directory narrow-phone responsive coverage also includes 320/360px.
 - This verifies the listed Attendance implementation and browser-regression slices; it does **not** certify the entire Attendance page, Staff Profile or Staff Management as 100% complete. Remaining manual authenticated-school sign-off and broader Staff Management acceptance criteria still need review. Document upload remains deferred.
 - No schema migration or persistent school-data change in this test-fix batch. Changes remain on `work`; `main` remains untouched.
+
+
+## 2026-11-27 — Leave & Holidays duplicate-submit acceptance verified
+
+- Verified implementation checkpoint `5e4e866b6f1bee56db79d2fae9342f37d539d007` on `work`.
+- Frontend CI [45940558979](https://github.com/TheSumitNain/school-management-system/actions/runs/45940558979) **PASS**: TypeScript, Vite production build and **177 Playwright tests passed**.
+- Backend CI [45940558964](https://github.com/TheSumitNain/school-management-system/actions/runs/45940558964) **PASS**: complete migration chain, PostgreSQL integration tests and `go vet`.
+- Leave request creation, approval/rejection decision, cancellation, leave-type creation and school-holiday creation now have deferred-request browser regressions proving repeated submit/confirm events issue only one mutation. The decision regression dispatches duplicate clicks synchronously before React can render its pending state.
+- Existing Leave & Holidays browser coverage also passed for required-field and half-day validation, rejection comments, explicit cancellation/deactivation/reactivation confirmations, read/write permission boundaries, date filters, bounded request pagination, complete CSV export integrity, and 320px/mobile, tablet and desktop layout without page-level horizontal overflow.
+- This closes the identified duplicate-submit regression slice and verifies the listed browser cases; it does **not** declare the entire Leave & Holidays page or Staff Management 100% complete. Authenticated-school sign-off and any remaining product/policy approval gates remain outstanding. Document upload remains deferred; no schema migration or persistent school-data change. `main` remains untouched.
