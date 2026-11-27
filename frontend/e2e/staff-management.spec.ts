@@ -10,7 +10,8 @@ function schoolDateOffset(days: number) {
 }
 
 function schoolDateLabel(date: Date) {
-  return date.toLocaleDateString(undefined, {
+  // Match Chromium's default en-US locale; Node may use the host OS locale.
+  return date.toLocaleDateString("en-US", {
     weekday: "long", month: "long", day: "numeric", year: "numeric",
   });
 }
