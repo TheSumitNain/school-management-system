@@ -5967,3 +5967,35 @@ test("refreshing the daily attendance register discards unsaved drafts in favor 
   await expect(status).toHaveValue("absent");
   await expect(page.getByRole("button", { name: "Update", exact: true })).toBeDisabled();
 });
+
+
+test("staff directory shows a compact four-column list and an explicit View action on mobile", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 991, school_id: 10, username: "compact.directory",
+    employee_code: "EMP-COMPACT-01", full_name: "Compact Directory Teacher",
+    designation: "Mathematics Teacher", staff_type: "teaching",
+    mobile_number: "9876543291", email: "compact.directory@example.test",
+    employment_status: "active", profile_complete: true, status: "active",
+    must_change_password: false, protected_school_admin: false,
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
+  await page.getByRole("button", { name: "Staff Directory", exact: true }).click();
+
+  const table = page.locator(".staff-directory-table");
+  await expect(table.locator("thead th")).toHaveCount(4);
+  await expect(table.getByRole("columnheader", { name: "Employee" })).toBeVisible();
+  await expect(table.getByRole("columnheader", { name: "Designation" })).toBeVisible();
+  await expect(table.getByRole("columnheader", { name: "Employment" })).toBeVisible();
+  await expect(table.getByRole("columnheader", { name: "Actions" })).toBeVisible();
+  await expect(table).not.toContainText("9876543291");
+  await expect(table).not.toContainText("compact.directory@example.test");
+
+  await page.setViewportSize({ width: 360, height: 800 });
+  await expect(table.locator("thead th")).toHaveCount(4);
+  await expect(table.getByRole("columnheader", { name: "Designation" })).toBeHidden();
+  const row = table.locator("tbody tr").filter({ hasText: "Compact Directory Teacher" });
+  await row.getByRole("button", { name: "View profile for compact.directory" }).click();
+  const profile = page.getByRole("dialog", { name: "Compact Directory Teacher" });
+  await expect(profile.getByRole("button", { name: "Personal Details" })).toBeVisible();
+  await expect(profile.getByText("compact.directory@example.test")).toBeVisible();
+});
