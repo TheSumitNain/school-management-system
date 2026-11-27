@@ -40,7 +40,7 @@ func(h *StaffLeaveHandler) fail(c *gin.Context,e error){
 	case errors.Is(e,repository.ErrStaffLeaveNotFound):
 		c.JSON(http.StatusNotFound,gin.H{"status":"error","message":"Staff leave record, leave type or employee not found"})
 	case errors.Is(e,repository.ErrStaffLeaveConflict):
-		c.JSON(http.StatusConflict,gin.H{"status":"error","message":"This leave request overlaps another pending or approved leave request, or an active substitute coverage assignment"})
+		c.JSON(http.StatusConflict,gin.H{"status":"error","message":"An overlapping leave request or substitute assignment conflicts with this date, or a school record with these details already exists"})
 	case errors.Is(e,repository.ErrInvalidStaffLeave),errors.Is(e,services.ErrInvalidStaffLeave):
 		c.JSON(http.StatusBadRequest,gin.H{"status":"error","message":"Check the leave or holiday fields"})
 	default:c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to process staff leave or holiday"})
