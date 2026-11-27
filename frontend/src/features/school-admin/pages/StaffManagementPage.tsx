@@ -45,6 +45,14 @@ function isValidISODate(value: string): boolean {
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
+function isStaffRecordUnchanged(next: Record<string, unknown>, current: Record<string, unknown> | undefined): boolean {
+  if (!current) return false;
+  return Object.entries(next).every(([key, value]) => {
+    const previous = current[key];
+    return (value == null ? "" : value) === (previous == null ? "" : previous);
+  });
+}
+
 function isValidStaffEmail(email: string): boolean {
   if (!email) return true;
   const characters = Array.from(email);
@@ -534,15 +542,23 @@ export function StaffManagementPage({ permissions }: Props) {
           score_scale: score ? value("score_scale") as "percentage" | "cgpa" | "gpa" | "marks" | "grade" : undefined,
           credential_reference: value("credential_reference"),
         };
-        if (editingRecordID !== null) await updateQualification.mutateAsync({ recordID: editingRecordID, data });
-        else await createQualification.mutateAsync(data);
+        if (editingRecordID !== null) {
+          if (isStaffRecordUnchanged(data, editingQualification as unknown as Record<string, unknown> | undefined)) {
+            setRecordFormKind(null); setEditingRecordID(null); notifyToast("info", "No changes to save."); return;
+          }
+          await updateQualification.mutateAsync({ recordID: editingRecordID, data });
+        } else await createQualification.mutateAsync(data);
       } else if (recordFormKind === "certification") {
         const data = {
           certificate_name: value("certificate_name"), issuing_organization: value("issuing_organization"),
           issue_date: value("issue_date"), expiry_date: value("expiry_date"), credential_id: value("credential_id"),
         };
-        if (editingRecordID !== null) await updateCertification.mutateAsync({ recordID: editingRecordID, data });
-        else await createCertification.mutateAsync(data);
+        if (editingRecordID !== null) {
+          if (isStaffRecordUnchanged(data, editingCertification as unknown as Record<string, unknown> | undefined)) {
+            setRecordFormKind(null); setEditingRecordID(null); notifyToast("info", "No changes to save."); return;
+          }
+          await updateCertification.mutateAsync({ recordID: editingRecordID, data });
+        } else await createCertification.mutateAsync(data);
       } else {
         const data = {
           employer_name: value("employer_name"), designation: value("record_designation"),
@@ -550,8 +566,12 @@ export function StaffManagementPage({ permissions }: Props) {
           start_date: value("start_date"), end_date: form.get("is_current") ? "" : value("end_date"),
           is_current: Boolean(form.get("is_current")), description: value("description"),
         };
-        if (editingRecordID !== null) await updateExperience.mutateAsync({ recordID: editingRecordID, data });
-        else await createExperience.mutateAsync(data);
+        if (editingRecordID !== null) {
+          if (isStaffRecordUnchanged(data, editingExperience as unknown as Record<string, unknown> | undefined)) {
+            setRecordFormKind(null); setEditingRecordID(null); notifyToast("info", "No changes to save."); return;
+          }
+          await updateExperience.mutateAsync({ recordID: editingRecordID, data });
+        } else await createExperience.mutateAsync(data);
       }
       setRecordFormKind(null);
       setEditingRecordID(null);
