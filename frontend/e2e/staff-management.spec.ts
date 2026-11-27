@@ -2611,6 +2611,9 @@ test("staff permission overrides require a delegated permission, reason and remo
   let submittedPayload: Record<string, unknown> | null = null;
   let overrideReads = 0;
   let auditReads = 0;
+  let releaseOverrideSave: (() => void) | null = null;
+  let notifyOverrideSaveStarted: (() => void) | null = null;
+  const overrideSaveStarted = new Promise<void>(resolve => { notifyOverrideSaveStarted = resolve; });
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "permissions.override", "school.audit.read"]);
   await page.route("**/api/school/staff/515/audit-events**", async route => {
     auditReads += 1;
@@ -2646,6 +2649,10 @@ test("staff permission overrides require a delegated permission, reason and remo
     if (method === "POST") {
       saveCalls += 1;
       submittedPayload = route.request().postDataJSON() as Record<string, unknown>;
+      await new Promise<void>(resolve => {
+        releaseOverrideSave = resolve;
+        notifyOverrideSaveStarted?.();
+      });
       overrides.push({
         id: 71, principal_id: 515, permission_key: "students.read_basic",
         effect: "deny", reason: "Temporary roster access restriction",
@@ -2686,11 +2693,16 @@ test("staff permission overrides require a delegated permission, reason and remo
   await profile.getByRole("button", { name: "Save override" }).click();
   await expect(profile.getByText("Choose a permission delegated for individual overrides.")).toHaveCount(0);
   await expect(profile.getByText("Explain why this permission exception is needed.")).toBeVisible();
-  await profile.getByLabel("Reason (required)").fill("Temporary roster access restriction");
-  await profile.getByRole("button", { name: "Save override" }).click();
-  await expect(profile.getByText("Permission override saved. It takes effect on the next protected request.")).toBeVisible();
-  await expect(profile.getByText("students.read_basic", { exact: true })).toBeVisible();
+  await reopenedProfile.getByLabel("Reason (required)").fill("Temporary roster access restriction");
+  await reopenedProfile.getByRole("button", { name: "Save override" }).click();
+  await overrideSaveStarted;
+  await expect(reopenedProfile.getByRole("button", { name: "Saving…" })).toBeDisabled();
+  await reopenedProfile.locator("form.staff-override-form").evaluate((form: HTMLFormElement) => form.requestSubmit());
+  await page.waitForTimeout(150);
   expect(saveCalls).toBe(1);
+  releaseOverrideSave?.();
+  await expect(reopenedProfile.getByText("Permission override saved. It takes effect on the next protected request.")).toBeVisible();
+  await expect(reopenedProfile.getByText("students.read_basic", { exact: true })).toBeVisible();
   expect(submittedPayload).toMatchObject({
     permission_key: "students.read_basic",
     effect: "deny",
