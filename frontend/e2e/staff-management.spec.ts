@@ -1597,7 +1597,9 @@ test("staff record save prevents duplicate submissions while the request is pend
   await expect(dialog.getByRole("button", { name: "Saving…" })).toBeDisabled();
   expect(mutationRequests).toBe(1);
   await expect(dialog.getByRole("button", { name: "Close dialog" })).toBeDisabled();
-  await expect(dialog.getByRole("button", { name: "Cancel", exact: true })).toBeDisabled();
+  await expect(dialog.locator(".staff-record-form-heading").getByRole("button", { name: "Cancel" })).toBeDisabled();
+  await expect(dialog.locator(".staff-record-form-actions").getByRole("button", { name: "Cancel" })).toBeDisabled();
+  await expect(dialog.locator("form.staff-record-form")).toHaveAttribute("inert", "");
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
   await page.locator(".app-modal-backdrop").last().click({ position: { x: 4, y: 4 } });
