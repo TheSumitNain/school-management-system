@@ -115,6 +115,76 @@ func (r *UserRepository) ListStaffAccounts(ctx context.Context, actorPrincipalID
 	return users, nil
 }
 
+// GetStaffAccount returns one staff profile only when the actor has users.read in the same school.
+func (r *UserRepository) GetStaffAccount(ctx context.Context, actorPrincipalID, schoolID, targetPrincipalID int64) (*models.User, error) {
+	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || targetPrincipalID <= 0 {
+		return nil, ErrRolePermissionDenied
+	}
+	var user models.User
+	var joiningDate *time.Time
+	err := r.db.QueryRow(ctx, `
+		SELECT target.id, target.principal_id, target.school_id, target.username, target.status,
+		       target.must_change_password, target.created_at, target.updated_at,
+		       COALESCE(sp.employee_code, ''), COALESCE(sp.full_name, ''),
+		       COALESCE(sp.designation, ''), COALESCE(sp.mobile_number, ''),
+		       COALESCE(sp.email, ''), sp.joining_date,
+		       COALESCE(sp.employment_status, ''), COALESCE(sp.staff_type, ''),
+		       (sp.principal_id IS NOT NULL),
+		       EXISTS (
+		         SELECT 1 FROM principal_roles protected_assignment
+		         JOIN roles protected_role ON protected_role.id = protected_assignment.role_id
+		         WHERE protected_assignment.principal_id = target.principal_id
+		           AND protected_assignment.revoked_at IS NULL
+		           AND protected_role.school_id = $2
+		           AND protected_role.scope_type = 'school'
+		           AND protected_role.principal_type = 'staff'
+		           AND protected_role.role_key = 'school_admin'
+		           AND protected_role.is_system = TRUE
+		       )
+		FROM users target
+		JOIN auth_principals target_principal ON target_principal.id = target.principal_id
+		JOIN schools target_school ON target_school.id = target.school_id AND target_school.status = 'active'
+		LEFT JOIN staff_profiles sp ON sp.principal_id = target.principal_id AND sp.school_id = target.school_id
+		WHERE target.principal_id = $1 AND target.school_id = $2
+		  AND target_principal.principal_type = 'staff'
+		  AND EXISTS (
+		    SELECT 1
+		    FROM auth_principals actor_principal
+		    JOIN users actor ON actor.principal_id = actor_principal.id
+		    JOIN schools actor_school ON actor_school.id = actor.school_id AND actor_school.status = 'active'
+		    JOIN principal_roles pr ON pr.principal_id = actor_principal.id AND pr.revoked_at IS NULL
+		    JOIN roles role ON role.id = pr.role_id
+		    JOIN role_permissions rp ON rp.role_id = role.id
+		    JOIN permissions perm ON perm.id = rp.permission_id
+		    WHERE actor_principal.id = $3 AND actor_principal.principal_type = 'staff'
+		      AND actor_principal.status = 'active' AND actor.status = 'active'
+		      AND actor.school_id = $2
+		      AND role.school_id = $2 AND role.scope_type = 'school'
+		      AND role.principal_type = 'staff' AND role.role_key = 'school_admin' AND role.is_system = TRUE
+		      AND perm.permission_key = 'users.read' AND perm.scope_type = 'school' AND perm.is_active = TRUE
+		      AND NOT EXISTS (
+		        SELECT 1 FROM user_permission_overrides denied
+		        WHERE denied.principal_id = actor_principal.id AND denied.school_id = $2
+		          AND denied.permission_id = perm.id AND denied.effect = 'deny'
+		      )
+		  )
+	`, targetPrincipalID, schoolID, actorPrincipalID).Scan(
+		&user.ID, &user.PrincipalID, &user.SchoolID, &user.Username, &user.Status,
+		&user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt,
+		&user.EmployeeCode, &user.FullName, &user.Designation, &user.MobileNumber,
+		&user.Email, &joiningDate, &user.EmploymentStatus, &user.StaffType,
+		&user.ProfileComplete, &user.ProtectedSchoolAdmin,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrUserNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get school staff profile: %w", err)
+	}
+	user.JoiningDate = joiningDate
+	return &user, nil
+}
+
 func (r *UserRepository) CreateStaffAccount(
 	ctx context.Context,
 	actorPrincipalID, schoolID int64,
