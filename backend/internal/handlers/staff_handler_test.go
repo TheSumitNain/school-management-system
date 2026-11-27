@@ -49,6 +49,11 @@ func (f *fakeStaffAccountService) CreateWithProfile(_ context.Context, actorID, 
 	return f.user, f.err
 }
 
+func (f *fakeStaffAccountService) GetProfile(_ context.Context, actorID, schoolID, targetID int64) (*models.User, error) {
+	f.actorID, f.schoolID, f.profileTargetID = actorID, schoolID, targetID
+	return f.user, f.err
+}
+
 func (f *fakeStaffAccountService) List(context.Context, int64, int64) ([]models.User, error) {
 	return []models.User{{ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one", PasswordHash: "private-hash-marker", Status: "active", MustChangePassword: true, StaffType: "teaching", ProtectedSchoolAdmin: true}}, f.err
 }
@@ -73,6 +78,71 @@ func (f *fakeStaffAccountService) Update(context.Context, int64, int64, int64, s
 
 func (f *fakeStaffAccountService) Enable(context.Context, int64, int64, int64, string) error {
 	return f.err
+}
+
+func TestStaffHandlerGetProfileUsesAuthenticatedSchoolAndReturnsCompleteProfile(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{user: &models.User{
+		ID: 15, PrincipalID: 27, SchoolID: 8, Username: "teacher.one", Status: "active",
+		MobileNumber: "9876543210", Email: "teacher@example.com", EmployeeCode: "EMP-015",
+		FullName: "Teacher One", Designation: "Mathematics Teacher", StaffType: "teaching",
+		ProtectedSchoolAdmin: false,
+	}}
+	router := gin.New()
+	router.GET("/school/staff/:principalID", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, NewStaffHandler(service).GetProfile)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/school/staff/27", nil))
+	if rec.Code != http.StatusOK || service.actorID != 31 || service.schoolID != 8 || service.profileTargetID != 27 {
+		t.Fatalf("unexpected detail response: status=%d service=%+v body=%s", rec.Code, service, rec.Body.String())
+	}
+	for _, expected := range []string{`"mobile_number":"9876543210"`, `"email":"teacher@example.com"`, `"employee_code":"EMP-015"`, `"full_name":"Teacher One"`} {
+		if !strings.Contains(rec.Body.String(), expected) {
+			t.Fatalf("detail response missing %s: %s", expected, rec.Body.String())
+		}
+	}
+	if strings.Contains(rec.Body.String(), "password_hash") || strings.Contains(rec.Body.String(), "private-hash-marker") {
+		t.Fatalf("detail response leaked credential material: %s", rec.Body.String())
+	}
+}
+
+func TestStaffHandlerGetProfileRejectsMissingAuthInvalidTargetAndNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeStaffAccountService{}
+	handler := NewStaffHandler(service)
+	router := gin.New()
+	router.GET("/school/staff/:principalID", handler.GetProfile)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/school/staff/27", nil))
+	if rec.Code != http.StatusUnauthorized || service.profileTargetID != 0 {
+		t.Fatalf("missing auth: status=%d service=%+v", rec.Code, service)
+	}
+	router = gin.New()
+	router.GET("/school/staff/:principalID", func(c *gin.Context) {
+		c.Set("auth_principal_id", int64(31))
+		c.Set("auth_school_id", int64(8))
+		c.Next()
+	}, handler.GetProfile)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/school/staff/not-a-number", nil))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid target status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	service.err = repository.ErrUserNotFound
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/school/staff/999", nil))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("missing target status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	service.err = repository.ErrRolePermissionDenied
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/school/staff/27", nil))
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("unauthorized target status=%d body=%s", rec.Code, rec.Body.String())
+	}
 }
 
 func TestStaffHandlerCreateSuccessDoesNotExposePassword(t *testing.T) {
