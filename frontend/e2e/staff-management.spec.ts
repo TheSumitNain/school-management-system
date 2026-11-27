@@ -561,7 +561,7 @@ test("staff directory returns to the last valid page after disabling the final a
   await page.getByRole("dialog",{name:"Disable staff account?"}).getByRole("button",{name:"Disable account"}).click();
   await expect(page.getByText("1–50 of 50 staff members")).toBeVisible();
   await expect(page.getByText("Page 1 of 1")).toHaveCount(0);
-  await expect(page.getByRole("row").filter({hasText:"Directory Disable 1"})).toBeVisible();
+  await expect(page.getByRole("row", { name: "Directory Disable 1 DIR-DIS-1" })).toBeVisible();
   await expect(page.getByRole("button",{name:"Previous"})).toHaveCount(0);
 });
 
