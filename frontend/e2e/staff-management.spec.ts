@@ -92,6 +92,16 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       } } });
       return;
     }
+    const staffProfileMatch = path.match(/^\/school\/staff\/(\d+)$/);
+    if (staffProfileMatch && method === "GET") {
+      const profile = staffRows.find(item => Number(item.principal_id) === Number(staffProfileMatch[1]));
+      if (!profile) {
+        await route.fulfill({ status: 404, json: { message: "Staff profile not found" } });
+        return;
+      }
+      await route.fulfill({ json: { staff: profile } });
+      return;
+    }
     if (path === "/school/staff" && method === "GET") {
       if (url.searchParams.has("limit")) {
         const limit = Number(url.searchParams.get("limit"));
@@ -5997,7 +6007,9 @@ test("staff directory shows a compact four-column list and an explicit View acti
   const viewButton = row.getByRole("button", { name: "View profile for compact.directory" });
   await expect(viewButton).toHaveAttribute("title", "View all details");
   await expect(viewButton.locator("svg")).toBeVisible();
+  const detailRequest = page.waitForRequest(request => request.method() === "GET" && new URL(request.url()).pathname.endsWith("/school/staff/991"));
   await viewButton.click();
+  await detailRequest;
   const profile = page.getByRole("dialog", { name: "Compact Directory Teacher" });
   await expect(profile.getByRole("button", { name: "Personal Details" })).toBeVisible();
   await profile.getByRole("button", { name: "Personal Details" }).click();
