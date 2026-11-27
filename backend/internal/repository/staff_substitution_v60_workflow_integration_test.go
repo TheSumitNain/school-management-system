@@ -309,6 +309,54 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	_,pastDeleteErr:=pastDelete.Exec(ctx,`DELETE FROM timetable_entries WHERE id=$1`,pastEntryID)
 	if rollbackErr:=pastDelete.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback past timetable history delete savepoint: %v",rollbackErr)}
 	if pastDeleteErr==nil{t.Fatal("completed substitution history must still prevent hard deletion of its timetable entry")}
+
+	// A substitute cannot receive approved leave while an active cover is
+	// scheduled, and an approved leave cannot be bypassed by creating cover
+	// afterwards. The two paths share the principal lifecycle advisory lock.
+	var leaveTypeID int64
+	if err=tx.QueryRow(ctx,`INSERT INTO staff_leave_types
+		(school_id,name,is_paid,requires_approval,is_active,created_by_principal_id,updated_by_principal_id)
+		VALUES($1,$2,TRUE,TRUE,TRUE,$3,$3) RETURNING id`,
+		schoolID,fmt.Sprintf("Substitution conflict leave %d",suffix),actorPrincipalID).Scan(&leaveTypeID);err!=nil{
+		t.Fatalf("create leave type for substitution overlap checks: %v",err)
+	}
+	var pendingLeaveID int64
+	if err=tx.QueryRow(ctx,`INSERT INTO staff_leave_requests
+		(school_id,staff_principal_id,leave_type_id,start_date,end_date,duration_type,reason,created_by_principal_id)
+		VALUES($1,$2,$3,$4::date,$4::date,'full_day','Leave overlaps substitute coverage',$5) RETURNING id`,
+		schoolID,substituteID,leaveTypeID,coverDate,actorPrincipalID).Scan(&pendingLeaveID);err!=nil{
+		t.Fatalf("create pending leave overlapping active substitute coverage: %v",err)
+	}
+	approveOverlap,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin leave approval overlap savepoint: %v",err)}
+	_,approvalOverlapErr:=approveOverlap.Exec(ctx,`UPDATE staff_leave_requests
+		SET status='approved',decided_by_principal_id=$2,decided_at=NOW()
+		WHERE id=$1 AND school_id=$3`,pendingLeaveID,actorPrincipalID,schoolID)
+	if rollbackErr:=approveOverlap.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback conflicting leave approval savepoint: %v",rollbackErr)}
+	if approvalOverlapErr==nil{t.Fatal("leave approval overlapped active substitute coverage")}
+	var pendingStatus string
+	if err=tx.QueryRow(ctx,`SELECT status FROM staff_leave_requests WHERE id=$1 AND school_id=$2`,pendingLeaveID,schoolID).Scan(&pendingStatus);err!=nil{
+		t.Fatalf("read leave status after blocked approval: %v",err)
+	}
+	if pendingStatus!="pending"{t.Fatalf("blocked leave approval changed status to %q; want pending",pendingStatus)}
+
+	nextCoverDate,parseErr:=time.Parse("2006-01-02",coverDate)
+	if parseErr!=nil{t.Fatalf("parse cover date for reverse overlap test: %v",parseErr)}
+	nextCoverDate=nextCoverDate.AddDate(0,0,7).Format("2006-01-02")
+	var approvedLeaveID int64
+	if err=tx.QueryRow(ctx,`INSERT INTO staff_leave_requests
+		(school_id,staff_principal_id,leave_type_id,start_date,end_date,duration_type,reason,status,decided_by_principal_id,decided_at,created_by_principal_id)
+		VALUES($1,$2,$3,$4::date,$4::date,'full_day','Approved leave before substitute assignment','approved',$5,NOW(),$5)
+		RETURNING id`,schoolID,substituteID,leaveTypeID,nextCoverDate,actorPrincipalID).Scan(&approvedLeaveID);err!=nil{
+		t.Fatalf("create approved leave before substitute assignment: %v",err)
+	}
+	assignDuringLeave,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin assignment overlap savepoint: %v",err)}
+	_,assignmentOverlapErr:=assignDuringLeave.Exec(ctx,`INSERT INTO staff_substitutions
+		(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
+		VALUES($1,$2,$3,$4::date,$5,$6,'Must reject approved substitute leave',$5)`,
+		schoolID,timetableEntryID,periodID,nextCoverDate,originalID,substituteID)
+	if rollbackErr:=assignDuringLeave.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback substitution during approved leave savepoint: %v",rollbackErr)}
+	if assignmentOverlapErr==nil{t.Fatal("substitute assignment was created during approved leave")}
+
 	if _,err=tx.Exec(ctx,`UPDATE auth_principals SET status='disabled' WHERE id=$1`,substituteID);err!=nil{t.Fatalf("disable canonical substitute principal after completed cover: %v",err)}
 	canonicalStatus,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin canonical principal validation savepoint: %v",err)}
 	_,canonicalStatusErr:=canonicalStatus.Exec(ctx,`INSERT INTO staff_substitutions(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
