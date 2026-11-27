@@ -418,38 +418,38 @@ test("staff directory filters independently narrow staff type, employment, login
   await page.getByRole("button", { name: "Filter by staff type" }).click();
   await page.getByRole("option", { name: "Teaching", exact: true }).click();
   await expect(page.getByText("1–2 of 2 staff members")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Active Enabled" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Active Disabled" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Inactive Disabled" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "View profile for active.enabled" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for active.disabled" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for inactive.disabled" })).toHaveCount(0);
   await page.getByRole("button", { name: "Filter by staff type" }).click();
   await page.getByRole("option", { name: "Non-teaching", exact: true }).click();
   await expect(page.getByText("1–1 of 1 staff members")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Inactive Disabled" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for inactive.disabled" })).toBeVisible();
   await page.getByRole("button", { name: "Filter by staff type" }).click();
   await page.getByRole("option", { name: "Unclassified", exact: true }).click();
   await expect(page.getByText("1–2 of 2 staff members")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Profile Unknown" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for profile.pending" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for profile.unknown" })).toBeVisible();
   await page.getByRole("button", { name: "Filter by staff type" }).click();
   await page.getByRole("option", { name: "All staff types", exact: true }).click();
 
   await page.getByRole("button", { name: "Filter by employment status" }).click();
   await page.getByRole("option", { name: "Active", exact: true }).click();
   await expect(page.getByText("1–4 of 4 staff members")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Active Enabled" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Active Disabled" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Profile Unknown" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Inactive Disabled" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "View profile for active.enabled" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for active.disabled" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for profile.pending" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for profile.unknown" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for inactive.disabled" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Filter by login account status" }).click();
   await page.getByRole("option", { name: "Disabled", exact: true }).click();
   await expect(page.getByText("1–3 of 3 staff members")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Active Disabled" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Profile Unknown" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for active.disabled" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for profile.pending" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for profile.unknown" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Enable profile.unknown" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Active Enabled" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "View profile for active.enabled" })).toHaveCount(0);
   await page.getByRole("button", { name: "Filter by login account status" }).click();
   await page.getByRole("option", { name: "All accounts", exact: true }).click();
   await page.getByRole("button", { name: "Filter by employment status" }).click();
@@ -460,16 +460,16 @@ test("staff directory filters independently narrow staff type, employment, login
   await profileCompletenessFilter.click();
   await page.getByRole("option", { name: "Incomplete", exact: true }).click();
   await expect(page.getByText("1–2 of 2 staff members")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Profile Unknown" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for profile.pending" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for profile.unknown" })).toBeVisible();
 
   // Reuse the same trigger after the custom Select closes and restores focus.
   await expect(profileCompletenessFilter).toHaveAttribute("aria-expanded", "false");
   await profileCompletenessFilter.click();
   await page.getByRole("option", { name: "Complete", exact: true }).click();
   await expect(page.getByText("1–3 of 3 staff members")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Active Enabled" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Profile Unknown" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "View profile for active.enabled" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for profile.unknown" })).toHaveCount(0);
 
   // Search is tested independently of the profile filter selected above.
   await profileCompletenessFilter.click();
@@ -481,7 +481,7 @@ test("staff directory filters independently narrow staff type, employment, login
   await expect(searchContainer).toHaveCSS("outline-style", "solid");
   await expect(searchContainer).toHaveCSS("outline-width", "2px");
   await expect(page.getByText("1–1 of 1 staff members")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Profile Pending" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View profile for profile.pending" })).toBeVisible();
   await page.getByRole("button", { name: "Clear filters" }).click();
   await expect(search).toHaveValue("");
   await expect(page.getByText("1–5 of 5 staff members")).toBeVisible();
@@ -519,18 +519,18 @@ test("staff directory uses debounced server-side search and stable pagination", 
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
   await expect(page.getByText("1–50 of 120 staff members")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Directory Employee 001" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Directory Employee 051" })).toHaveCount(0);
+  await expect(page.getByRole("row").filter({ hasText: "Directory Employee 001" })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "Directory Employee 051" })).toHaveCount(0);
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("51–100 of 120 staff members")).toBeVisible();
   await expect(page.getByText("Page 2 of 3")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Directory Employee 051" })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "Directory Employee 051" })).toBeVisible();
 
   const search = page.getByRole("textbox", { name: "Search staff by name, code, designation, mobile or username" });
   await search.pressSequentially("Directory Employee 075", { delay: 20 });
   await expect(page.getByText("1–1 of 1 staff members")).toBeVisible();
   expect(requestedSearches.filter(Boolean)).toEqual(["Directory Employee 075"]);
-  await expect(page.getByRole("button", { name: "Directory Employee 075" })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "Directory Employee 075" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Previous" })).toHaveCount(0);
 });
 
@@ -555,13 +555,13 @@ test("staff directory returns to the last valid page after disabling the final a
   await page.getByRole("button",{name:/Staff Directory/}).click();
   await expect(page.getByText("Page 1 of 2")).toBeVisible();
   await page.getByRole("button",{name:"Next"}).click();
-  const lastRow=page.locator("tr").filter({hasText:"directory.disable.51"});
+  const lastRow=page.locator("tr").filter({hasText:"Directory Disable 51"});
   await expect(lastRow).toBeVisible();
   await lastRow.getByRole("button",{name:"Disable directory.disable.51"}).click();
   await page.getByRole("dialog",{name:"Disable staff account?"}).getByRole("button",{name:"Disable account"}).click();
   await expect(page.getByText("1–50 of 50 staff members")).toBeVisible();
   await expect(page.getByText("Page 1 of 1")).toHaveCount(0);
-  await expect(page.getByRole("button",{name:"Directory Disable 1",exact:true})).toBeVisible();
+  await expect(page.getByRole("row").filter({hasText:"Directory Disable 1"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Previous"})).toHaveCount(0);
 });
 
