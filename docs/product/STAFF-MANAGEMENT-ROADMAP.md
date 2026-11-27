@@ -1,3 +1,14 @@
+## 2026-11-27 — default teaching-role onboarding implementation (verification pending)
+
+- Teaching staff account creation now assigns the existing school-scoped Teacher system role in the same database transaction as the login and employee profile. The role assignment is recorded in the audit log with an onboarding source marker.
+- Non-teaching staff receive no Teacher role or teaching permissions by default. No broad school-wide staff attendance/leave permissions were added.
+- PostgreSQL integration coverage was added for the teaching default role, non-teaching exclusion, and rollback when account/profile or role-audit writes fail.
+- **Verification pending:** run the focused PostgreSQL integration test and the full backend suite locally. Do not treat this change as complete until those tests pass.
+- No migration is required because each school already has the protected Teacher system role. Existing accounts are not backfilled automatically; that requires a separate role/assignment audit before any bulk change.
+- Competitor benchmark: see [COMPETITOR-BENCHMARK.md](COMPETITOR-BENCHMARK.md). The next usability task is a role-aware, task-first dashboard with explicit access guidance.
+
+---
+
 ## 2026-11-27 — Staff Attendance scale verification checkpoint
 
 - Automated Attendance technical verification now includes Daily pagination through a 1,001-employee roster, Monthly CSV export of all 1,001 employees, and real PostgreSQL pagination across 1,004 same-school staff profiles.
