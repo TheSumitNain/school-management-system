@@ -1405,7 +1405,23 @@ test("disabling a staff account requires explicit confirmation and refreshes its
 
   await staffRow.getByRole("button", { name: "Disable disable.teacher" }).click();
   const confirmation = page.getByRole("dialog", { name: "Disable staff account?" });
-  await confirmation.getByRole("button", { name: "Disable account" }).click();
+  let releaseDisable!: () => void;
+  const pendingDisable = new Promise<void>(resolve => { releaseDisable = resolve; });
+  await page.route("**/api/school/staff/516", async route => {
+    if (route.request().method() === "DELETE") {
+      disableCalls += 1;
+      await pendingDisable;
+      rows[0].status = "disabled";
+      await route.fulfill({ json: { message: "Staff account disabled." } });
+      return;
+    }
+    await route.fallback();
+  });
+  const confirmButton = confirmation.getByRole("button", { name: "Disable account" });
+  await confirmButton.evaluate((element: HTMLButtonElement) => { element.click(); element.click(); });
+  await expect(confirmButton).toBeDisabled();
+  await expect.poll(() => disableCalls).toBe(1);
+  releaseDisable();
   await expect(page.getByText("disable.teacher has been disabled and active sessions revoked.")).toBeVisible();
   expect(disableCalls).toBe(1);
   await expect(page.locator("tr").filter({ hasText: "disable.teacher" })).toContainText("disabled");
