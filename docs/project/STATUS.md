@@ -3003,3 +3003,12 @@ This update supersedes older status bullets that listed the following database-b
 - Frontend CI [45942707460](https://github.com/TheSumitNain/school-management-system/actions/runs/45942707460) **PASS** on `550d9dd44d4a065624663672eaa55c17ea1e9d02`: TypeScript, Vite production build and 180 Playwright tests passed. Substitution responsive layout passed at 320px, 360px and 844×390 landscape; duplicate create/cancel requests are suppressed.
 - V71 adds bidirectional database protection between approved leave and substitute coverage. The initial V71 guards covered both conflict directions sequentially, but did not yet prove concurrent serialization. A later audit found the leave-side lock differed from the V60 substitution slot lock; V72 below corrects this and adds a real PostgreSQL race test. Full Backend CI [45943122223](https://github.com/TheSumitNain/school-management-system/actions/runs/45943122223) **PASS** on `be038afa9c314770c62f57026c711a2811262132`, including all migrations, PostgreSQL integration and `go vet`.
 - No existing school data was rewritten. Substitute Teacher Coverage is not declared 100%: authenticated School Admin real-school sign-off and remaining policy/product gates are still open. Document upload remains deferred. All work remains on `work`; `main` is untouched.
+
+
+## 2026-11-27 — V72 closes leave/substitution concurrency race
+
+- V71's sequential conflict guards were not sufficient for simultaneous writes because the leave-side advisory lock did not match V60's substitution slot lock. This was identified in follow-up review and the earlier shared-lock statement above has been corrected.
+- V72 now takes the same `school:teacher:ISO-weekday:period` advisory keys as substitution assignment for each timetable period and weekday in the leave range, in deterministic order.
+- Added a real PostgreSQL concurrency test: hold the V60 slot lock, start leave approval and substitute assignment together, release the lock, and assert exactly one operation commits and the final state has no overlap.
+- Backend CI [45944248099](https://github.com/TheSumitNain/school-management-system/actions/runs/45944248099) **PASS** on `67d130760772ed84c9b09f8a7759dfd091c2a4ea`, including migrations, Go/PostgreSQL integration and `go vet`.
+- Substitute Teacher Coverage is still not 100%: authenticated School Admin real-school sign-off and remaining product/policy approvals are open. Document upload remains deferred. `main` remains untouched.
