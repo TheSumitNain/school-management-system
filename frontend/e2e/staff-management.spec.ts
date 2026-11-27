@@ -5455,7 +5455,7 @@ test("staff profile history never flashes the previous employee's audit events w
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Audit First" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.audit.first" }).click();
   let dialog = page.getByRole("dialog", { name: "Audit First" });
   await dialog.getByRole("button", { name: "History & Activity" }).click();
   await expect(dialog.getByText("Profile updated")).toBeVisible();
@@ -5463,7 +5463,7 @@ test("staff profile history never flashes the previous employee's audit events w
   expect(firstAuditReadCount).toBeGreaterThan(0);
   await page.keyboard.press("Escape");
 
-  await page.getByRole("button", { name: "Audit Second" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.audit.second" }).click();
   dialog = page.getByRole("dialog", { name: "Audit Second" });
   await dialog.getByRole("button", { name: "History & Activity" }).click();
   await expect(dialog.getByRole("status")).toContainText("Loading staff activity");
@@ -5497,7 +5497,7 @@ test("staff history paginates older audit events without mixing employees", asyn
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Audit Pages" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.audit.pages" }).click();
   const dialog = page.getByRole("dialog", { name: "Audit Pages" });
   await dialog.getByRole("button", { name: "History & Activity" }).click();
   await expect(dialog.getByText("Profile updated")).toBeVisible();
@@ -5526,7 +5526,7 @@ test("closing and reopening the same staff profile reloads audit history instead
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Audit Reopen" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.audit.reopen" }).click();
   let dialog = page.getByRole("dialog", { name: "Audit Reopen" });
   await dialog.getByRole("button", { name: "History & Activity" }).click();
   await expect(dialog.getByText("Profile updated")).toBeVisible();
@@ -5534,7 +5534,7 @@ test("closing and reopening the same staff profile reloads audit history instead
   expect(firstAuditReadCount).toBeGreaterThan(0);
   await page.keyboard.press("Escape");
 
-  await page.getByRole("button", { name: "Audit Reopen" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.audit.reopen" }).click();
   dialog = page.getByRole("dialog", { name: "Audit Reopen" });
   await dialog.getByRole("button", { name: "History & Activity" }).click();
   await expect(dialog.getByText("Profile updated")).toBeVisible();
