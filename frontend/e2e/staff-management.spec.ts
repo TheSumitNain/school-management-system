@@ -5688,3 +5688,88 @@ test("staff directory retries after a transient server error and accepts a subse
   await expect(page.getByRole("button", { name: "Recovered Staff" })).toBeVisible();
   expect(attempts).toBe(4);
 });
+
+
+test("staff substitution assignment suppresses duplicate form submissions while the request is pending", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [
+    { id: 1, principal_id: 501, school_id: 10, username: "teacher.original.guard", employee_code: "EMP-ORIGINAL-GUARD", full_name: "Original Guard Teacher", designation: "Mathematics Teacher", mobile_number: "9876543215", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+    { id: 2, principal_id: 502, school_id: 10, username: "teacher.substitute.guard", employee_code: "EMP-SUBSTITUTE-GUARD", full_name: "Substitute Guard Teacher", designation: "Mathematics Teacher", mobile_number: "9876543216", employment_status: "active", profile_complete: true, status: "active", must_change_password: false },
+  ];
+  let attempts = 0;
+  let releaseRequest!: () => void;
+  const requestGate = new Promise<void>(resolve => { releaseRequest = resolve; });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.substitutions.read", "staff.substitutions.manage", "timetable.read"]);
+  await page.route("**/api/school/staff-substitutions", async route => {
+    if (route.request().method() !== "POST") { await route.fallback(); return; }
+    attempts += 1;
+    await requestGate;
+    await route.fallback();
+  });
+  await page.getByRole("button", { name: "Substitutions" }).click();
+  await page.getByRole("button", { name: "Recurring timetable lesson" }).click();
+  await page.getByRole("option", { name: /Monday · Class 6 A · Mathematics/ }).click();
+
+  const [year, month, day] = schoolDateValue().split("-").map(Number);
+  const today = new Date(year, month - 1, day, 12);
+  const daysUntilMonday = (1 - today.getDay() + 7) % 7 || 7;
+  const nextMonday = new Date(today);
+  nextMonday.setDate(today.getDate() + daysUntilMonday);
+  const dateLabel = (date: Date) => date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  await page.getByLabel("Substitution cover date").click();
+  const dateDialog = page.getByRole("dialog", { name: "Choose substitution cover date" });
+  if (nextMonday.getMonth() !== today.getMonth() || nextMonday.getFullYear() !== today.getFullYear()) await dateDialog.getByRole("button", { name: "Next month" }).click();
+  await dateDialog.getByRole("button", { name: dateLabel(nextMonday) }).click();
+  await page.getByRole("button", { name: "Substitute staff member" }).click();
+  await page.getByRole("option", { name: /Substitute Guard Teacher/ }).click();
+  await page.getByLabel("Reason").fill("Duplicate assignment guard");
+  const form = page.locator("form.staff-substitution-form");
+  await form.getByRole("button", { name: "Assign substitute" }).click();
+  await expect.poll(() => attempts).toBe(1);
+  await form.evaluate(element => (element as HTMLFormElement).requestSubmit());
+  expect(attempts).toBe(1);
+  releaseRequest();
+  await expect(page.getByText("Substitute teacher assigned. The recurring timetable remains unchanged.")).toBeVisible();
+});
+
+test("staff substitution cancellation suppresses duplicate confirmations while the request is pending", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "substitution.cancel.guard",
+    employee_code: "EMP-SUB-CANCEL-GUARD", full_name: "Cancellation Guard Teacher", designation: "Teacher",
+    employment_status: "active", profile_complete: true, status: "active", must_change_password: false,
+  }];
+  let attempts = 0;
+  let releaseRequest!: () => void;
+  const requestGate = new Promise<void>(resolve => { releaseRequest = resolve; });
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "staff.substitutions.read", "staff.substitutions.manage"]);
+  await page.route("**/api/school/staff-substitutions?*", async route => {
+    if (route.request().method() !== "GET") { await route.fallback(); return; }
+    await route.fulfill({ json: { substitutions: [{
+      id: 91, timetable_entry_id: 700, cover_date: schoolDateValue(),
+      original_teacher_principal_id: 501, original_teacher_name: "Original Teacher",
+      substitute_teacher_principal_id: 502, substitute_teacher_name: "Substitute Teacher",
+      approved_leave_request_id: null, reason: "Cancellation duplicate guard", status: "active",
+      section_name: "A", class_name: "Class 6", subject_name: "Mathematics",
+      period_number: 2, period_name: "Period 2", starts_at: "09:40", ends_at: "10:20",
+      room: "Room 12", created_by_principal_id: 101, created_at: "2026-11-27T00:00:00.000Z",
+    }], pagination: { page: 1, page_size: 50, total: 1 } } });
+  });
+  await page.route("**/api/school/staff-substitutions/91/cancel", async route => {
+    if (route.request().method() !== "POST") { await route.fallback(); return; }
+    attempts += 1;
+    await requestGate;
+    await route.fallback();
+  });
+  await page.getByRole("button", { name: "Substitutions" }).click();
+  const record = page.locator(".staff-substitution-record").filter({ hasText: "Cancellation duplicate guard" });
+  await expect(record).toBeVisible();
+  await record.getByRole("button", { name: "Cancel cover" }).click();
+  const confirmation = page.getByRole("dialog", { name: "Cancel substitute coverage?" });
+  const confirmButton = confirmation.getByRole("button", { name: "Cancel cover" });
+  await confirmButton.evaluate(element => {
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+  });
+  await expect.poll(() => attempts).toBe(1);
+  releaseRequest();
+  await expect(page.getByText("Substitution cancelled. Its history has been retained.")).toBeVisible();
+});
