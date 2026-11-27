@@ -5776,3 +5776,44 @@ test("staff substitution cancellation suppresses duplicate confirmations while t
   await expect(page.getByText("Substitution cancelled. Its history has been retained.")).toBeVisible();
   await expect(record).toContainText("Cancelled");
 });
+
+
+test("substitute coverage workspace remains usable on narrow phones and landscape tablets", async ({ page }) => {
+  await signInAndOpenStaff(page, [], undefined, ["users.read", "staff.substitutions.read"]);
+  await page.route("**/api/school/staff-substitutions?*", async route => {
+    await route.fulfill({
+      json: {
+        substitutions: [{
+          id: 701, timetable_entry_id: 801, cover_date: schoolDateValue(),
+          original_teacher_principal_id: 501, original_teacher_name: "Original Mathematics Teacher",
+          substitute_teacher_principal_id: 502, substitute_teacher_name: "Substitute Mathematics Teacher",
+          approved_leave_request_id: null, reason: "Responsive layout acceptance fixture with a deliberately descriptive reason",
+          status: "active", section_name: "A", class_name: "Class 10",
+          subject_name: "Mathematics", period_number: 4, period_name: "Period 4",
+          starts_at: "11:20", ends_at: "12:00", room: "Room 204",
+          created_by_principal_id: 101, created_at: "2026-11-27T00:00:00.000Z",
+        }],
+        pagination: { page: 1, page_size: 50, total: 1 },
+      },
+    });
+  });
+  await page.getByRole("button", { name: "Substitutions" }).click();
+  const workspace = page.locator(".staff-substitution-workspace");
+  await expect(workspace.getByText("Substitute Mathematics Teacher")).toBeVisible();
+  for (const viewport of [
+    { width: 320, height: 720 },
+    { width: 360, height: 800 },
+    { width: 844, height: 390 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect(workspace.getByRole("heading", { name: "Substitute Teacher Coverage" })).toBeVisible();
+    await expect(workspace.getByText("Substitute Mathematics Teacher")).toBeVisible();
+    const dimensions = await page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: document.documentElement.clientWidth,
+      workspaceWidth: document.querySelector(".staff-substitution-workspace")?.getBoundingClientRect().width ?? 0,
+    }));
+    expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewportWidth);
+    expect(dimensions.workspaceWidth).toBeGreaterThan(0);
+  }
+});
