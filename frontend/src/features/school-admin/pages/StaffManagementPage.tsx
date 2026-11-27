@@ -215,7 +215,12 @@ export function StaffManagementPage({ permissions }: Props) {
   const editDetailQuery = useSchoolStaffProfileQuery(editSelection?.principal_id ?? 0, action === "edit" && Boolean(editSelection));
   const actionStaff = action === "edit" ? editDetailQuery.data?.staff ?? null : selected;
   useEffect(() => {
-    if (action === "edit" && editDetailQuery.data?.staff) setSelected(editDetailQuery.data.staff);
+    if (action !== "edit" || !editDetailQuery.data?.staff) return;
+    const detail = editDetailQuery.data.staff;
+    setSelected(detail);
+    setJoiningDate(detail.joining_date ? detail.joining_date.slice(0, 10) : "");
+    setEmploymentStatus(detail.employment_status === "inactive" ? "inactive" : "active");
+    setStaffType(detail.staff_type === "teaching" || detail.staff_type === "non_teaching" ? detail.staff_type : "");
   }, [action, editDetailQuery.data]);
   const [profileSelection, setProfileSelection] = useState<StaffRecord | null>(null);
   const profileDetailQuery = useSchoolStaffProfileQuery(profileSelection?.principal_id ?? 0, Boolean(profileSelection));
