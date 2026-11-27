@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, CheckCircle2, Clock3, Download, Plus, RefreshCw, UserRound, XCircle } from "lucide-react";
 import { ApiError } from "../../../lib/api";
@@ -63,6 +63,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
   const [fieldErrors,setFieldErrors]=useState<Record<string,string>>({});
   const [formError,setFormError]=useState("");
   const [cancelTarget,setCancelTarget]=useState<StaffSubstitution|null>(null);
+  const writeLocks=useRef({create:false,cancel:false});
   useEffect(()=>{
     if(!canManage)setCancelTarget(null);
     if(!canReadTimetable)setEntryID("");
@@ -118,6 +119,8 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
     setFieldErrors(next);
     setFormError("");
     if(Object.keys(next).length)return;
+    if(writeLocks.current.create)return;
+    writeLocks.current.create=true;
     try{
       await create.mutateAsync({
         timetable_entry_id:selectedEntry!.id,
@@ -130,6 +133,7 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
       notifyToast("success","Substitute teacher assigned. The recurring timetable remains unchanged.");
       setEntryID("");setCoverDate("");setSubstituteID("");setLeaveRequestID("");setReason("");setFieldErrors({});
     }catch(error){setFormError(errorText(error,"Unable to assign substitute. Check staff eligibility and timetable conflicts."));}
+    finally{writeLocks.current.create=false;}
   };
 
   const exportAllSubstitutions=async()=>{
@@ -176,11 +180,14 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
   const confirmCancel=async()=>{
     if(!cancelTarget)return;
     if(!canManage){setCancelTarget(null);return;}
+    if(writeLocks.current.cancel)return;
+    writeLocks.current.cancel=true;
     try{
       await cancel.mutateAsync(cancelTarget.id);
       notifyToast("success","Substitution cancelled. Its history has been retained.");
       setCancelTarget(null);
     }catch(error){notifyToast("error",errorText(error,"Unable to cancel this substitution."));}
+    finally{writeLocks.current.cancel=false;}
   };
 
   return <section className="staff-substitution-workspace">
@@ -261,6 +268,6 @@ export function StaffSubstitutionWorkspace({permissions,staff}:Props){
       <p className="staff-substitution-footnote"><Clock3 size={13}/> Completed is derived from the cover date. Cancelled records remain in history. Timetable entries with substitution history cannot be hard-deleted.</p>
     </section>}
     {!canRead&&!canManage&&<p className="staff-substitution-error" role="alert">You do not have permission to view or manage substitute coverage.</p>}
-    <ConfirmDialog open={cancelTarget!==null} title="Cancel substitute coverage?" description={cancelTarget?"Cancel the cover for "+cancelTarget.class_name+" "+cancelTarget.section_name+" on "+formatDate(cancelTarget.cover_date)+"? The original recurring timetable will remain unchanged and the cancellation will be audited.":""} confirmLabel="Cancel cover" pending={cancel.isPending} onCancel={()=>setCancelTarget(null)} onConfirm={()=>void confirmCancel()}/>
+    <ConfirmDialog open={cancelTarget!==null} title="Cancel substitute coverage?" description={cancelTarget?"Cancel the cover for "+cancelTarget.class_name+" "+cancelTarget.section_name+" on "+formatDate(cancelTarget.cover_date)+"? The original recurring timetable will remain unchanged and the cancellation will be audited.":""} confirmLabel="Cancel cover" pending={cancel.isPending} onCancel={()=>{if(!cancel.isPending){setCancelTarget(null);}}} onConfirm={()=>void confirmCancel()}/>
   </section>;
 }
