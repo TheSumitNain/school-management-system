@@ -341,19 +341,19 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 
 	nextCoverDate,parseErr:=time.Parse("2006-01-02",coverDate)
 	if parseErr!=nil{t.Fatalf("parse cover date for reverse overlap test: %v",parseErr)}
-	nextCoverDate=nextCoverDate.AddDate(0,0,7).Format("2006-01-02")
+	nextCoverDateValue:=nextCoverDate.AddDate(0,0,7).Format("2006-01-02")
 	var approvedLeaveID int64
 	if err=tx.QueryRow(ctx,`INSERT INTO staff_leave_requests
 		(school_id,staff_principal_id,leave_type_id,start_date,end_date,duration_type,reason,status,decided_by_principal_id,decided_at,created_by_principal_id)
 		VALUES($1,$2,$3,$4::date,$4::date,'full_day','Approved leave before substitute assignment','approved',$5,NOW(),$5)
-		RETURNING id`,schoolID,substituteID,leaveTypeID,nextCoverDate,actorPrincipalID).Scan(&approvedLeaveID);err!=nil{
+		RETURNING id`,schoolID,substituteID,leaveTypeID,nextCoverDateValue,actorPrincipalID).Scan(&approvedLeaveID);err!=nil{
 		t.Fatalf("create approved leave before substitute assignment: %v",err)
 	}
 	assignDuringLeave,err:=tx.Begin(ctx);if err!=nil{t.Fatalf("begin assignment overlap savepoint: %v",err)}
 	_,assignmentOverlapErr:=assignDuringLeave.Exec(ctx,`INSERT INTO staff_substitutions
 		(school_id,timetable_entry_id,period_id,cover_date,original_teacher_principal_id,substitute_teacher_principal_id,reason,created_by_principal_id)
 		VALUES($1,$2,$3,$4::date,$5,$6,'Must reject approved substitute leave',$5)`,
-		schoolID,timetableEntryID,periodID,nextCoverDate,originalID,substituteID)
+		schoolID,timetableEntryID,periodID,nextCoverDateValue,originalID,substituteID)
 	if rollbackErr:=assignDuringLeave.Rollback(ctx);rollbackErr!=nil{t.Fatalf("rollback substitution during approved leave savepoint: %v",rollbackErr)}
 	if assignmentOverlapErr==nil{t.Fatal("substitute assignment was created during approved leave")}
 
