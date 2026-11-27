@@ -5997,5 +5997,6 @@ test("staff directory shows a compact four-column list and an explicit View acti
   await row.getByRole("button", { name: "View profile for compact.directory" }).click();
   const profile = page.getByRole("dialog", { name: "Compact Directory Teacher" });
   await expect(profile.getByRole("button", { name: "Personal Details" })).toBeVisible();
+  await profile.getByRole("button", { name: "Personal Details" }).click();
   await expect(profile.getByText("compact.directory@example.test")).toBeVisible();
 });
