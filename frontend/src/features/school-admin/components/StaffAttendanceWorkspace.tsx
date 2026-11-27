@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { notifyToast } from "../../../shared/notifications";
@@ -59,6 +59,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
   const [bulkRemarks, setBulkRemarks] = useState("");
   const [bulkAttempted, setBulkAttempted] = useState(false);
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const attendanceWriteInFlight = useRef(false);
   const canRead = permissions.includes("staff.attendance.read");
   const daily = useQuery({
     queryKey: ["staff-attendance", "daily", date, search, statusFilter, dailyOffset],
@@ -130,11 +131,13 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     mutationFn: markStaffAttendance,
     onSuccess: async () => { setPendingCorrection(null); notifyToast("success", "Staff attendance marked."); await invalidate(); },
     onError: () => notifyToast("error", "Attendance could not be marked. Check permissions or whether it was already recorded."),
+    onSettled: () => { attendanceWriteInFlight.current = false; },
   });
   const update = useMutation({
     mutationFn: (input: { id: number; status: Status; remarks?: string }) => updateStaffAttendance(input.id, { status: input.status, remarks: input.remarks }),
     onSuccess: async () => { setPendingCorrection(null); notifyToast("success", "Staff attendance updated."); await invalidate(); },
     onError: () => notifyToast("error", "Attendance could not be updated. Check the correction permission."),
+    onSettled: () => { attendanceWriteInFlight.current = false; },
   });
   const bulkMark = useMutation({
     mutationFn: markStaffAttendanceBulk,
@@ -147,6 +150,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       await invalidate();
     },
     onError: () => notifyToast("error", "Bulk attendance was not saved. No partial records were committed; check for duplicate marks or permission changes."),
+    onSettled: () => { attendanceWriteInFlight.current = false; },
   });
   const past = date < today;
   const canMark = past ? permissions.includes("staff.attendance.correct_past") : permissions.includes("staff.attendance.mark");
@@ -250,7 +254,8 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
     submit(item, draft);
   };
   const submit = (item: StaffAttendanceRecord, draft: Draft) => {
-    if (!draft.status) return;
+    if (!draft.status || attendanceWriteInFlight.current) return;
+    attendanceWriteInFlight.current = true;
     const remarks = draft.remarks.trim() || undefined;
     if (item.id) update.mutate({ id: item.id, status: draft.status, remarks });
     else mark.mutate({ staff_principal_id: item.staff_principal_id, attendance_date: date, status: draft.status, remarks });
@@ -360,7 +365,7 @@ export function StaffAttendanceWorkspace({ permissions }: Props) {
       description={`This will mark ${bulkTargets.length} unmarked employees on ${date} as ${statuses.find(status => status.value === bulkStatus)?.label ?? "the selected status"}. The batch is atomic: if any employee already has a mark or fails validation, no records will be saved.`}
       confirmLabel={`Mark ${bulkTargets.length} staff`}
       pending={bulkMark.isPending}
-      onConfirm={() => { if (!canRead || !canMark) { setBulkConfirmOpen(false); return; } if (bulkStatus && bulkTargets.length > 0) bulkMark.mutate({ staff_principal_ids: bulkTargets.map(item => item.staff_principal_id), attendance_date: date, status: bulkStatus, remarks: bulkRemarks.trim() || undefined }); }}
+      onConfirm={() => { if (!canRead || !canMark) { setBulkConfirmOpen(false); return; } if (attendanceWriteInFlight.current || !bulkStatus || bulkTargets.length === 0) return; attendanceWriteInFlight.current = true; bulkMark.mutate({ staff_principal_ids: bulkTargets.map(item => item.staff_principal_id), attendance_date: date, status: bulkStatus, remarks: bulkRemarks.trim() || undefined }); }}
       onCancel={() => setBulkConfirmOpen(false)}
     />
     <ConfirmDialog
