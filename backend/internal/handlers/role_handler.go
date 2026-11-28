@@ -496,6 +496,8 @@ func (h *RoleHandler) AssignStaffRole(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Staff role assignment is not authorized"})
 	case errors.Is(err, repository.ErrRoleNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Target staff account or assignable role not found"})
+	case errors.Is(err, repository.ErrTeacherRoleRequiresTeachingStaff):
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "error", "message": "Teacher role can only be assigned to an active Teaching employee"})
 	case errors.Is(err, repository.ErrRoleAssignmentExists):
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "Staff member already has this role"})
 	default:
