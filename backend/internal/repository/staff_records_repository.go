@@ -183,7 +183,7 @@ func (r *UserRepository) CreateStaffQualification(ctx context.Context, actorID, 
 		item.BoardUniversity,item.CompletionYear,item.Score,item.ScoreScale,item.CredentialReference).Scan(
 		&saved.ID,&saved.StaffPrincipalID,&saved.QualificationType,&saved.QualificationName,&saved.Specialization,&saved.Institution,
 		&saved.BoardUniversity,&saved.CompletionYear,&saved.Score,&saved.ScoreScale,&saved.CredentialReference,
-		&saved.VerificationStatus,&saved.CreatedAt,&saved.UpdatedAt)
+		&saved.VerificationStatus,&saved.VerificationNotes,&saved.VerifiedByPrincipalID,&saved.VerifiedAt,&saved.CreatedAt,&saved.UpdatedAt)
 	if err != nil { return nil, fmt.Errorf("insert staff qualification: %w", err) }
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,'staff.qualification.created','staff_qualification',$3,'success',jsonb_build_object('record_type','qualification','staff_principal_id',$4::bigint))`,
@@ -332,7 +332,7 @@ func (r *UserRepository) UpdateStaffCertification(ctx context.Context, actorID, 
 		RETURNING id,staff_principal_id,certificate_name,issuing_organization,COALESCE(issue_date::text,''),COALESCE(expiry_date::text,''),
 		 COALESCE(credential_id,''),verification_status,COALESCE(verification_notes,''),verified_by_principal_id,verified_at,created_at,updated_at
 	`,recordID,schoolID,staffID,item.CertificateName,item.IssuingOrganization,item.IssueDate,item.ExpiryDate,item.CredentialID).Scan(
-		&saved.ID,&saved.StaffPrincipalID,&saved.CertificateName,&saved.IssuingOrganization,&saved.IssueDate,&saved.ExpiryDate,&saved.CredentialID,&saved.VerificationStatus,&saved.CreatedAt,&saved.UpdatedAt)
+		&saved.ID,&saved.StaffPrincipalID,&saved.CertificateName,&saved.IssuingOrganization,&saved.IssueDate,&saved.ExpiryDate,&saved.CredentialID,&saved.VerificationStatus,&saved.VerificationNotes,&saved.VerifiedByPrincipalID,&saved.VerifiedAt,&saved.CreatedAt,&saved.UpdatedAt)
 	if errors.Is(err,pgx.ErrNoRows){return nil,ErrInvalidStaffRecord}
 	if err!=nil{return nil,fmt.Errorf("update staff certification: %w",err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
