@@ -131,7 +131,7 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	if err!=nil||changedCertification.VerificationStatus!="pending"||changedCertification.VerifiedByPrincipalID!=nil||changedCertification.VerifiedAt!=nil||changedCertification.VerificationNotes!="" {
 		t.Fatalf("changed certification details must clear stale verification: item=%+v err=%v",changedCertification,err)
 	}
-	unprivileged,err:=repo.CreateStaffAccountWithProfile(ctx,actorID,schoolID,"staffverify-noadmin-"+suffix,"integration-test-password-hash",models.StaffProfile{
+	unprivileged,err:=repo.CreateStaffAccountWithProfile(ctx,actorID,schoolID,"svna-"+suffix,"integration-test-password-hash",models.StaffProfile{
 		StaffType:"teaching",EmployeeCode:"SV-"+suffix,FullName:"Unprivileged Staff",Designation:"Teacher",MobileNumber:"9876543211",EmploymentStatus:"active",
 	})
 	if err!=nil { t.Fatalf("create non-admin verification actor: %v",err) }
