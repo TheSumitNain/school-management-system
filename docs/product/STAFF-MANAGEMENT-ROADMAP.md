@@ -1696,3 +1696,13 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - **Confirmed functional gaps:** there are List/Create/PATCH routes only; no delete or archive API/UI action exists. Qualification and certification creation rely on the database's default verification state; ordinary update SQL deliberately omits `verification_status`, preserving it. There is no dedicated verification endpoint or verification-specific permission. The current experience response model does not expose a verification status.
 - **Security/product approval required before implementation:** decide who may transition a qualification/certification to Verified or Rejected and which permission authorizes it. The current permission dictionary contains no verification permission; `users.update` is non-delegable and currently governs profile/record edits. Do not silently broaden that permission or add a new permission key/migration. Also do not introduce delete/archive semantics until retention and audit behavior are explicitly defined; existing records must not be hard-deleted.
 - Document upload remains deferred and excluded. No schema migration or persistent database change in this audit. Work remains on `work`; `main` untouched.
+
+
+### 2026-11-28 — credential verification product decision
+
+- The user delegated the usability/security design decision. Approved V1 policy: create a separate non-delegable `staff.credentials.verify` permission, automatically granted to every School Admin system role by migration (existing and future schools). No manual setup or custom-role configuration is needed.
+- This supersedes the immediately preceding proposal to reuse `users.update`. Backend contract review explicitly requires verification to remain separate from record editing; preserve that separation.
+- Verify/reject only education qualifications and professional certifications. Previous employment stays self-reported. Rejection requires a short reason; verification supports an optional note. Display Pending/Verified/Rejected and verifier/time.
+- Editing credential facts after verification resets the record to Pending and clears verifier metadata transactionally; this prevents stale approvals. Status changes and edits are audited in the same transaction as the data mutation.
+- Do not hard-delete records. Archive/retention policy remains separate. Document upload remains deferred and excluded.
+- Implementation work still pending: migration + down migration, permission allowlist/bundle integration tests, verification endpoints/service/repository transaction tests, UI actions/status/reason handling, Playwright permission/tenant/rollback/responsive tests, and docs/CI/local verification. Do not mark the tab complete until all gates pass.
