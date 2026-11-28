@@ -942,12 +942,19 @@ func TestTeacherRoleAssignmentRequiresActiveTeachingProfilePostgresIntegration(t
 		t.Fatalf("release Teacher profile transition savepoint: %v", err)
 	}
 
+	profileUpdate := models.StaffProfile{
+		StaffType: "non_teaching", EmployeeCode: "TG-" + suffix,
+		FullName: "Role Guard Target", Designation: "Support Staff",
+		MobileNumber: "9876543210", EmploymentStatus: "active",
+	}
+	if _, err := NewUserRepository(tx).UpdateStaffProfile(ctx, actorPrincipalID, schoolID, targetPrincipalID, profileUpdate); !errors.Is(err, ErrStaffTeacherRoleMustBeRevoked) {
+		t.Fatalf("staff profile update with active Teacher role error = %v, want ErrStaffTeacherRoleMustBeRevoked", err)
+	}
+
 	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, teacherRoleID); err != nil {
 		t.Fatalf("revoke Teacher role before changing staff type: %v", err)
 	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE staff_profiles SET staff_type='non_teaching' WHERE principal_id=$1 AND school_id=$2
-	`, targetPrincipalID, schoolID); err != nil {
-		t.Fatalf("change staff type after Teacher role revocation: %v", err)
+	if _, err := NewUserRepository(tx).UpdateStaffProfile(ctx, actorPrincipalID, schoolID, targetPrincipalID, profileUpdate); err != nil {
+		t.Fatalf("change staff type through profile repository after Teacher role revocation: %v", err)
 	}
 }
