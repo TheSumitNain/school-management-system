@@ -1580,3 +1580,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Remaining work is not another generic page test: reconcile each UI permission with its backend route/repository authorization; inspect Platform Admin delegation and School Admin custom-role workflows; verify authority ceilings, protected accounts, self-escalation, tenant isolation and effective-permission refresh.
 - Continue in batches on `work` only. Every batch must update the access matrix and this roadmap; include exact commit SHA, tests actually run, CI status, manual acceptance still pending and the next batch. Read these documents first in every new chat.
 - Do not declare Staff Management or a page 100% based only on unit/Playwright success. Document upload remains deferred and excluded.
+
+## 2026-11-28 — Account & Access route and test-coverage audit
+
+- Added section 19 to [STAFF-MANAGEMENT-ACCESS-MATRIX.md](STAFF-MANAGEMENT-ACCESS-MATRIX.md), mapping Platform Admin delegation, School Admin custom-role grants, employee role assignment and individual overrides to their UI screens, permission keys and backend routes.
+- Located existing Playwright and PostgreSQL/HTTP integration coverage for read-only access, protected School Admin accounts, role assign/revoke, Teacher eligibility, ALLOW/DENY overrides, self-escalation, cross-school denial and audit rollback. Test presence is not treated as a passing result.
+- ACCESS-16/17 remain documented permission-model constraints: role assignment UI requires role-read capability to load the role list; override viewing and mutation share `permissions.override`.
+- Next batch: complete permission-key dictionary and end-to-end employment/login lifecycle authorization audit. Local Windows focused tests and authenticated acceptance remain required.
