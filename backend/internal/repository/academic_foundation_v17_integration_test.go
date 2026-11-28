@@ -445,17 +445,17 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		t.Fatalf("create second timetable Teacher account: %v", err)
 	}
 	if _, err := timetableScopeTx.Exec(ctx, `
-		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
-		VALUES ($1, $2, $3)
-	`, secondTeacherPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
-		t.Fatalf("assign Teacher role to second timetable teacher: %v", err)
-	}
-	if _, err := timetableScopeTx.Exec(ctx, `
 		INSERT INTO staff_profiles
 			(principal_id, school_id, employee_code, full_name, designation, mobile_number, staff_type)
 		VALUES ($1, $2, $3, 'Scoped Teacher Two', 'Teacher', '9876543211', 'teaching')
 	`, secondTeacherPrincipalID, schoolID, "T2-"+suffix); err != nil {
 		t.Fatalf("create second teacher profile for timetable scope: %v", err)
+	}
+	if _, err := timetableScopeTx.Exec(ctx, `
+		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
+		VALUES ($1, $2, $3)
+	`, secondTeacherPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
+		t.Fatalf("assign Teacher role to second timetable teacher: %v", err)
 	}
 	var secondSectionID int64
 	if err := timetableScopeTx.QueryRow(ctx, `
