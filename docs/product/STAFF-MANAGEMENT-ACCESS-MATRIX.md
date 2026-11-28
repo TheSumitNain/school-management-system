@@ -515,3 +515,29 @@ Keep previously accepted scope and pending manual acceptance separate. Staff Das
 | ACCESS-23 (P1) | Teacher self-service staff attendance and leave are not implemented. | staff.attendance.* and staff.leave.* are non-delegable admin permissions; there are no separate self-only keys for viewing one's own staff attendance or requesting/cancelling one's own leave. | If required, introduce distinct self-service permissions and endpoints (own record only), separate from School Admin manage/decide permissions. Test that Teachers cannot view or change another employee's records. |
 
 These are product/security decisions, not quick permission toggles. Keep the current School Admin-only policy until the user explicitly approves a scoped HR Manager or Teacher self-service design. Do not change V4/V58/V59/V60 delegability flags as a shortcut.
+
+## 23. Current code checkpoint — 2026-11-28
+
+**Code commit:** 9506a04ef00a63848d04d2781ee9f1841cbe94e8 on branch work. Latest documentation-only checkpoint is cd9013544951610f0fda8e41caf5b58bba360810. main remains unchanged.
+
+### Latest changes after Batch 4
+
+- Staff Account & Access and login lifecycle E2E tests now use the actual profile accessible labels, visible employee codes and the actual Enable/Disable action state.
+- Employment Active/Inactive and login Enable/Disable are tested as separate states; inactive employment reactivation alone does not enable login.
+- DatePicker decade navigation now re-runs the selected-year focus effect when the displayed year changes.
+- Teacher-only navigation is My Workload; School Admin navigation remains Staff. The workload-only test now distinguishes the page H1 from the repeated section H2.
+- Role Management and Platform Admin E2E navigation now scopes clicks to the sidebar nav item rather than also matching the dashboard shortcut button.
+- Academic Assignment create actions remain disabled if the assignment list needed to validate the current state fails to load.
+
+### CI evidence
+
+- Backend CI [46115928661](https://github.com/TheSumitNain/school-management-system/actions/runs/46115928661): **PASS**.
+- Frontend CI [46115928660](https://github.com/TheSumitNain/school-management-system/actions/runs/46115928660): **IN PROGRESS** at the time of this note. Build and Chromium setup passed; Playwright suite was running. Read its final result before accepting the batch.
+- Previous Frontend CI [46115486523](https://github.com/TheSumitNain/school-management-system/actions/runs/46115486523): 182 passed, 10 failed, 1 flaky. Staff lifecycle, Staff Profile qualification/certification/experience and Academic Assignment load-error tests passed after fixes; remaining failures included Platform Admin navigation, workload heading, and Student Management. The current 9506 run contains fixes for the Platform Admin and workload-heading failures. Student Management failures remain outside this Staff Management batch.
+
+### Next action
+
+1. Verify Frontend CI [46115928660] and identify any remaining Staff/Role/Platform permission test failures.
+2. Run the focused Windows command in docs/project/STATUS.md on the user's local database/browser.
+3. Complete authenticated School Admin acceptance for Account & Access and employment/login lifecycle.
+4. Only then close this page and proceed to the next Staff Management page. Do not report overall percentage or 100% without the acceptance evidence.

@@ -3110,3 +3110,7 @@ cd /d D:\school-management-system && git pull --ff-only origin work && cd /d D:\
 - **Permission dictionary:** docs/product/STAFF-MANAGEMENT-PERMISSION-DICTIONARY.md now records each Staff Management permission's meaning, UI gate, delegability and granting screen. Read it together with the Access Matrix before changing permissions.
 
 - **Open access-policy decisions:** ACCESS-22 records that no delegated HR/Staff Manager role exists; ACCESS-23 records that Teacher self-service staff attendance/leave is not implemented. Do not make Staff Directory or staff.* permissions delegable as a shortcut.
+
+- **Latest code checkpoint:** 9506a04ef00a63848d04d2781ee9f1841cbe94e8 on work; latest docs checkpoint cd9013544951610f0fda8e41caf5b58bba360810. main remains untouched.
+- **CI:** Backend CI 46115928661 PASS. Frontend CI 46115928660 was in progress after build and Chromium setup; inspect its final result before claiming acceptance.
+- **Current batch:** Staff Account & Access, employment/login lifecycle, Teacher My Workload visibility and permission-control navigation. The current page is not yet manually accepted.
