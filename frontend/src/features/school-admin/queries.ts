@@ -4,7 +4,7 @@ import {
   saveSchoolStudentEnrollmentSubjects,
   createSchoolStaff, disableSchoolStaff, enableSchoolStaff, getSchoolStaff, getSchoolStaffProfile, getSchoolStaffDirectory, getSchoolStaffDirectorySummary,
   resetSchoolStaffPassword, updateSchoolStaff,
-  getStaffQualifications, createStaffQualification, updateStaffQualification, getStaffCertifications, createStaffCertification, updateStaffCertification, getStaffExperience, createStaffExperience, updateStaffExperience,
+  getStaffQualifications, createStaffQualification, updateStaffQualification, verifyStaffQualification, getStaffCertifications, createStaffCertification, updateStaffCertification, verifyStaffCertification, getStaffExperience, createStaffExperience, updateStaffExperience,
   getStaffLeaveTypes, saveStaffLeaveType, getStaffLeaveRequests, createStaffLeaveRequest, decideStaffLeaveRequest, cancelStaffLeaveRequest, getSchoolHolidays, saveSchoolHoliday,
   getStaffSubstitutions, createStaffSubstitution, cancelStaffSubstitution, getCurrentTimetableYear, getTimetableEntries,
   getTeacherWorkloadReport,
@@ -468,6 +468,12 @@ export function useUpdateStaffCertificationMutation(principalID:number) {
 }
 export function useUpdateStaffExperienceMutation(principalID:number) {
   return useStaffRecordMutation(principalID,(input:{recordID:number;data:Parameters<typeof updateStaffExperience>[2]})=>updateStaffExperience(principalID,input.recordID,input.data),"experience");
+}
+export function useVerifyStaffQualificationMutation(principalID:number) {
+  return useStaffRecordMutation(principalID,(input:{recordID:number;status:"verified"|"rejected";note?:string})=>verifyStaffQualification(principalID,input.recordID,{status:input.status,note:input.note}),"qualifications");
+}
+export function useVerifyStaffCertificationMutation(principalID:number) {
+  return useStaffRecordMutation(principalID,(input:{recordID:number;status:"verified"|"rejected";note?:string})=>verifyStaffCertification(principalID,input.recordID,{status:input.status,note:input.note}),"certifications");
 }
 
 export const staffLeaveQueryKeys = {
