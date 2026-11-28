@@ -96,7 +96,7 @@ test("staff qualifications and experience reports filter, paginate and retain hi
   await page.getByLabel("Username").fill("reports-admin");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "My Workload", exact: true }).click();
+  await page.getByRole("button", { name: "Staff", exact: true }).click();
   await page.getByRole("button", { name: "Reports", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "Staff Reports" })).toBeVisible();
@@ -479,7 +479,7 @@ test("workload-only permission opens the workload report without loading staff d
   await page.getByLabel("Username").fill("workload-report-admin");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Staff", exact: true }).click();
+  await page.getByRole("button", { name: "My Workload", exact: true }).click();
 
   await expect(page.getByRole("button", { name: "My Workload", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Reports", exact: true })).toHaveCount(0);

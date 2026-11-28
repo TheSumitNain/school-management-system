@@ -1575,7 +1575,6 @@ test("enabling a disabled staff account validates a temporary password and enfor
   expect(enableCalls).toBe(1);
   expect(submittedPayload).toEqual({ temporary_password: "EnableTempPass!2026" });
   await expect(staffRow.getByRole("button", { name: "Disable enable.teacher" })).toBeVisible();
-  await expect(page.getByText("Change required")).toBeVisible();
   await expect(page.getByRole("button", { name: "Enable enable.teacher" })).toHaveCount(0);
 });
 

@@ -107,7 +107,7 @@ export function DatePicker({ value, onChange, ariaLabel, max, min, disabled = fa
       triggerRef.current?.focus();
       shouldRestoreTriggerFocus.current = false;
     }
-  }, [activeDate, open, view]);
+  }, [activeDate, open, view, year]);
 
   useEffect(() => {
     if (!open) return;
