@@ -131,13 +131,6 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	if err!=nil||changedCertification.VerificationStatus!="pending"||changedCertification.VerifiedByPrincipalID!=nil||changedCertification.VerifiedAt!=nil||changedCertification.VerificationNotes!="" {
 		t.Fatalf("changed certification details must clear stale verification: item=%+v err=%v",changedCertification,err)
 	}
-	unprivileged,err:=repo.CreateStaffAccountWithProfile(ctx,actorID,schoolID,"svna-"+suffix,"integration-test-password-hash",models.StaffProfile{
-		StaffType:"teaching",EmployeeCode:"SV-"+suffix,FullName:"Unprivileged Staff",Designation:"Teacher",MobileNumber:"9876543211",EmploymentStatus:"active",
-	})
-	if err!=nil { t.Fatalf("create non-admin verification actor: %v",err) }
-	if _,err:=repo.VerifyStaffQualification(ctx,unprivileged.PrincipalID,schoolID,staff.PrincipalID,qualification.ID,"verified","");!errors.Is(err,ErrStaffRecordAccessDenied) {
-		t.Fatalf("non-admin actor verification error=%v",err)
-	}
 	if _,err:=repo.VerifyStaffQualification(ctx,actorID,schoolID+1,staff.PrincipalID,qualification.ID,"verified","");!errors.Is(err,ErrStaffRecordAccessDenied) {
 		t.Fatalf("cross-school qualification verification error=%v",err)
 	}
@@ -600,4 +593,12 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	}
 	if !foundLegacyCreate { t.Fatal("profile-incomplete legacy staff history omitted account creation event") }
 	if _,err:=repo.ListStaffAuditEvents(ctx,actorID,schoolID+1,staff.PrincipalID,StaffAuditEventFilter{Limit:50});!errors.Is(err,ErrStaffRecordAccessDenied){t.Fatalf("cross-school staff audit history error=%v",err)}
+
+	unprivileged,err:=repo.CreateStaffAccountWithProfile(ctx,actorID,schoolID,"svna-"+suffix,"integration-test-password-hash",models.StaffProfile{
+		StaffType:"teaching",EmployeeCode:"SV-"+suffix,FullName:"Unprivileged Staff",Designation:"Teacher",MobileNumber:"9876543211",EmploymentStatus:"active",
+	})
+	if err!=nil { t.Fatalf("create non-admin verification actor: %v",err) }
+	if _,err:=repo.VerifyStaffQualification(ctx,unprivileged.PrincipalID,schoolID,staff.PrincipalID,qualification.ID,"verified","");!errors.Is(err,ErrStaffRecordAccessDenied) {
+		t.Fatalf("non-admin actor verification error=%v",err)
+	}
 }
