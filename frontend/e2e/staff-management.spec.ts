@@ -939,6 +939,7 @@ test("add staff wizard validates each step before allowing progress", async ({ p
   await signInAndOpenStaff(page, []);
   await page.getByRole("button", { name: "Add staff", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Add employee" });
+  await expect(dialog.getByText("New Teaching employees receive the standard Teacher role automatically and require roles.assign. Non-teaching employees receive no default role; grant any additional access from Account & Access after creation.")).toBeVisible();
   await dialog.getByRole("button", { name: "Continue" }).click();
   await expect(dialog.getByText("Enter the employee full name (up to 160 characters).")).toBeVisible();
   await expect(dialog.getByText("Use 1–32 letters, numbers, dots, underscores or hyphens.")).toBeVisible();
@@ -1665,6 +1666,7 @@ test("staff profile edit uses the shared employment-status select and sends the 
   await profileDialog.getByRole("button", { name: "Close dialog" }).click();
   await timezonePage.getByRole("button", { name: "Edit employee profile for teacher.two" }).click();
   const dialog = timezonePage.getByRole("dialog", { name: "Edit employee profile" });
+  await expect(dialog.getByText("Changing Staff Type does not automatically change roles. Assign Teacher in Account & Access after changing to Teaching; revoke Teacher there before changing away from Teaching.")).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Joining date" })).toContainText("01 Apr 2026");
   await dialog.getByRole("button", { name: "Joining date" }).click();
   const joiningCalendar = dialog.getByRole("dialog", { name: "Choose joining date" });
