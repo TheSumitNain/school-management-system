@@ -1,3 +1,12 @@
+## 2026-11-28 — Teacher-role eligibility guard implementation
+
+- ACCESS-11 implementation is on work: V73 database triggers, repository pre-check, API 422, effective-permission filter for legacy inconsistent rows, Account & Access UI filtering, PostgreSQL integration test and Playwright test.
+- Rule: Teacher role requires active login + Teaching staff type + Active employment. Revoke Teacher role in Account & Access before changing a profile away from Teaching. No existing role assignment is silently removed.
+- CI was pending for both Backend and Frontend at commit d38e4e23996a99ab98a86462e8cb2a8a7967bd29. Local tests not yet run. Do not mark as complete until CI and focused local verification pass.
+- Continue using docs/product/STAFF-MANAGEMENT-ACCESS-MATRIX.md as the canonical handoff in future chats.
+
+---
+
 ## 2026-11-28 — Staff Management role/page audit completed
 
 - Exact Staff workspace tab predicates and default role bundles are now recorded in [STAFF-MANAGEMENT-ACCESS-MATRIX.md](../product/STAFF-MANAGEMENT-ACCESS-MATRIX.md).
