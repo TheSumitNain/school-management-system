@@ -13,7 +13,7 @@ function csvCell(value: string | number | null | undefined): string {
   return '"' + safe.replace(/"/g, '""') + '"';
 }
 
-function exportWorkloadCSV(groups: Group[], academicYearID: number) {
+function exportWorkloadCSV(groups: Group[], academicYearID: number, schoolWide: boolean) {
   const header = ["Staff name","Employee code","Designation","Employment status","Login status","Total scheduled periods per week","Busiest day","Weekday","Scheduled periods","Distinct sections","Distinct subjects","First period","Last period"];
   const rows = groups.flatMap(group => (group.daily.length ? group.daily : [{day:0,periods:0,sections:0,subjects:0,first:null,last:null}]).map(day => [
     group.name,group.employeeCode,group.designation,group.employmentStatus,group.loginStatus,
@@ -25,7 +25,7 @@ function exportWorkloadCSV(groups: Group[], academicYearID: number) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "staff-workload-report-" + academicYearID + ".csv";
+  link.download = (schoolWide ? "staff-workload-report-" : "my-workload-") + academicYearID + ".csv";
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -34,6 +34,7 @@ function exportWorkloadCSV(groups: Group[], academicYearID: number) {
 
 export function StaffWorkloadReportWorkspace({permissions}:Props){
   const canRead=permissions.includes("timetable.read");
+  const canReadSchoolStaff=permissions.includes("users.read");
   const [search,setSearch]=useState("");
   const [employmentFilter,setEmploymentFilter]=useState("all");
   const yearQuery=useStaffSubstitutionTimetableYearQuery(canRead);
@@ -69,13 +70,14 @@ export function StaffWorkloadReportWorkspace({permissions}:Props){
   const filtersChanged=search.trim().length>0||employmentFilter!=="all";
   const scheduledTeachers=groups.filter(group=>group.totalPeriods>0).length;
   const totalPeriods=groups.reduce((sum,group)=>sum+group.totalPeriods,0);
+  const daysWithLessons=groups.reduce((sum,group)=>sum+group.daily.filter(day=>day.periods>0).length,0);
 
   if(!canRead)return <section className="staff-workload-report"><p role="alert">You do not have permission to view timetable workload.</p></section>;
   return <section className="staff-workload-report">
     <header className="staff-workload-report-heading">
-      <div><h2>School-wide Workload Report</h2><p>{year?year.name:"Current academic year"} · Actual recurring timetable entries</p></div>
+      <div><h2>{canReadSchoolStaff?"School-wide Workload Report":"My Workload"}</h2><p>{canReadSchoolStaff?"School-wide staff timetable":"Your timetable"} · {year?year.name:"Current academic year"} · Actual recurring timetable entries</p></div>
       <div className="staff-workload-report-actions">
-        <button type="button" className="staff-workload-report-export" onClick={()=>exportWorkloadCSV(filtered,year?.id??0)} disabled={!year?.id||!reportQuery.isSuccess||reportQuery.isFetching||filtered.length===0}><Download size={14}/> Export filtered CSV</button>
+        <button type="button" className="staff-workload-report-export" onClick={()=>exportWorkloadCSV(filtered,year?.id??0,canReadSchoolStaff)} disabled={!year?.id||!reportQuery.isSuccess||reportQuery.isFetching||filtered.length===0}><Download size={14}/> {canReadSchoolStaff?"Export filtered CSV":"Export my workload CSV"}</button>
         <button type="button" className="staff-workload-report-refresh" onClick={()=>void (year?.id?reportQuery.refetch():yearQuery.refetch())} disabled={reportQuery.isFetching||yearQuery.isFetching}><RefreshCw size={14}/> Refresh</button>
       </div>
     </header>
@@ -83,19 +85,22 @@ export function StaffWorkloadReportWorkspace({permissions}:Props){
     {yearQuery.isError&&<p className="staff-workload-report-error" role="alert">Unable to load current academic year. <button type="button" onClick={()=>void yearQuery.refetch()}>Retry</button></p>}
     {yearQuery.isSuccess&&!year&&<p className="staff-workload-report-empty" role="status">No current academic year is configured. Set a current academic year before viewing staff workload.</p>}
     {year&&<>
-    <div className="staff-workload-report-summary">
+    {canReadSchoolStaff ? <div className="staff-workload-report-summary">
       <article><span>Staff profiles</span><strong>{groups.length}</strong></article>
       <article><span>Teachers with scheduled lessons</span><strong>{scheduledTeachers}</strong></article>
       <article><span>Total weekly periods</span><strong>{totalPeriods}</strong></article>
-    </div>
-    <div className="staff-workload-report-filters">
+    </div> : <div className="staff-workload-report-summary">
+      <article><span>My weekly periods</span><strong>{totalPeriods}</strong></article>
+      <article><span>Days with lessons</span><strong>{daysWithLessons}</strong></article>
+    </div>}
+    {canReadSchoolStaff && <div className="staff-workload-report-filters">
       <label><span>Search staff</span><div className="staff-workload-report-search"><Search size={14}/><input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Name, employee code or designation" aria-label="Search workload report staff"/></div></label>
       <label><span>Employment status</span><select value={employmentFilter} onChange={event=>setEmploymentFilter(event.target.value)} aria-label="Filter workload report by employment status"><option value="all">All employment statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
       {filtersChanged&&<div className="staff-workload-report-filter-actions"><button type="button" onClick={()=>{setSearch("");setEmploymentFilter("all");}}>Clear filters</button></div>}
-    </div>
-    {reportQuery.isLoading&&<p className="staff-workload-report-muted">Loading school workload…</p>}
+    </div>}
+    {reportQuery.isLoading&&<p className="staff-workload-report-muted">Loading {canReadSchoolStaff?"school":"your"} workload…</p>}
     {reportQuery.isError&&<p className="staff-workload-report-error" role="alert">Unable to load workload report. <button type="button" onClick={()=>void reportQuery.refetch()}>Retry</button></p>}
-    {reportQuery.isSuccess&&filtered.length===0&&<p className="staff-workload-report-empty">{groups.length===0?"No staff profiles are available for this academic year.":"No staff match the current filters."}</p>}
+    {reportQuery.isSuccess&&filtered.length===0&&<p className="staff-workload-report-empty">{groups.length===0?"No recurring timetable entries are available for your teaching assignments.":"No staff match the current filters."}</p>}
     <div className="staff-workload-report-list">
       {filtered.map(group=><details className="staff-workload-report-row" key={group.id}>
         <summary>
