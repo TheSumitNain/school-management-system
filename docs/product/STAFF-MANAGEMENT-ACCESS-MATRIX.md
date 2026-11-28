@@ -256,3 +256,21 @@ These are current code-derived navigation outcomes, not the final approved produ
 - Files changed: V73 up/down migration; role repository and integration test; effective-permission resolver; role handler; StaffRoleAssignments component; Staff Management Playwright spec.
 - CI at checkpoint commit d38e4e23996a99ab98a86462e8cb2a8a7967bd29: Backend CI and Frontend CI started; results pending. No local test result is claimed.
 - Next: inspect CI results; fix any failures; then run the focused PostgreSQL integration test and focused Staff Account & Access Playwright suite locally. After that audit the remaining permission management screen and lifecycle.
+
+## 14. Exact permission-control screen gates
+
+| Screen / control | UI permission requirements | Result |
+|---|---|---|
+| Sidebar: Roles & permissions | roles.read | Opens the school role-management page. |
+| Role list | roles.read (page entry) | Lists system and custom roles. System roles are protected and cannot be edited here. |
+| Create custom role | roles.create_custom | Opens the custom role creation dialog. |
+| Read permission catalogue | permissions.read | Loads the permission descriptions for the role-management page. |
+| Add/remove permission on custom role | permissions.assign AND roles.update_custom | Requires an active Platform Admin delegation with can_assign_to_roles=true for that exact permission. |
+| Platform Admin → Delegate school permissions | platform.permissions.delegate AND platform.schools.read | Select active school and a delegable permission; independently choose custom-role assignment and/or individual override capability. |
+| Staff profile → Assigned roles panel | roles.read | Panel is not rendered without roles.read. If roles.assign is absent, it is read-only. |
+| Assign/remove staff role | roles.read (panel access) AND roles.assign (mutation) | Same-school active staff account; protected School Admin target and self-mutation are blocked. Teacher role also requires active Teaching profile under V73. |
+| Staff profile → Individual permission overrides panel | permissions.override | This single permission currently controls both viewing and changing overrides; there is no separate read-only override permission. |
+
+System roles are immutable in the School Admin Roles & permissions screen. To add extra access to one Teacher or Non-teaching employee, the School Admin creates/uses a custom role with delegated permissions and assigns it through Staff Profile → Account & Access. Individual ALLOW/DENY is for one-off exceptions and requires its own exact active delegation with can_override_users=true plus a reason.
+
+New gap ACCESS-16: roles.assign alone does not expose the Staff Role Assignments panel because that panel is rendered only when roles.read is present; backend assignment authority is still separately checked. New gap ACCESS-17: permissions.override combines read and write, so a read-only auditor cannot inspect override history without also receiving override mutation capability. Review these as permission-model product decisions, not automatic code changes.
