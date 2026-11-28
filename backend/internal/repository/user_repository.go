@@ -20,12 +20,12 @@ var (
 	ErrInvalidUser    = errors.New("invalid user data")
 	ErrStaffInactive  = errors.New("staff account is inactive")
 	ErrSchoolInactive = errors.New("school is inactive")
-    ErrEmployeeCodeTaken = errors.New("employee code already exists in this school")
-    ErrStaffProfileInactive = errors.New("staff employee profile is inactive")
-    ErrStaffProfileIncomplete = errors.New("staff employee profile is incomplete")
-    ErrStaffProfileHasActiveAssignments = errors.New("staff profile has active teaching assignments")
-    ErrStaffProfileHasActiveSubstitutions = errors.New("staff profile has active substitutions")
-    ErrStaffTeacherRoleMustBeRevoked = errors.New("remove the Teacher role before changing this employee from Teaching to another staff type")
+	ErrEmployeeCodeTaken = errors.New("employee code already exists in this school")
+	ErrStaffProfileInactive = errors.New("staff employee profile is inactive")
+	ErrStaffProfileIncomplete = errors.New("staff employee profile is incomplete")
+	ErrStaffProfileHasActiveAssignments = errors.New("staff profile has active teaching assignments")
+	ErrStaffProfileHasActiveSubstitutions = errors.New("staff profile has active substitutions")
+	ErrStaffTeacherRoleMustBeRevoked = errors.New("remove the Teacher role before changing this employee from Teaching to another staff type")
 )
 
 type UserRepository struct {
@@ -542,7 +542,7 @@ func (r *UserRepository) UpdateStaffProfile(ctx context.Context, actorPrincipalI
             return nil, ErrStaffProfileHasActiveSubstitutions
         }
         if errors.As(err, &pgErr) && pgErr.Code == "23514" && pgErr.ConstraintName == "teacher_role_requires_teaching_profile" {
-            return nil, ErrStaffTeacherRoleMustBeRevoked
+			return nil, ErrStaffTeacherRoleMustBeRevoked
         }
         return nil, fmt.Errorf("upsert staff profile: %w", err)
     }
