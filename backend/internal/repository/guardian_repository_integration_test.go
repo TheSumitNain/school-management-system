@@ -171,6 +171,13 @@ func TestGuardianRepositoryPostgresIntegration(t *testing.T) {
 	`, schoolID, "tguard-"+suffix).Scan(&teacherPrincipalID); err != nil {
 		t.Fatalf("create Teacher boundary fixture: %v", err)
 	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO staff_profiles
+			(principal_id,school_id,employee_code,full_name,designation,mobile_number,employment_status,staff_type)
+		VALUES ($1,$2,$3,'Guardian Boundary Teacher','Teacher','9876543214','active','teaching')
+	`, teacherPrincipalID, schoolID, "GTR-"+suffix); err != nil {
+		t.Fatalf("create active Teaching profile for Teacher boundary fixture: %v", err)
+	}
 	if err := roleRepo.AssignStaffRole(ctx, actorPrincipalID, schoolID, teacherPrincipalID, teacherRoleID); err != nil {
 		t.Fatalf("assign Teacher system role: %v", err)
 	}
