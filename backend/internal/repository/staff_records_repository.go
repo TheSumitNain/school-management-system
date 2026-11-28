@@ -286,13 +286,13 @@ func (r *UserRepository) UpdateStaffQualification(ctx context.Context, actorID, 
 		UPDATE staff_qualifications SET qualification_type=$4, qualification_name=$5, specialization=NULLIF($6,''), institution=$7,
 		 board_university=NULLIF($8,''), completion_year=$9, score=$10, score_scale=NULLIF($11,''), credential_reference=NULLIF($12,''),
 		 verification_status=CASE WHEN (qualification_type,qualification_name,specialization,institution,board_university,completion_year,score,score_scale,credential_reference)
-		   IS DISTINCT FROM ($4,$5,NULLIF($6,''),$7,NULLIF($8,''),$9,$10,NULLIF($11,''),NULLIF($12,'')) THEN 'pending' ELSE verification_status END,
+		   IS DISTINCT FROM ($4::varchar(30),$5::varchar(160),NULLIF($6::varchar(160),''),$7::varchar(200),NULLIF($8::varchar(200),''),$9::smallint,$10::numeric,NULLIF($11::varchar(20),''),NULLIF($12::varchar(120),'')) THEN 'pending' ELSE verification_status END,
 		 verification_notes=CASE WHEN (qualification_type,qualification_name,specialization,institution,board_university,completion_year,score,score_scale,credential_reference)
-		   IS DISTINCT FROM ($4,$5,NULLIF($6,''),$7,NULLIF($8,''),$9,$10,NULLIF($11,''),NULLIF($12,'')) THEN NULL ELSE verification_notes END,
+		   IS DISTINCT FROM ($4::varchar(30),$5::varchar(160),NULLIF($6::varchar(160),''),$7::varchar(200),NULLIF($8::varchar(200),''),$9::smallint,$10::numeric,NULLIF($11::varchar(20),''),NULLIF($12::varchar(120),'')) THEN NULL ELSE verification_notes END,
 		 verified_by_principal_id=CASE WHEN (qualification_type,qualification_name,specialization,institution,board_university,completion_year,score,score_scale,credential_reference)
-		   IS DISTINCT FROM ($4,$5,NULLIF($6,''),$7,NULLIF($8,''),$9,$10,NULLIF($11,''),NULLIF($12,'')) THEN NULL ELSE verified_by_principal_id END,
+		   IS DISTINCT FROM ($4::varchar(30),$5::varchar(160),NULLIF($6::varchar(160),''),$7::varchar(200),NULLIF($8::varchar(200),''),$9::smallint,$10::numeric,NULLIF($11::varchar(20),''),NULLIF($12::varchar(120),'')) THEN NULL ELSE verified_by_principal_id END,
 		 verified_at=CASE WHEN (qualification_type,qualification_name,specialization,institution,board_university,completion_year,score,score_scale,credential_reference)
-		   IS DISTINCT FROM ($4,$5,NULLIF($6,''),$7,NULLIF($8,''),$9,$10,NULLIF($11,''),NULLIF($12,'')) THEN NULL ELSE verified_at END,
+		   IS DISTINCT FROM ($4::varchar(30),$5::varchar(160),NULLIF($6::varchar(160),''),$7::varchar(200),NULLIF($8::varchar(200),''),$9::smallint,$10::numeric,NULLIF($11::varchar(20),''),NULLIF($12::varchar(120),'')) THEN NULL ELSE verified_at END,
 		 updated_at=NOW()
 		WHERE id=$1 AND school_id=$2 AND staff_principal_id=$3
 		RETURNING id,staff_principal_id,qualification_type,qualification_name,COALESCE(specialization,''),institution,
@@ -320,13 +320,13 @@ func (r *UserRepository) UpdateStaffCertification(ctx context.Context, actorID, 
 		UPDATE staff_certifications SET certificate_name=$4,issuing_organization=$5,issue_date=NULLIF($6,'')::date,
 		 expiry_date=NULLIF($7,'')::date,credential_id=NULLIF($8,''),
 		 verification_status=CASE WHEN (certificate_name,issuing_organization,issue_date,expiry_date,credential_id)
-		   IS DISTINCT FROM ($4,$5,NULLIF($6,'')::date,NULLIF($7,'')::date,NULLIF($8,'')) THEN 'pending' ELSE verification_status END,
+		   IS DISTINCT FROM ($4::varchar(180),$5::varchar(200),NULLIF($6::text,'')::date,NULLIF($7::text,'')::date,NULLIF($8::varchar(120),'')) THEN 'pending' ELSE verification_status END,
 		 verification_notes=CASE WHEN (certificate_name,issuing_organization,issue_date,expiry_date,credential_id)
-		   IS DISTINCT FROM ($4,$5,NULLIF($6,'')::date,NULLIF($7,'')::date,NULLIF($8,'')) THEN NULL ELSE verification_notes END,
+		   IS DISTINCT FROM ($4::varchar(180),$5::varchar(200),NULLIF($6::text,'')::date,NULLIF($7::text,'')::date,NULLIF($8::varchar(120),'')) THEN NULL ELSE verification_notes END,
 		 verified_by_principal_id=CASE WHEN (certificate_name,issuing_organization,issue_date,expiry_date,credential_id)
-		   IS DISTINCT FROM ($4,$5,NULLIF($6,'')::date,NULLIF($7,'')::date,NULLIF($8,'')) THEN NULL ELSE verified_by_principal_id END,
+		   IS DISTINCT FROM ($4::varchar(180),$5::varchar(200),NULLIF($6::text,'')::date,NULLIF($7::text,'')::date,NULLIF($8::varchar(120),'')) THEN NULL ELSE verified_by_principal_id END,
 		 verified_at=CASE WHEN (certificate_name,issuing_organization,issue_date,expiry_date,credential_id)
-		   IS DISTINCT FROM ($4,$5,NULLIF($6,'')::date,NULLIF($7,'')::date,NULLIF($8,'')) THEN NULL ELSE verified_at END,
+		   IS DISTINCT FROM ($4::varchar(180),$5::varchar(200),NULLIF($6::text,'')::date,NULLIF($7::text,'')::date,NULLIF($8::varchar(120),'')) THEN NULL ELSE verified_at END,
 		 updated_at=NOW()
 		WHERE id=$1 AND school_id=$2 AND staff_principal_id=$3
 		RETURNING id,staff_principal_id,certificate_name,issuing_organization,COALESCE(issue_date::text,''),COALESCE(expiry_date::text,''),
