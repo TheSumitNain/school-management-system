@@ -143,7 +143,7 @@ func TestStaffDirectoryPaginationFiltersAndSchoolIsolationPostgresIntegration(t 
 }
 
 
-func TestStaffDirectorySummaryMatchesFilteredCountsAndEnforcesSchoolAdminPostgresIntegration(t *testing.T) {
+func TestStaffDirectorySummaryMatchesFilteredCountsAndEnforcesLivePermissionPostgresIntegration(t *testing.T) {
 	fixture := newStaffLeaveIntegrationFixture(t)
 	repo := NewUserRepository(fixture.pool)
 	summary, err := repo.GetStaffDirectorySummary(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID)
