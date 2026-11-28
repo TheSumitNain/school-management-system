@@ -2398,7 +2398,10 @@ test("academic assignment workspace creates and revokes subject and class in-cha
   await inchargeDialog.getByRole("button", { name: "Class in-charge teacher" }).click();
   await inchargeDialog.getByRole("option", { name: "teacher.alpha" }).click();
   await inchargeDialog.getByRole("button", { name: "Assign in-charge", exact: true }).click();
-  const inchargeRow = page.getByRole("row").filter({ hasText: "teacher.alpha" }).filter({ hasText: "Class 6 · A" });
+  const inchargePanel = page.locator(".assignment-panel").filter({
+    has: page.getByRole("heading", { name: "Class in-charge" }),
+  });
+  const inchargeRow = inchargePanel.getByRole("row").filter({ hasText: "teacher.alpha" }).filter({ hasText: "Class 6 · A" });
   await expect(inchargeRow).toContainText("Active");
   await inchargeRow.getByRole("button", { name: "Revoke" }).click();
   const inchargeConfirm = page.getByRole("dialog", { name: "Revoke class in-charge?" });
