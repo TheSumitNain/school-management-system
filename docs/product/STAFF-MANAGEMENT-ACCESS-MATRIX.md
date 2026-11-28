@@ -223,6 +223,15 @@ These are current code-derived navigation outcomes, not the final approved produ
 | ACCESS-14 | Account & Access profile tab is shown to every user who can open Staff profiles. | P1 | Profile tabs are always rendered (except Workload & Timetable, which requires `timetable.read`). Inside Account & Access, missing `roles.read` or `permissions.override` produces explanatory text rather than hiding each unavailable panel. | Decide whether a single visible tab with partial read-only messaging is desired, or hide inaccessible panels/tab; keep API checks authoritative. |
 | ACCESS-15 | Workload Report UI copy may overstate the viewer's data scope. | P1 | Component heading and summaries say “School-wide”; the backend integration contract previously established School Admin school-wide vs Teacher own workload. | Add a role-scope-aware title, export labels and tests. |
 
+
+### Additional exact UI rules captured during the same audit
+
+- Staff workspace visibility: Overview = users.read OR users.create; Directory and ID Cards = users.read; Academic Assignments = teacher-assignment read OR class-in-charge read; Attendance = staff.attendance.read; Leave & Holidays = leave read OR holiday read OR holiday manage; Substitutions = substitution read OR (users.read AND substitution manage); Workload Report = timetable.read; Reports = users.read OR staff attendance read OR staff leave read OR teacher assignment read OR class-in-charge read.
+- When the viewer has no leave/holiday read/manage permission, the workspace still renders a disabled “Leave — Restricted” tab with a tooltip; it is not an accessible Leave page.
+- Profile navigation shows Overview, Personal Details, Employment, Qualifications & Experience, Documents, Academic Assignments, Account & Access and History & Activity to every Staff Directory reader. Workload & Timetable is additionally shown when timetable.read exists. Panels and actions inside these tabs have separate permission checks.
+- Disable account action requires users.disable. Edit employment status requires users.update. The Enable account action is currently gated by users.update (not a distinct enable permission), plus a complete profile and Active employment. Reset password requires users.password_reset.
+- Staff attendance, leave/holiday and substitution permissions are not delegable, so current custom-role and per-user override screens cannot grant those operations to a non-School-Admin employee.
+
 ## 12. Status update after source audit
 
 - ACCESS-01: **UI tab predicates confirmed** for all nine workspace tabs; corresponding route-level permission and resource checks still need one-to-one reconciliation.
