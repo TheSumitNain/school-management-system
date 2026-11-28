@@ -141,6 +141,16 @@
 .staff-record-card strong{font-size:14px}
 .staff-record-card span,.staff-record-card small{font-size:12px;color:var(--color-text-muted);overflow-wrap:anywhere}
 .staff-record-status{flex:0 0 auto;padding:3px 8px;border-radius:999px;background:var(--color-surface-muted);text-transform:capitalize}
+.staff-record-card{flex-wrap:wrap}
+.staff-record-card>div:first-child{flex:1 1 240px}
+.staff-record-status.is-verified,.staff-record-status.is-rejected,.staff-record-status.is-pending{border:1px solid var(--color-border);white-space:nowrap}
+.staff-record-verification-note,.staff-record-verification-meta{flex:1 1 100%;color:var(--color-text-muted);font-size:12px;overflow-wrap:anywhere}
+.staff-record-verification-actions{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.staff-record-rejection-form{display:grid;gap:8px;flex:1 1 100%;padding:12px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface-muted)}
+.staff-record-rejection-form label{display:grid;gap:6px;color:var(--color-text);font-size:12px;font-weight:600}
+.staff-record-rejection-form textarea{width:100%;min-width:0;resize:vertical;padding:9px 10px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:inherit;font:inherit;font-weight:400}
+.staff-record-rejection-form>div{display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+
 .staff-record-error{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--color-danger);font-size:13px}
 .staff-record-error button,.staff-text-button{border:0;background:transparent;color:var(--color-action);cursor:pointer;font:inherit}
 .staff-record-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface-muted)}
