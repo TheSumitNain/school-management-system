@@ -2376,7 +2376,7 @@ test("academic assignment workspace creates and revokes subject and class in-cha
   await subjectDialog.getByRole("option", { name: "2026–27" }).click();
   await subjectDialog.getByRole("button", { name: "Subject assignment section" }).click();
   await subjectDialog.getByRole("option", { name: "Class 6 · A" }).click();
-  await subjectDialog.getByRole("button", { name: "Subject" }).click();
+  await subjectDialog.getByRole("button", { name: "Subject", exact: true }).click();
   await subjectDialog.getByRole("option", { name: "Mathematics" }).click();
   await subjectDialog.getByRole("button", { name: "Subject assignment teacher" }).click();
   await subjectDialog.getByRole("option", { name: "teacher.alpha" }).click();
@@ -2403,7 +2403,7 @@ test("academic assignment workspace creates and revokes subject and class in-cha
   await inchargeRow.getByRole("button", { name: "Revoke" }).click();
   const inchargeConfirm = page.getByRole("dialog", { name: "Revoke class in-charge?" });
   await inchargeConfirm.getByRole("button", { name: "Revoke assignment" }).click();
-  await expect(page.getByRole("row").filter({ hasText: "teacher.alpha" }).filter({ hasText: "Class 6 · A" })).toContainText("Revoked");
+  await expect(inchargePanel.getByRole("row").filter({ hasText: "teacher.alpha" }).filter({ hasText: "Class 6 · A" })).toContainText("Revoked");
 });
 
 test("academic assignment read-only permissions show history without management actions", async ({ page }) => {
@@ -2448,7 +2448,8 @@ test("academic assignment read-only permissions show history without management 
   await page.getByRole("button", { name: "Academic Assignments", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Teacher assignments" })).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: "Mathematics" })).toContainText("Active");
-  await expect(page.getByRole("row").filter({ hasText: "teacher.alpha" }).filter({ hasText: "Class 6 · A" })).toContainText("Active");
+  const inchargePanel = page.locator(".assignment-panel").filter({ has: page.getByRole("heading", { name: "Class in-charge" }) });
+  await expect(inchargePanel.getByRole("row").filter({ hasText: "teacher.alpha" }).filter({ hasText: "Class 6 · A" })).toContainText("Active");
   await expect(page.getByRole("button", { name: "Assign subject teacher" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Assign class in-charge" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Revoke" })).toHaveCount(0);
