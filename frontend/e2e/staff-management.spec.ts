@@ -4094,16 +4094,12 @@ test("staff substitution assigns a dated cover, validates the timetable weekday 
   nextTuesday.setDate(today.getDate() + daysUntil(2));
   const nextMonday = new Date(today);
   nextMonday.setDate(today.getDate() + daysUntil(1));
-  const dateLabel = (date: Date) => date.toLocaleDateString(undefined, {
-    weekday: "long", month: "long", day: "numeric", year: "numeric",
-  });
-
   await page.getByLabel("Substitution cover date").click();
   const dateDialog = page.getByRole("dialog", { name: "Choose substitution cover date" });
   if (nextTuesday.getMonth() !== today.getMonth() || nextTuesday.getFullYear() !== today.getFullYear()) {
     await dateDialog.getByRole("button", { name: "Next month" }).click();
   }
-  await dateDialog.getByRole("button", { name: dateLabel(nextTuesday) }).click();
+  await dateDialog.getByRole("button", { name: schoolDateLabel(nextTuesday) }).click();
   await page.getByRole("button", { name: "Substitute staff member" }).click();
   await page.getByRole("option", { name: /Substitute Teacher/ }).click();
   await page.getByLabel("Reason").fill("Original teacher unavailable");
@@ -4115,7 +4111,7 @@ test("staff substitution assigns a dated cover, validates the timetable weekday 
   if (nextMonday.getMonth() !== nextTuesday.getMonth() || nextMonday.getFullYear() !== nextTuesday.getFullYear()) {
     await mondayDialog.getByRole("button", { name: "Previous month" }).click();
   }
-  await mondayDialog.getByRole("button", { name: dateLabel(nextMonday) }).click();
+  await mondayDialog.getByRole("button", { name: schoolDateLabel(nextMonday) }).click();
   await expect(page.getByText("This date is not a Monday; choose a matching date.")).toHaveCount(0);
   await page.getByRole("button", { name: "Assign substitute" }).click();
 
@@ -5735,11 +5731,10 @@ test("staff substitution assignment suppresses duplicate form submissions while 
   const daysUntilMonday = (1 - today.getDay() + 7) % 7 || 7;
   const nextMonday = new Date(today);
   nextMonday.setDate(today.getDate() + daysUntilMonday);
-  const dateLabel = (date: Date) => date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   await page.getByLabel("Substitution cover date").click();
   const dateDialog = page.getByRole("dialog", { name: "Choose substitution cover date" });
   if (nextMonday.getMonth() !== today.getMonth() || nextMonday.getFullYear() !== today.getFullYear()) await dateDialog.getByRole("button", { name: "Next month" }).click();
-  await dateDialog.getByRole("button", { name: dateLabel(nextMonday) }).click();
+  await dateDialog.getByRole("button", { name: schoolDateLabel(nextMonday) }).click();
   await page.getByRole("button", { name: "Substitute staff member" }).click();
   await page.getByRole("option", { name: /Substitute Guard Teacher/ }).click();
   await page.getByLabel("Reason").fill("Duplicate assignment guard");
