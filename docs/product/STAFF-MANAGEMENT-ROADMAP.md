@@ -1670,3 +1670,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Full Staff Management Playwright: **144/145 PASS**. Account & Access automated checks passed in this run.
 - The one failing mobile directory test expected a desktop-only standalone View button, while the current mobile design correctly exposes `View profile` inside the accessible three-dot actions menu. Updated the test to exercise the actual mobile menu action and verify the same profile-detail fetch/open behavior. No production UI behavior was changed in this correction.
 - Pending user rerun of the focused mobile directory test and full Staff Management suite. Account & Access stays the active page until verification and remaining acceptance gates are complete. Do not mark 100% or start the next page. `main` untouched; document upload remains deferred/excluded.
+
+## 2026-11-28 — History & Activity acceptance batch started
+
+- Account & Access automated acceptance is now confirmed by the user-run full staff-management.spec.ts suite **145/145 PASS**, plus local responsive **1/1 PASS**, frontend typecheck/build, full backend PostgreSQL test suite and go vet; the user also manually confirmed the mobile/tablet layout and the disabled Effect control when no delegation exists. This closes the previously pending local regression run, not the whole Staff Profile or Staff Management module.
+- Next profile tab in scope: **History & Activity**. Source review confirms the panel gates requests on school.audit.read, fetches 50 events with offset pagination, supports refresh/retry, and renders action, actor username, outcome and timestamp without intentionally rendering metadata.
+- Added three Playwright regressions in commit 20a704be5d5fbd8afb4e3e20817f053f7429db69: no audit API call without school.audit.read; pagination at offsets 0/50 with safe-summary-only UI; retry after a failed request. These tests have **not yet been run locally or in CI**.
+- Backend route/repository audit is still pending: prove same-school isolation, server permission enforcement, response-field allowlist, bounded pagination, deterministic ordering and correct has_more.
+- Current page remains History & Activity. Do not declare it complete or move to the next Staff page until backend and browser gates are verified. Document upload remains deferred/excluded; main untouched.
