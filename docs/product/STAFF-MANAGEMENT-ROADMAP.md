@@ -1658,3 +1658,5 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Tablet navigation buttons retain accessible names, native title tooltips, focus-visible treatment and active-page styling. The sidebar remains permission-filtered exactly as before.
 - Added Playwright coverage at 521/768/900px and retained mobile/desktop boundary checks. Verification remains pending until local Windows tests and GitHub Actions complete.
 - This is a shared-shell UX improvement, not a Staff permission change. Account & Access remains open pending verification.
+
+- Follow-up verification note (2026-11-28): user confirms tablet rendering looks correct; local typecheck and production build passed. Corrected the responsive test's multi-element hidden assertion (strict-mode issue, not an observed visual defect). Re-run `workspace-responsive.spec.ts` and the complete `staff-management.spec.ts` suite before closing Account & Access.

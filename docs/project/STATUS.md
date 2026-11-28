@@ -3155,3 +3155,5 @@ cd /d D:\school-management-system && git pull --ff-only origin work && cd /d D:\
 - Main content offsets by the 64px rail on tablet; mobile drawer retains zero content offset. No permission or route visibility rules were changed.
 - Added responsive Playwright assertions for 521px, 768px and 900px tablet widths, plus 390px mobile and 901px desktop. Local typecheck/build/Playwright and CI are pending; do not mark Account & Access complete until these checks and authenticated manual acceptance pass.
 - Code is on `work`; `main` untouched. Document upload remains deferred and excluded from Staff Management completion.
+
+- 2026-11-28 follow-up: local user verification confirms tablet appearance is correct; typecheck and Vite production build pass. The first local responsive Playwright run stopped on a strict-mode assertion that incorrectly applied `toBeHidden()` to the collection of eight nav labels. Updated the test to assert every label's computed display state. Re-run responsive and Staff Management suites after pulling `6b54b87`; do not treat this test correction as completed verification until the rerun passes.
