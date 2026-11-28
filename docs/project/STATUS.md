@@ -1,3 +1,15 @@
+## 2026-11-28 — Staff Management role/page audit completed
+
+- Exact Staff workspace tab predicates and default role bundles are now recorded in [STAFF-MANAGEMENT-ACCESS-MATRIX.md](../product/STAFF-MANAGEMENT-ACCESS-MATRIX.md).
+- Default roles: School Admin 63 permission keys after V58/V59/V60 additions; Teacher exactly 7 permission keys. New Teaching staff get Teacher role; Non-teaching staff do not get Teacher role by default; existing accounts are not auto-backfilled.
+- Identified P0 gap ACCESS-11: manual Teacher role assignment does not enforce target active Teaching profile. Next batch is to fix UI + repository + database guard and add regression tests.
+- Other documented findings: non-delegable Staff operational permissions; Teacher sees Staff navigation because timetable.read and lands on Workload Report; Account & Access profile tab remains visible with partial-access messages; employment status and login status are separate.
+- No application code changed in this audit checkpoint. No test run is claimed for documentation-only commits.
+- Continue on work only; main untouched. Document upload is deferred and excluded.
+- Latest documentation commit after this status update is recorded in the branch history.
+
+---
+
 ## 2026-11-28 — Staff Management access audit baseline
 
 - Canonical continuation document: [Staff Management Access Matrix](../product/STAFF-MANAGEMENT-ACCESS-MATRIX.md). Use it at the start of every new chat before continuing implementation.
