@@ -6518,7 +6518,9 @@ test("staff History & Activity exposes a retry after an audit request fails", as
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "school.audit.read"]);
   await page.route("**/api/school/staff/593/audit-events**", async route => {
     auditReads += 1;
-    if (auditReads === 1) {
+    // React Query retries failed requests automatically (initial attempt + 3 retries).
+    // Keep every automatic attempt unavailable so the explicit UI retry is what recovers.
+    if (auditReads <= 4) {
       await route.fulfill({ status: 503, json: { message: "Audit history temporarily unavailable" } });
       return;
     }
@@ -6532,8 +6534,9 @@ test("staff History & Activity exposes a retry after an audit request fails", as
   await page.getByRole("button", { name: "View profile for history.retry" }).click();
   const profile = page.getByRole("dialog", { name: "History Retry" });
   await profile.getByRole("button", { name: "History & Activity" }).click();
-  await expect(profile.getByText("Unable to load staff activity.")).toBeVisible();
+  await expect(profile.getByText("Unable to load staff activity.")).toBeVisible({ timeout: 15000 });
+  expect(auditReads).toBe(4);
   await profile.getByRole("button", { name: "Try again" }).click();
   await expect(profile.getByText("Profile updated")).toBeVisible();
-  expect(auditReads).toBe(2);
+  expect(auditReads).toBe(5);
 });
