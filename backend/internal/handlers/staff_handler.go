@@ -456,6 +456,8 @@ func (h *StaffHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "code": "staff_has_active_teaching_assignments", "message": "Reassign or remove this employee’s active teaching and class in-charge assignments before changing Staff Type to Non-teaching or Employment Status to Inactive."})
 	case errors.Is(err, repository.ErrStaffProfileHasActiveSubstitutions):
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "code": "staff_has_active_substitutions", "message": "Cancel or reassign this employee’s active substitutions before changing Employment Status to Inactive."})
+	case errors.Is(err, repository.ErrStaffTeacherRoleMustBeRevoked):
+		c.JSON(http.StatusConflict, gin.H{"status": "error", "code": "staff_teacher_role_assigned", "message": "Remove the Teacher role in Staff Directory → Employee Profile → Account & Access before changing Staff Type away from Teaching."})
 	case errors.Is(err, repository.ErrUsernameTaken):
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "message": "This username is already in use"})
 	case errors.Is(err, repository.ErrUserNotFound):
