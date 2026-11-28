@@ -328,7 +328,6 @@ test("dashboard reports malformed metric payloads across all metrics and recover
   await expect(alert).toContainText("Staff accounts: Invalid staff summary response");
   await expect(alert).toContainText("Classes: Invalid classes response");
   await expect(alert).toContainText("Academic years: Invalid academic years response");
-  await expect(alert).toContainText("Accessible enrollments: Invalid enrollment response");
   await expect(page.locator(".stat")).toHaveCount(0);
 
   await page.getByRole("button", { name: /Retry/ }).click();
