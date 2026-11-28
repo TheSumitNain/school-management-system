@@ -1,3 +1,12 @@
+## 2026-11-28 — Teacher and Non-teaching experience gaps
+
+- Access map now explicitly records missing Teacher self-profile, self-service leave, Homework/Notices pages and role-specific Teacher dashboard; Non-teaching staff currently have no default role or self-service workspace. See ACCESS-18/19 in [STAFF-MANAGEMENT-ACCESS-MATRIX.md](STAFF-MANAGEMENT-ACCESS-MATRIX.md).
+- Directory status visibility gap ACCESS-20: Employment status is a table column; Login status is available via filter/profile overview but not a dedicated table column.
+- These are recorded as product/workflow gaps for the next role experience batch, not silently resolved by broadening permissions.
+- Current verification: Backend CI green; frontend build/typecheck green; Playwright acceptance suite still running; local Windows verification pending.
+
+---
+
 ## 2026-11-28 — Staff access matrix, Teacher eligibility and workload scope
 
 - Canonical role/page/permission/lifecycle matrix: [STAFF-MANAGEMENT-ACCESS-MATRIX.md](STAFF-MANAGEMENT-ACCESS-MATRIX.md).
