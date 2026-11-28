@@ -1,3 +1,15 @@
+## 2026-11-28 — Staff Management access blueprint started
+
+- Added [STAFF-MANAGEMENT-ACCESS-MATRIX.md](STAFF-MANAGEMENT-ACCESS-MATRIX.md) as the canonical role/page/permission/lifecycle map and cross-chat continuation record.
+- Batch 1 has begun with an evidence-based audit of shared navigation, Staff workspace gates, profile Account & Access, Platform Admin permission delegation, custom role grants, individual ALLOW/DENY overrides, and employment-vs-login status.
+- Confirmed control locations: Platform Admin → Delegate school permissions; School Admin → Roles & permissions for custom-role permission grants; Staff Directory → employee profile → Account & Access for individual role assignments and permission overrides; Staff Directory → Edit employee profile for employment Active/Inactive; Staff Directory account actions for login Disable/Enable.
+- Important distinction: employment Inactive and login Disabled are separate states. Disabling a login revokes active sessions; enabling requires a new temporary password and forces password change at next sign-in. Reactivating employment alone does not enable a disabled login.
+- The access matrix deliberately separates code-confirmed behaviour from unverified role bundles and page gates. No page is newly declared 100% complete by this audit.
+- Next batch: enumerate every Staff workspace tab's exact visibility predicate, inspect seeded School Admin/Teacher roles and permissions, then reconcile UI gates with backend route/resource authorization and add authenticated role-specific tests.
+- Work remains on `work`; `main` untouched. Document upload remains deferred and excluded from current completion scope.
+
+---
+
 ## 2026-11-27 — default teaching-role onboarding implementation (verification pending)
 
 - Teaching staff account creation now assigns the existing school-scoped Teacher system role in the same database transaction as the login and employee profile. The role assignment is recorded in the audit log with an onboarding source marker.
