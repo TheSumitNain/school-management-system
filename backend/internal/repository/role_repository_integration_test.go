@@ -855,7 +855,7 @@ func TestTeacherRoleAssignmentRequiresActiveTeachingProfilePostgresIntegration(t
 		INSERT INTO users (school_id,username,password_hash,status)
 		VALUES ($1,$2,$3,'active')
 		RETURNING principal_id
-	`, schoolID, "teacher-guard-"+suffix, "integration-test-password-hash").Scan(&targetPrincipalID); err != nil {
+	`, schoolID, "tguard-"+suffix, "integration-test-password-hash").Scan(&targetPrincipalID); err != nil {
 		t.Fatalf("create Teacher role eligibility target: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `
