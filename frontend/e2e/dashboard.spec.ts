@@ -178,7 +178,7 @@ test("dashboard metrics and feedback remain readable without viewport overflow",
       return;
     }
     if (path === "/school/enrollments") {
-      await route.fulfill({ json: { enrollments: Array.from({ length: 18 }, (_, index) => ({ id: index + 1 })) } });
+      await route.fulfill({ json: { enrollments: Array.from({ length: 18 }, (_, index) => ({ id: index + 1, status: "active" })) } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked dashboard request: ${request.method()} ${path}` } });
