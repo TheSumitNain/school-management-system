@@ -92,6 +92,42 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 		CertificateName:"Advanced Teacher Training",IssuingOrganization:"State Board",IssueDate:"2022-01-10",ExpiryDate:"2028-01-10",VerificationStatus:"verified",
 	})
 	if err!=nil||updatedCertification.CertificateName!="Advanced Teacher Training"||updatedCertification.VerificationStatus!="pending"{t.Fatalf("update certification must preserve pending verification despite forged input: item=%+v err=%v",updatedCertification,err)}
+
+	verifiedQualification,err:=repo.VerifyStaffQualification(ctx,actorID,schoolID,staff.PrincipalID,qualification.ID,"verified","Original certificate checked")
+	if err!=nil||verifiedQualification.VerificationStatus!="verified"||verifiedQualification.VerifiedByPrincipalID==nil||*verifiedQualification.VerifiedByPrincipalID!=actorID||verifiedQualification.VerificationNotes!="Original certificate checked" {
+		t.Fatalf("qualification verification metadata not persisted: item=%+v err=%v",verifiedQualification,err)
+	}
+	verifiedCertification,err:=repo.VerifyStaffCertification(ctx,actorID,schoolID,staff.PrincipalID,certification.ID,"verified","Issuing body confirmed")
+	if err!=nil||verifiedCertification.VerificationStatus!="verified"||verifiedCertification.VerifiedByPrincipalID==nil||*verifiedCertification.VerifiedByPrincipalID!=actorID {
+		t.Fatalf("certification verification metadata not persisted: item=%+v err=%v",verifiedCertification,err)
+	}
+	unchangedQualification,err:=repo.UpdateStaffQualification(ctx,actorID,schoolID,staff.PrincipalID,qualification.ID,StaffQualification{
+		QualificationType:"postgraduate",QualificationName:"M.Sc. Applied Mathematics",Institution:"State University",CompletionYear:&year,Score:&score,ScoreScale:"percentage",
+	})
+	if err!=nil||unchangedQualification.VerificationStatus!="verified"||unchangedQualification.VerifiedByPrincipalID==nil {
+		t.Fatalf("unchanged qualification edit must preserve verification: item=%+v err=%v",unchangedQualification,err)
+	}
+	changedQualification,err:=repo.UpdateStaffQualification(ctx,actorID,schoolID,staff.PrincipalID,qualification.ID,StaffQualification{
+		QualificationType:"postgraduate",QualificationName:"M.Sc. Applied Mathematics (Revised)",Institution:"State University",CompletionYear:&year,Score:&score,ScoreScale:"percentage",
+	})
+	if err!=nil||changedQualification.VerificationStatus!="pending"||changedQualification.VerifiedByPrincipalID!=nil||changedQualification.VerifiedAt!=nil||changedQualification.VerificationNotes!="" {
+		t.Fatalf("changed qualification details must clear stale verification: item=%+v err=%v",changedQualification,err)
+	}
+	unchangedCertification,err:=repo.UpdateStaffCertification(ctx,actorID,schoolID,staff.PrincipalID,certification.ID,StaffCertification{
+		CertificateName:"Advanced Teacher Training",IssuingOrganization:"State Board",IssueDate:"2022-01-10",ExpiryDate:"2028-01-10",
+	})
+	if err!=nil||unchangedCertification.VerificationStatus!="verified"||unchangedCertification.VerifiedByPrincipalID==nil {
+		t.Fatalf("unchanged certification edit must preserve verification: item=%+v err=%v",unchangedCertification,err)
+	}
+	changedCertification,err:=repo.UpdateStaffCertification(ctx,actorID,schoolID,staff.PrincipalID,certification.ID,StaffCertification{
+		CertificateName:"Advanced Teacher Training (Revised)",IssuingOrganization:"State Board",IssueDate:"2022-01-10",ExpiryDate:"2028-01-10",
+	})
+	if err!=nil||changedCertification.VerificationStatus!="pending"||changedCertification.VerifiedByPrincipalID!=nil||changedCertification.VerifiedAt!=nil||changedCertification.VerificationNotes!="" {
+		t.Fatalf("changed certification details must clear stale verification: item=%+v err=%v",changedCertification,err)
+	}
+	if _,err:=repo.VerifyStaffQualification(ctx,actorID,schoolID+1,staff.PrincipalID,qualification.ID,"verified","");!errors.Is(err,ErrStaffRecordAccessDenied) {
+		t.Fatalf("cross-school qualification verification error=%v",err)
+	}
 	updatedExperience,err:=repo.UpdateStaffExperience(ctx,actorID,schoolID,staff.PrincipalID,experience.ID,StaffExperience{
 		EmployerName:"Previous School",Designation:"Senior Mathematics Teacher",EmploymentType:"permanent",StartDate:"2018-04-01",EndDate:"2021-03-31",
 	})
@@ -99,9 +135,19 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
     // Force audit inserts to fail and verify all six record write paths roll back.
     auditFailureFunction := "test_staff_record_audit_failure_" + suffix
     auditFailureTrigger := "test_staff_record_audit_failure_trigger_" + suffix
-    if _, err := tx.Exec(ctx, fmt.Sprintf("CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $staff_record_audit_failure$ BEGIN IF NEW.action IN ('staff.qualification.created','staff.qualification.updated','staff.certification.created','staff.certification.updated','staff.experience.created','staff.experience.updated') THEN RAISE EXCEPTION 'injected staff record audit failure'; END IF; RETURN NEW; END; $staff_record_audit_failure$; CREATE TRIGGER %s BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION %s();", auditFailureFunction, auditFailureTrigger, auditFailureFunction)); err != nil {
+    if _, err := tx.Exec(ctx, fmt.Sprintf("CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $staff_record_audit_failure$ BEGIN IF NEW.action IN ('staff.qualification.created','staff.qualification.updated','staff.certification.created','staff.certification.updated','staff.experience.created','staff.experience.updated','staff.qualification.verified','staff.qualification.rejected','staff.certification.verified','staff.certification.rejected') THEN RAISE EXCEPTION 'injected staff record audit failure'; END IF; RETURN NEW; END; $staff_record_audit_failure$; CREATE TRIGGER %s BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION %s();", auditFailureFunction, auditFailureTrigger, auditFailureFunction)); err != nil {
         t.Fatalf("install staff record audit failure trigger: %v", err)
     }
+    if item, err := repo.VerifyStaffQualification(ctx, actorID, schoolID, staff.PrincipalID, qualification.ID, "verified", "Audit failure must roll back"); err == nil || item != nil {
+        t.Fatalf("qualification verification with audit failure returned item=%+v err=%v", item, err)
+    }
+    if item, err := repo.VerifyStaffCertification(ctx, actorID, schoolID, staff.PrincipalID, certification.ID, "verified", "Audit failure must roll back"); err == nil || item != nil {
+        t.Fatalf("certification verification with audit failure returned item=%+v err=%v", item, err)
+    }
+    var qualificationStatus, certificationStatus string
+    if err := tx.QueryRow(ctx, "SELECT verification_status FROM staff_qualifications WHERE id=$1", qualification.ID).Scan(&qualificationStatus); err != nil { t.Fatalf("read qualification status after audit failure: %v", err) }
+    if err := tx.QueryRow(ctx, "SELECT verification_status FROM staff_certifications WHERE id=$1", certification.ID).Scan(&certificationStatus); err != nil { t.Fatalf("read certification status after audit failure: %v", err) }
+    if qualificationStatus != "pending" || certificationStatus != "pending" { t.Fatalf("verification audit failure did not roll back: qualification=%s certification=%s", qualificationStatus, certificationStatus) }
     if item, err := repo.CreateStaffQualification(ctx, actorID, schoolID, staff.PrincipalID, StaffQualification{QualificationType:"diploma",QualificationName:"Must Roll Back",Institution:"Failure Test"}); err == nil || item != nil {
         t.Fatalf("qualification create with audit failure returned item=%+v err=%v", item, err)
     }
