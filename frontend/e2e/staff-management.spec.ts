@@ -6425,3 +6425,115 @@ test("permission override effect stays disabled when Platform Admin has delegate
   await expect(profile.getByRole("button", { name: "Permission override effect" })).toBeDisabled();
   await expect(profile.getByRole("button", { name: "Save override" })).toBeDisabled();
 });
+
+test("staff History & Activity hides audit requests without school audit read permission", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 591, school_id: 10, username: "history.teacher",
+    employee_code: "EMP-HISTORY-01", full_name: "History Teacher", designation: "Science Teacher",
+    mobile_number: "9876543215", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  let auditReads = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read"]);
+  await page.route("**/api/school/staff/591/audit-events**", async route => {
+    auditReads += 1;
+    await route.fulfill({ json: { events: [], limit: 50, offset: 0, has_more: false } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "View profile for history.teacher" }).click();
+  const profile = page.getByRole("dialog", { name: "History Teacher" });
+  await profile.getByRole("button", { name: "History & Activity" }).click();
+  await expect(profile.getByText("You do not have permission to view audit history.")).toBeVisible();
+  expect(auditReads).toBe(0);
+});
+
+test("staff History & Activity paginates bounded events and renders only the safe audit summary", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 592, school_id: 10, username: "history.pager",
+    employee_code: "EMP-HISTORY-02", full_name: "History Pager", designation: "Math Teacher",
+    mobile_number: "9876543216", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const requests: Array<{ limit: number; offset: number }> = [];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "school.audit.read"]);
+  await page.route("**/api/school/staff/592/audit-events**", async route => {
+    const url = new URL(route.request().url());
+    const limit = Number(url.searchParams.get("limit"));
+    const offset = Number(url.searchParams.get("offset"));
+    requests.push({ limit, offset });
+    if (offset === 0) {
+      const events = Array.from({ length: 50 }, (_, index) => ({
+        id: 500 - index,
+        action: "staff.profile.updated",
+        resource_type: "staff_profile",
+        outcome: "success",
+        actor_username: "abcadmin",
+        created_at: "2026-11-28T09:30:00.000Z",
+        metadata: { password: "DO_NOT_RENDER_SECRET", private_reason: "DO_NOT_RENDER_REASON" },
+      }));
+      await route.fulfill({ json: { events, limit, offset, has_more: true } });
+      return;
+    }
+    await route.fulfill({ json: { events: [{
+      id: 450, action: "staff.account.disabled", resource_type: "staff_account",
+      outcome: "failure", actor_username: "platform-operator", created_at: "2026-11-27T09:30:00.000Z",
+      metadata: { password: "DO_NOT_RENDER_SECRET", private_reason: "DO_NOT_RENDER_REASON" },
+    }], limit, offset, has_more: false } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "View profile for history.pager" }).click();
+  const profile = page.getByRole("dialog", { name: "History Pager" });
+  await profile.getByRole("button", { name: "History & Activity" }).click();
+  await expect(profile.getByText("Profile updated").first()).toBeVisible();
+  await expect(profile.getByText("By abcadmin").first()).toBeVisible();
+  await expect(profile.getByText("Successful").first()).toBeVisible();
+  await expect(profile.getByText("DO_NOT_RENDER_SECRET")).toHaveCount(0);
+  await expect(profile.getByText("DO_NOT_RENDER_REASON")).toHaveCount(0);
+  await expect(profile.getByRole("button", { name: "Older events" })).toBeEnabled();
+  expect(requests).toContainEqual({ limit: 50, offset: 0 });
+
+  await profile.getByRole("button", { name: "Older events" }).click();
+  await expect(profile.getByText("Account disabled")).toBeVisible();
+  await expect(profile.getByText("By platform-operator")).toBeVisible();
+  await expect(profile.getByText("Failed")).toBeVisible();
+  await expect(profile.getByRole("button", { name: "Older events" })).toBeDisabled();
+  await expect(profile.getByRole("button", { name: "Newer events" })).toBeEnabled();
+  expect(requests).toContainEqual({ limit: 50, offset: 50 });
+
+  await profile.getByRole("button", { name: "Newer events" }).click();
+  await expect(profile.getByText("Profile updated").first()).toBeVisible();
+  await expect.poll(() => requests.filter(item => item.offset === 0).length).toBeGreaterThan(1);
+});
+
+test("staff History & Activity exposes a retry after an audit request fails", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 593, school_id: 10, username: "history.retry",
+    employee_code: "EMP-HISTORY-03", full_name: "History Retry", designation: "English Teacher",
+    mobile_number: "9876543217", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  let auditReads = 0;
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "school.audit.read"]);
+  await page.route("**/api/school/staff/593/audit-events**", async route => {
+    auditReads += 1;
+    if (auditReads === 1) {
+      await route.fulfill({ status: 503, json: { message: "Audit history temporarily unavailable" } });
+      return;
+    }
+    await route.fulfill({ json: { events: [{
+      id: 601, action: "staff.profile.updated", resource_type: "staff_profile",
+      outcome: "success", actor_username: "abcadmin", created_at: "2026-11-28T09:30:00.000Z",
+    }], limit: 50, offset: 0, has_more: false } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "View profile for history.retry" }).click();
+  const profile = page.getByRole("dialog", { name: "History Retry" });
+  await profile.getByRole("button", { name: "History & Activity" }).click();
+  await expect(profile.getByText("Unable to load staff activity.")).toBeVisible();
+  await profile.getByRole("button", { name: "Try again" }).click();
+  await expect(profile.getByText("Profile updated")).toBeVisible();
+  expect(auditReads).toBe(2);
+});
