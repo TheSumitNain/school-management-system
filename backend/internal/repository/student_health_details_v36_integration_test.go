@@ -359,6 +359,13 @@ func TestStudentMedicalPhysicalDetailsV36PostgresIntegration(t *testing.T) {
 		t.Fatalf("create Teacher health access fixture: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `
+		INSERT INTO staff_profiles
+			(principal_id,school_id,employee_code,full_name,designation,mobile_number,employment_status,staff_type)
+		VALUES ($1,$2,$3,'Health Boundary Teacher','Teacher','9876543215','active','teaching')
+	`, teacherPrincipalID, schoolID, "V36T-"+suffix); err != nil {
+		t.Fatalf("create Teaching profile for Teacher health access fixture: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
 		VALUES($1,$2,$3)
 	`, teacherPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
