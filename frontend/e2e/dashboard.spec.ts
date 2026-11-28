@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("dashboard shows permission-scoped staff, class and accessible current-year enrollment totals", async ({ page }) => {
+test("dashboard shows permission-scoped staff, class and active current-year enrollment totals", async ({ page }) => {
   const requested: string[] = [];
   const permissions = ["users.read", "classes.read", "academic_years.read", "students.read_basic"];
 
@@ -45,7 +45,7 @@ test("dashboard shows permission-scoped staff, class and accessible current-year
     }
     if (path === "/school/enrollments") {
       expect(url.searchParams.get("academic_year_id")).toBe("7");
-      await route.fulfill({ json: { enrollments: Array.from({ length: 18 }, (_, index) => ({ id: index + 1 })) } });
+      await route.fulfill({ json: { enrollments: Array.from({ length: 18 }, (_, index) => ({ id: index + 1, status: index < 15 ? "active" : "withdrawn" })) } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked dashboard request: ${request.method()} ${path}` } });
@@ -60,7 +60,7 @@ test("dashboard shows permission-scoped staff, class and accessible current-year
     ["Staff accounts", "7"],
     ["Classes", "4"],
     ["Academic years", "2"],
-    ["Accessible enrollments", "18"],
+    ["Active enrollments", "15"],
   ] as const;
   for (const [label, value] of metrics) {
     const metric = page.locator(".stat").filter({ hasText: label });
@@ -113,7 +113,7 @@ test("dashboard explains partial loading failures and lets the user retry", asyn
       return;
     }
     if (path === "/school/classes") {
-      await route.fulfill({ json: { classes: [{ id: 1 }, { id: 2 }, { id: 3 }] } });
+      await route.fulfill({ json: { classes: [{ id: 1, status: "active" }, { id: 2, status: "active" }, { id: 3, status: "transferred" }] } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked dashboard request: ${request.method()} ${path}` } });
@@ -341,7 +341,7 @@ test("dashboard reports malformed metric payloads across all metrics and recover
     ["Staff accounts", "7"],
     ["Classes", "1"],
     ["Academic years", "1"],
-    ["Accessible enrollments", "3"],
+    ["Active enrollments", "2"],
   ] as const;
   for (const [label, value] of expected) {
     const metric = page.locator(".stat").filter({ hasText: label });
