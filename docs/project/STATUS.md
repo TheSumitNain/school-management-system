@@ -3159,3 +3159,11 @@ cd /d D:\school-management-system && git pull --ff-only origin work && cd /d D:\
 - 2026-11-28 follow-up: local user verification confirms tablet appearance is correct; typecheck and Vite production build pass. The first local responsive Playwright run stopped on a strict-mode assertion that incorrectly applied `toBeHidden()` to the collection of eight nav labels. Updated the test to assert every label's computed display state. Re-run responsive and Staff Management suites after pulling `6b54b87`; do not treat this test correction as completed verification until the rerun passes.
 
 - 2026-11-28 responsive regression follow-up: the desktop sidebar assertion also treated the 8 `.nav-item-label` elements as a single locator. Updated it to assert that every desktop navigation label is rendered and visible, matching the tablet assertion's collection-safe approach. Awaiting local responsive and Staff Management Playwright rerun; Account & Access is not yet marked complete.
+
+
+## 2026-11-28 — Responsive and Staff Management regression rerun
+
+- User-run local Playwright: `workspace-responsive.spec.ts` **1/1 PASS** after the collection-safe sidebar assertions.
+- Full `staff-management.spec.ts`: **144/145 PASS**. All Account & Access checks in this run passed, including delegated role assignment, protected School Admin read-only behavior, Teacher eligibility, permission override gating and audit-history visibility.
+- The sole failure was a stale mobile Staff Directory test expecting a standalone `View profile for …` button. The current mobile UX intentionally places row actions behind the accessible three-dot menu; the menu exposes `View profile`, and a separate test already verifies the menu behavior. Updated the failing test to open the mobile actions menu and select its `View profile` menu item, then verify the profile-detail API request and loaded profile. This is a test/UI-contract alignment, not a change to production behavior.
+- Re-run the focused test and full Staff Management suite after pulling the test correction. Account & Access remains open until the full suite, CI and remaining acceptance gates are reconciled; do not advance to another page or claim 100%. `main` untouched; document upload remains deferred and excluded.
