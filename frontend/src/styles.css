@@ -1401,7 +1401,6 @@ textarea[aria-invalid="true"]:focus,
   .side-brand .mobile-close,
   .side-label,
   .nav-item-label,
-  .help,
   .user-mini > div {
     display: none;
   }
@@ -1425,6 +1424,14 @@ textarea[aria-invalid="true"]:focus,
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
+  .help {
+    display: flex;
+    justify-content: center;
+    width: 48px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .help span { display: none; }
   .side-bottom {
     display: grid;
     justify-items: center;

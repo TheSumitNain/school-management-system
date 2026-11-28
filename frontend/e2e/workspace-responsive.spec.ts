@@ -100,6 +100,8 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
     await expect(sidebar.locator(".side-brand .brand-mark")).toBeVisible();
     await expect(sidebar.locator(".side-brand b")).toBeHidden();
     await expect(sidebar.locator(".side-label")).toBeHidden();
+    await expect(sidebar.locator(".help svg")).toBeVisible();
+    await expect(sidebar.locator(".help span")).toBeHidden();
     await expect(sidebar.locator(".nav-item-label")).toBeHidden();
     await expect(sidebar.getByRole("button", { name: "Dashboard" })).toBeVisible();
     await expect(sidebar.getByRole("button", { name: "Settings" })).toBeVisible();
