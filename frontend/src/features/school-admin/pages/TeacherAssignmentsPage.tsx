@@ -105,8 +105,8 @@ export function TeacherAssignmentsPage({ permissions }: Props) {
   useEffect(() => { void load(); }, [load]);
 
   const activeYears = useMemo(() => years.filter(item => item.status !== "closed"), [years]);
-  const subjectLoadError = ["years", "classes", "sections", "subjects", "teachers"].some(key => Boolean(loadErrors[key]));
-  const inchargeLoadError = ["years", "classes", "sections", "teachers"].some(key => Boolean(loadErrors[key]));
+  const subjectLoadError = ["years", "classes", "sections", "subjects", "teachers", "assignments"].some(key => Boolean(loadErrors[key]));
+  const inchargeLoadError = ["years", "classes", "sections", "teachers", "incharges"].some(key => Boolean(loadErrors[key]));
   const subjectPrerequisitesMissing = !canReadYears || !canReadClasses || !canReadSubjects;
   const inchargePrerequisitesMissing = !canReadYears || !canReadClasses;
   const currentYearID = String(activeYears.find(item => item.is_current)?.id ?? "");

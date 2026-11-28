@@ -1442,7 +1442,7 @@ test("disabling a staff account requires explicit confirmation and refreshes its
   await expect(cancelled).toContainText("active sessions will be revoked");
   await cancelled.getByRole("button", { name: "Cancel", exact: true }).click();
   expect(disableCalls).toBe(0);
-  await expect(staffRow).toContainText("active");
+  await expect(staffRow).toContainText("Active");
 
   await staffRow.getByRole("button", { name: "Disable disable.teacher" }).click();
   const confirmation = page.getByRole("dialog", { name: "Disable staff account?" });
@@ -1548,7 +1548,7 @@ test("enabling a disabled staff account validates a temporary password and enfor
   }];
   let enableCalls = 0;
   let submittedPayload: Record<string, unknown> | null = null;
-  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.update"]);
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.update", "users.disable"]);
   await page.route("**/api/school/staff/518/enable", async route => {
     if (route.request().method() !== "POST") { await route.fallback(); return; }
     enableCalls += 1;
@@ -1654,7 +1654,7 @@ test("staff account re-enable keeps the dialog open and explains an inactive emp
   await expect(enableDialog).toBeVisible();
   await expect(enableDialog.getByText("Reactivate the employee profile before enabling this login account")).toBeVisible();
   expect(enableCalls).toBe(1);
-  await expect(staffRow).toContainText("disabled");
+  await expect(staffRow.getByRole("button", { name: "Enable inactive.enable" })).toBeVisible();
   await expect(page.getByText("Staff account enabled. A password change is required at next sign-in.")).toHaveCount(0);
 });
 
