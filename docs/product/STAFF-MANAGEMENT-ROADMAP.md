@@ -1602,3 +1602,9 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Code checkpoint fbcfd8c76895cb193c92f5d6aa6dd567c89cdf44: fixed lifecycle test assertions/selectors, aligned the Teacher workload-only test with the My Workload UI, and disabled Academic Assignment create actions when assignment state fails to load.
 - Backend CI [46114885133](https://github.com/TheSumitNain/school-management-system/actions/runs/46114885133) passed. Frontend CI [46114885123](https://github.com/TheSumitNain/school-management-system/actions/runs/46114885123) was still running when this note was written; verify its final result before acceptance.
 - Continue on work only. Do not report Staff Management 100% or invent an overall percentage. Run focused local Windows acceptance and real School Admin role verification before closing Account & Access.
+
+## 2026-11-28 — Permission dictionary added
+
+- Added STAFF-MANAGEMENT-PERMISSION-DICTIONARY.md as the canonical key-by-key reference for Staff Directory, Account & Access, academic assignments, attendance, leave/holidays, substitutions and workload.
+- Each permission records its meaning, UI effect, delegability and granting screen. The dictionary is sourced from V4/V58/V59/V60 and current UI/backend authorization.
+- Read the dictionary together with STAFF-MANAGEMENT-ACCESS-MATRIX.md before changing role or permission behaviour.

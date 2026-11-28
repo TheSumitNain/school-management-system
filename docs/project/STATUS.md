@@ -3106,3 +3106,5 @@ cd /d D:\school-management-system && git pull --ff-only origin work && cd /d D:\
 ```
 
 - Do not declare Staff Management 100% from automated tests alone. Document upload remains deferred and excluded. Preserve existing page-level acceptance records; do not invent an overall percentage.
+
+- **Permission dictionary:** docs/product/STAFF-MANAGEMENT-PERMISSION-DICTIONARY.md now records each Staff Management permission's meaning, UI gate, delegability and granting screen. Read it together with the Access Matrix before changing permissions.

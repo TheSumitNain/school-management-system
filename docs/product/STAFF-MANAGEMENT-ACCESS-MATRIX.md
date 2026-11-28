@@ -29,7 +29,7 @@ This is the current code/migration-derived default, assuming the full migration 
 4. **Staff Directory → Edit employee profile → Employment:** change employment Active/Inactive.
 5. **Staff Directory → Disable account / Enable account:** control login access separately from employment status.
 
-The full route, permission-key and lifecycle details follow below. The canonical continuation record is this file plus STAFF-MANAGEMENT-ROADMAP.md and docs/project/STATUS.md.
+The full route, permission-key and lifecycle details follow below. See [STAFF-MANAGEMENT-PERMISSION-DICTIONARY.md](STAFF-MANAGEMENT-PERMISSION-DICTIONARY.md) for each key's meaning, delegability and granting screen. The canonical continuation record is this file plus STAFF-MANAGEMENT-ROADMAP.md and docs/project/STATUS.md.
 
 ## 1. The access model — four separate concepts
 
