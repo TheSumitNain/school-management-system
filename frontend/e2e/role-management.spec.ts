@@ -67,7 +67,7 @@ test("custom roles can be created, granted delegated permissions and safely revo
   await page.getByLabel("Username").fill("e2e-role-management");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Roles & permissions" }).click();
+  await page.locator("button.nav-item").filter({ hasText: "Roles & permissions" }).click();
 
   await page.getByRole("button", { name: "Create role" }).click();
   const createDialog = page.getByRole("dialog", { name: "Create a custom role" });
