@@ -25,6 +25,7 @@ var (
     ErrStaffProfileIncomplete = errors.New("staff employee profile is incomplete")
     ErrStaffProfileHasActiveAssignments = errors.New("staff profile has active teaching assignments")
     ErrStaffProfileHasActiveSubstitutions = errors.New("staff profile has active substitutions")
+    ErrStaffTeacherRoleMustBeRevoked = errors.New("remove the Teacher role before changing this employee from Teaching to another staff type")
 )
 
 type UserRepository struct {
@@ -539,6 +540,9 @@ func (r *UserRepository) UpdateStaffProfile(ctx context.Context, actorPrincipalI
         }
         if errors.As(err, &pgErr) && pgErr.Code == "23514" && pgErr.ConstraintName == "staff_principal_active_substitutions_check" {
             return nil, ErrStaffProfileHasActiveSubstitutions
+        }
+        if errors.As(err, &pgErr) && pgErr.Code == "23514" && pgErr.ConstraintName == "teacher_role_requires_teaching_profile" {
+            return nil, ErrStaffTeacherRoleMustBeRevoked
         }
         return nil, fmt.Errorf("upsert staff profile: %w", err)
     }
