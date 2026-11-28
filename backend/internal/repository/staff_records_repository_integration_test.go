@@ -475,10 +475,10 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 		t.Fatalf("cross-school record read error=%v want ErrStaffRecordAccessDenied",err)
 	}
 	var auditCount int
-	if err:=tx.QueryRow(ctx,`SELECT COUNT(*) FROM audit_events WHERE actor_principal_id=$1 AND school_id=$2 AND action IN ('staff.qualification.created','staff.certification.created','staff.experience.created','staff.qualification.updated','staff.certification.updated','staff.experience.updated')`,actorID,schoolID).Scan(&auditCount);err!=nil{
+	if err:=tx.QueryRow(ctx,`SELECT COUNT(*) FROM audit_events WHERE actor_principal_id=$1 AND school_id=$2 AND action IN ('staff.qualification.created','staff.certification.created','staff.experience.created','staff.qualification.updated','staff.certification.updated','staff.experience.updated','staff.qualification.verified','staff.certification.verified')`,actorID,schoolID).Scan(&auditCount);err!=nil{
 		t.Fatalf("count staff record audit events: %v",err)
 	}
-	if auditCount!=6{t.Fatalf("audit count=%d want=6 (three creates and three updates)",auditCount)}
+	if auditCount!=12{t.Fatalf("audit count=%d want=12 (three creates, seven updates and two verification decisions)",auditCount)}
 	// Leave and substitution activity is part of a staff member's relevant history.
 	if _,err:=tx.Exec(ctx,`
 		INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
