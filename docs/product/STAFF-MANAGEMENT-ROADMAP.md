@@ -1,3 +1,15 @@
+## 2026-11-28 — Qualifications & Experience credential verification implementation (in progress)
+
+- Approved workflow implemented on `work`: separate non-delegable `staff.credentials.verify` permission; V74 automatically grants it to existing and future School Admin system roles; `users.update` alone does not authorize verification.
+- Backend adds qualification/certification Verify and Reject operations, school-scoped live permission checks, verifier metadata, required rejection reason, and transactional audit events.
+- Editing factual qualification/certification details resets prior verification to Pending and clears reviewer metadata; unchanged values preserve the decision. Prior employment remains self-reported.
+- Profile UI now exposes permission-gated Verify/Reject controls, reason entry, status, reviewer account ID and review time; History & Activity labels verification decisions. UI clarifies that no document has been uploaded or reviewed.
+- No delete/archive operation was added. Document upload remains deferred and excluded from completion percentage.
+- Latest code checkpoint before this documentation update: `7bf067def39bd87ead63b9386e8f964a0750c711` on `work`.
+- Backend unit/integration, frontend typecheck/build, Playwright, CI and authenticated local acceptance are **pending**. Do not call Qualifications & Experience complete until all pass.
+
+---
+
 ## 2026-11-28 — Account & Access responsive UX batch
 
 - Mobile Staff Directory row actions now collapse into a permission-aware three-dot popover; desktop action icons remain unchanged. The popover uses a body portal so it is not clipped by the table's horizontal scroll container and supports outside-click, Escape and viewport-change dismissal.
