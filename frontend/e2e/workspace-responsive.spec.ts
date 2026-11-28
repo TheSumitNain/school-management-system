@@ -112,7 +112,12 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
   await expect.poll(() => page.locator("#workspace-sidebar").evaluate(element => Math.round(element.getBoundingClientRect().left))).toBe(0);
   await expect(page.locator(".main")).toHaveCSS("margin-left", "250px");
   await expect(page.locator("#workspace-sidebar .side-brand b")).toBeVisible();
-  await expect(page.locator("#workspace-sidebar .nav-item-label")).toBeVisible();
+  await expect.poll(() => page.locator("#workspace-sidebar .nav-item-label").evaluateAll(labels =>
+    labels.length > 0 && labels.every(label => {
+      const style = getComputedStyle(label);
+      return style.display !== "none" && style.visibility !== "hidden" && label.getClientRects().length > 0;
+    }),
+  )).toBe(true);
 
   const pages = [
     { path: "/", heading: /good (morning|afternoon|evening),/i },
