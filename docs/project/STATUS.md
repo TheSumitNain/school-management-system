@@ -3184,3 +3184,14 @@ cd /d D:\school-management-system && git pull --ff-only origin work && cd /d D:\
 - The prior fixture allowed a successful response to arrive before the error-state assertion, as confirmed by the captured Playwright snapshot. That was a test-fixture determinism problem; no production component defect has been established.
 - The E2E test now keeps the audit endpoint at HTTP 503 until the user explicitly clicks **Try again**. It waits for the visible error state, then enables the successful response and verifies that the manual retry recovers. It does not assume a fixed number of background requests.
 - The updated test is committed on work; local focused test, full Staff suite, PostgreSQL integration tests and go vet are still pending. History & Activity remains incomplete until those checks pass.
+
+
+## 2026-11-28 — History & Activity closed; Qualifications & Experience audit opened
+
+- User-run Windows verification after pulling `work` commit `6ceff1e45390de6be88a88b442a54d893cd9ed57`: frontend typecheck/design-token check/production build **PASS**; focused History & Activity Playwright **3/3 PASS**; full Staff Management Playwright **148/148 PASS**; PostgreSQL-backed `go test -count=1 -p 1 ./...` **PASS**; `go vet ./...` **PASS**. This supersedes earlier pending History & Activity notes above.
+- History & Activity is now verified for its permission gate, safe summary rendering, bounded pagination and manual retry recovery. Do not interpret this as whole Staff Management completion.
+- Opened the next single-page audit: Staff Profile → Qualifications & Experience.
+- Source review confirms read routes use `users.read`, write routes use `users.update`, repository operations re-check live permissions and same-school target ownership, and create/update plus audit insertion are transactional.
+- Gap: no delete/archive routes or UI actions; qualification/certification verification state is not editable through normal update; no dedicated verification endpoint/permission exists; experience model does not expose verification status. Existing E2E coverage includes create/edit, field/date validation, retry, no-op unchanged edits and duplicate-submit suppression.
+- **Approval gate:** verification authority and permission are undefined in the current permission dictionary. Do not reuse/broaden `users.update` or add a permission/migration without explicit product/security approval. Do not add deletion/archive until retention and audit semantics are defined. Document upload remains deferred/excluded.
+- No code or schema change in this audit batch. Documentation updated in `docs/product/STAFF-MANAGEMENT-ROADMAP.md` (commit `cb00a4f257d973c351665fad094affe0228c8890`) and this status file. Work only on `work`; `main` untouched.
