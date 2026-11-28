@@ -2293,6 +2293,167 @@ test("staff experience rejects end dates before start dates without an API reque
   await expect(dialog.locator('input[name="employer_name"]')).toHaveValue("Previous School");
 });
 
+test("academic assignment workspace creates and revokes subject and class in-charge assignments", async ({ page }) => {
+  const teacherAssignments: Array<Record<string, unknown>> = [];
+  const inchargeAssignments: Array<Record<string, unknown>> = [];
+  await signInAndOpenStaff(page, [], undefined, [
+    "teacher_assignments.read", "teacher_assignments.manage",
+    "class_incharge_assignments.read", "class_incharge_assignments.manage",
+    "academic_years.read", "classes.read", "subjects.read",
+  ]);
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = request.method();
+    if (path === "/school/academic-years" && method === "GET") {
+      await route.fulfill({ json: { academic_years: [{ id: 2026, name: "2026–27", status: "active", is_current: true }] } });
+      return;
+    }
+    if (path === "/school/classes" && method === "GET") {
+      await route.fulfill({ json: { classes: [{ id: 6, name: "Class 6", is_active: true }] } });
+      return;
+    }
+    if (path === "/school/sections" && method === "GET") {
+      await route.fulfill({ json: { sections: [{ id: 301, academic_year_id: 2026, class_id: 6, name: "A", is_active: true }] } });
+      return;
+    }
+    if (path === "/school/subjects" && method === "GET") {
+      await route.fulfill({ json: { subjects: [{ id: 9, name: "Mathematics", is_active: true }] } });
+      return;
+    }
+    if (path === "/school/eligible-teachers" && method === "GET") {
+      await route.fulfill({ json: { teachers: [{ principal_id: 501, username: "teacher.alpha" }] } });
+      return;
+    }
+    if (path === "/school/teacher-assignments" && method === "GET") {
+      await route.fulfill({ json: { assignments: teacherAssignments } });
+      return;
+    }
+    if (path === "/school/class-incharge-assignments" && method === "GET") {
+      await route.fulfill({ json: { assignments: inchargeAssignments } });
+      return;
+    }
+    if (path === "/school/teacher-assignments" && method === "POST") {
+      const payload = request.postDataJSON() as Record<string, unknown>;
+      const saved = { ...payload, id: 901, class_name: "Class 6", section_name: "A", subject_name: "Mathematics", teacher_username: "teacher.alpha", assigned_at: "2026-11-28T00:00:00.000Z", revoked_at: null };
+      teacherAssignments.push(saved);
+      await route.fulfill({ status: 201, json: { assignment: saved } });
+      return;
+    }
+    const subjectRevoke = path.match(/^\/school\/teacher-assignments\/(\d+)$/);
+    if (subjectRevoke && method === "DELETE") {
+      const target = teacherAssignments.find(item => item.id === Number(subjectRevoke[1]));
+      if (!target) { await route.fulfill({ status: 404, json: { message: "Assignment not found" } }); return; }
+      target.revoked_at = "2026-11-28T00:05:00.000Z";
+      await route.fulfill({ json: { message: "Assignment revoked" } });
+      return;
+    }
+    if (path === "/school/class-incharge-assignments" && method === "POST") {
+      const payload = request.postDataJSON() as Record<string, unknown>;
+      const saved = { ...payload, id: 902, class_name: "Class 6", section_name: "A", teacher_username: "teacher.alpha", assigned_at: "2026-11-28T00:00:00.000Z", revoked_at: null };
+      inchargeAssignments.push(saved);
+      await route.fulfill({ status: 201, json: { assignment: saved } });
+      return;
+    }
+    const inchargeRevoke = path.match(/^\/school\/class-incharge-assignments\/(\d+)$/);
+    if (inchargeRevoke && method === "DELETE") {
+      const target = inchargeAssignments.find(item => item.id === Number(inchargeRevoke[1]));
+      if (!target) { await route.fulfill({ status: 404, json: { message: "Assignment not found" } }); return; }
+      target.revoked_at = "2026-11-28T00:05:00.000Z";
+      await route.fulfill({ json: { message: "Assignment revoked" } });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.getByRole("button", { name: "Manage academic assignments" }).click();
+  await expect(page.getByRole("heading", { name: "Teacher assignments" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Assign subject teacher" }).click();
+  const subjectDialog = page.getByRole("dialog", { name: "Assign a subject teacher" });
+  await subjectDialog.getByRole("button", { name: "Subject assignment academic year" }).click();
+  await subjectDialog.getByRole("option", { name: "2026–27" }).click();
+  await subjectDialog.getByRole("button", { name: "Subject assignment section" }).click();
+  await subjectDialog.getByRole("option", { name: "Class 6 · A" }).click();
+  await subjectDialog.getByRole("button", { name: "Subject" }).click();
+  await subjectDialog.getByRole("option", { name: "Mathematics" }).click();
+  await subjectDialog.getByRole("button", { name: "Subject assignment teacher" }).click();
+  await subjectDialog.getByRole("option", { name: "teacher.alpha" }).click();
+  await subjectDialog.getByRole("button", { name: "Assign subject", exact: true }).click();
+  const subjectRow = page.getByRole("row").filter({ hasText: "Mathematics" });
+  await expect(subjectRow).toContainText("teacher.alpha");
+  await expect(subjectRow).toContainText("Active");
+  await subjectRow.getByRole("button", { name: "Revoke" }).click();
+  const subjectConfirm = page.getByRole("dialog", { name: "Revoke subject assignment?" });
+  await subjectConfirm.getByRole("button", { name: "Revoke assignment" }).click();
+  await expect(page.getByRole("row").filter({ hasText: "Mathematics" })).toContainText("Revoked");
+
+  await page.getByRole("button", { name: "Assign class in-charge" }).click();
+  const inchargeDialog = page.getByRole("dialog", { name: "Assign class in-charge" });
+  await inchargeDialog.getByRole("button", { name: "Class in-charge academic year" }).click();
+  await inchargeDialog.getByRole("option", { name: "2026–27" }).click();
+  await inchargeDialog.getByRole("button", { name: "Class in-charge section" }).click();
+  await inchargeDialog.getByRole("option", { name: "Class 6 · A" }).click();
+  await inchargeDialog.getByRole("button", { name: "Class in-charge teacher" }).click();
+  await inchargeDialog.getByRole("option", { name: "teacher.alpha" }).click();
+  await inchargeDialog.getByRole("button", { name: "Assign in-charge", exact: true }).click();
+  const inchargeRow = page.getByRole("row").filter({ hasText: "teacher.alpha" }).filter({ hasText: "Class 6 · A" });
+  await expect(inchargeRow).toContainText("Active");
+  await inchargeRow.getByRole("button", { name: "Revoke" }).click();
+  const inchargeConfirm = page.getByRole("dialog", { name: "Revoke class in-charge?" });
+  await inchargeConfirm.getByRole("button", { name: "Revoke assignment" }).click();
+  await expect(page.getByRole("row").filter({ hasText: "teacher.alpha" }).filter({ hasText: "Class 6 · A" })).toContainText("Revoked");
+});
+
+test("academic assignment read-only permissions show history without management actions", async ({ page }) => {
+  await signInAndOpenStaff(page, [], undefined, [
+    "teacher_assignments.read", "class_incharge_assignments.read",
+    "academic_years.read", "classes.read", "subjects.read",
+  ]);
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    if (path === "/school/academic-years") {
+      await route.fulfill({ json: { academic_years: [{ id: 2026, name: "2026–27", status: "active", is_current: true }] } });
+      return;
+    }
+    if (path === "/school/classes") {
+      await route.fulfill({ json: { classes: [{ id: 6, name: "Class 6", is_active: true }] } });
+      return;
+    }
+    if (path === "/school/sections") {
+      await route.fulfill({ json: { sections: [{ id: 301, academic_year_id: 2026, class_id: 6, name: "A", is_active: true }] } });
+      return;
+    }
+    if (path === "/school/subjects") {
+      await route.fulfill({ json: { subjects: [{ id: 9, name: "Mathematics", is_active: true }] } });
+      return;
+    }
+    if (path === "/school/eligible-teachers") {
+      await route.fulfill({ json: { teachers: [{ principal_id: 501, username: "teacher.alpha" }] } });
+      return;
+    }
+    if (path === "/school/teacher-assignments") {
+      await route.fulfill({ json: { assignments: [{ id: 903, academic_year_id: 2026, section_id: 301, section_name: "A", class_name: "Class 6", subject_id: 9, subject_name: "Mathematics", teacher_principal_id: 501, teacher_username: "teacher.alpha", assigned_at: "2026-04-01T00:00:00.000Z", revoked_at: null }] } });
+      return;
+    }
+    if (path === "/school/class-incharge-assignments") {
+      await route.fulfill({ json: { assignments: [{ id: 904, academic_year_id: 2026, section_id: 301, section_name: "A", class_name: "Class 6", teacher_principal_id: 501, teacher_username: "teacher.alpha", assigned_at: "2026-04-01T00:00:00.000Z", revoked_at: null }] } });
+      return;
+    }
+    await route.fallback();
+  });
+  await page.getByRole("button", { name: "Manage academic assignments" }).click();
+  await expect(page.getByRole("heading", { name: "Teacher assignments" })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "Mathematics" })).toContainText("Active");
+  await expect(page.getByRole("row").filter({ hasText: "teacher.alpha" }).filter({ hasText: "Class 6 · A" })).toContainText("Active");
+  await expect(page.getByRole("button", { name: "Assign subject teacher" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Assign class in-charge" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Revoke" })).toHaveCount(0);
+});
+
 test("staff profile shows only the selected employee's academic assignments and retained history", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 411, school_id: 10, username: "teacher.profile",
