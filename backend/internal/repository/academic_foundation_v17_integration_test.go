@@ -545,14 +545,14 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		t.Fatalf("legacy unclassified teacher workload access = %v, want ErrTimetableAccessDenied", err)
 	}
 	legacyEnrollments, err := legacyRepo.ListStudentEnrollments(ctx, teacherPrincipalID, schoolID, year1, studentID)
-	if err != nil || len(legacyEnrollments) != 0 {
+	if !errors.Is(err, ErrAcademicAccessDenied) || len(legacyEnrollments) != 0 {
 		_ = legacyTeacherScope.Rollback(ctx)
-		t.Fatalf("legacy unclassified teacher enrollment access = %+v, err=%v; want no rows", legacyEnrollments, err)
+		t.Fatalf("legacy unclassified teacher enrollment access = %+v, err=%v; want ErrAcademicAccessDenied and no rows", legacyEnrollments, err)
 	}
 	legacyDirectory, legacyTotal, err := legacyRepo.ListStudentEnrollmentDirectory(ctx, teacherPrincipalID, schoolID, year1, 10, 0)
-	if err != nil || legacyTotal != 0 || len(legacyDirectory) != 0 {
+	if !errors.Is(err, ErrAcademicAccessDenied) || legacyTotal != 0 || len(legacyDirectory) != 0 {
 		_ = legacyTeacherScope.Rollback(ctx)
-		t.Fatalf("legacy unclassified teacher enrollment directory = %+v total=%d err=%v; want no rows", legacyDirectory, legacyTotal, err)
+		t.Fatalf("legacy unclassified teacher enrollment directory = %+v total=%d err=%v; want ErrAcademicAccessDenied and no rows", legacyDirectory, legacyTotal, err)
 	}
 	if _, err := legacyRepo.ListAttendance(ctx, teacherPrincipalID, schoolID, year1, section2, time.Date(2026, 11, 26, 0, 0, 0, 0, time.UTC)); !errors.Is(err, ErrAttendanceAccessDenied) {
 		_ = legacyTeacherScope.Rollback(ctx)
