@@ -87,7 +87,7 @@ function Dashboard({user,availablePages,onNavigate}:{user:AuthUser;availablePage
    <section className="welcome"><span className="eyebrow">YOUR WORKSPACE</span><h2>Everything starts with a clear picture.</h2><p>Use the navigation to manage the school areas your account is permitted to access. The API checks authorization again for every operation.</p><div className="welcome-icon" aria-hidden="true"><GraduationCap size={48}/></div></section>
    <section className="dashboard-workspaces" aria-labelledby="dashboard-workspaces-title">
     <div><span className="eyebrow">AVAILABLE TO YOU</span><h2 id="dashboard-workspaces-title">Go to a workspace</h2><p>These areas are available with your current account permissions.</p></div>
-    {availablePages.filter(item=>item.page!=="dashboard").length>0?<div className="dashboard-workspace-links">{availablePages.filter(item=>item.page!=="dashboard").map(item=><button className="text-button" type="button" key={item.page} onClick={()=>onNavigate(item.page)}>{item.label}<span aria-hidden="true"> →</span></button>)}</div>:<p>No additional workspaces are assigned to this account yet. Ask your school administrator to review your role and access.</p>}
+    {availablePages.filter(item=>item.page!=="dashboard"&&item.page!=="settings").length>0?<div className="dashboard-workspace-links">{availablePages.filter(item=>item.page!=="dashboard"&&item.page!=="settings").map(item=><button className="text-button" type="button" key={item.page} onClick={()=>onNavigate(item.page)}>{item.label}<span aria-hidden="true"> →</span></button>)}</div>:<p>No additional workspaces are assigned to this account yet. Ask your school administrator to review your role and access.</p>}
    </section>
   </>}
  </div>;
