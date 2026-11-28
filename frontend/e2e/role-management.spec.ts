@@ -160,7 +160,7 @@ test("permission delegation load errors are visible and retryable", async ({ pag
   await page.getByLabel("Username").fill("e2e-role-retry");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Roles & permissions" }).click();
+  await page.locator("button.nav-item").filter({ hasText: "Roles & permissions" }).click();
   await page.getByRole("button", { name: "Manage permissions" }).click();
   const permissionDialog = page.getByRole("dialog", { name: "Manage permissions · Library Coordinator" });
   await expect(permissionDialog.getByRole("alert").filter({ hasText: "Delegation service temporarily unavailable." })).toBeVisible();
@@ -214,7 +214,7 @@ test("read-only role access cannot create roles or change delegated permissions"
   await page.getByLabel("Username").fill("e2e-role-readonly");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Roles & permissions" }).click();
+  await page.locator("button.nav-item").filter({ hasText: "Roles & permissions" }).click();
 
   await expect(page.getByRole("button", { name: "Create role" })).toHaveCount(0);
   await expect(page.getByText("Protected built-in role · permissions are managed by the platform.")).toBeVisible();

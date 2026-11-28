@@ -483,7 +483,7 @@ test("workload-only permission opens the workload report without loading staff d
 
   await expect(page.getByRole("button", { name: "My Workload", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Reports", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "My Workload" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "My Workload", level: 1 })).toBeVisible();
   await expect(page.getByText("Workload Teacher", { exact: true })).toBeVisible();
   await expect.poll(() => workloadRequests.length).toBeGreaterThan(0);
   expect(currentYearRequests).toBeGreaterThan(0);

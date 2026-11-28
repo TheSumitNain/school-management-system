@@ -15,7 +15,7 @@ async function signIn(page: import("@playwright/test").Page, email: string) {
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Platform Admin" }).click();
+  await page.locator("button.nav-item").filter({ hasText: "Platform Admin" }).click();
 }
 
 test("Platform Admin accounts can be created and safely deactivated with recoverable failures", async ({ page }) => {
