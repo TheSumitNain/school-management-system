@@ -183,12 +183,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	`, nonTeachingPrincipalID, schoolID, "NT-"+suffix); err != nil {
 		t.Fatalf("create non-teaching profile fixture: %v", err)
 	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
-		VALUES ($1, $2, $3)
-	`, nonTeachingPrincipalID, teacherRoleID, actorPrincipalID); err != nil {
-		t.Fatalf("assign Teacher role to non-teaching fixture: %v", err)
-	}
+	// V73 prevents the Teacher role from being assigned to Non-teaching staff.
 
 
 	// Legacy profiles with NULL Staff Type and explicitly inactive Teaching
@@ -216,12 +211,8 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		`, *fixture.principalID, schoolID, fixture.code, fixture.fullName, fixture.staffType); err != nil {
 			t.Fatalf("create %s staff profile: %v", fixture.fullName, err)
 		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO principal_roles (principal_id, role_id, assigned_by)
-			VALUES ($1, $2, $3)
-		`, *fixture.principalID, teacherRoleID, actorPrincipalID); err != nil {
-			t.Fatalf("assign Teacher role to %s fixture: %v", fixture.fullName, err)
-		}
+		// V73 and the effective-permission resolver keep legacy and inactive
+		// profiles out of Teacher eligibility; no invalid role grant is created here.
 		if fixture.employment == "inactive" {
 			if _, err := tx.Exec(ctx, `UPDATE staff_profiles SET employment_status='inactive' WHERE principal_id=$1 AND school_id=$2`, *fixture.principalID, schoolID); err != nil {
 				t.Fatalf("mark %s profile inactive after role setup: %v", fixture.fullName, err)
