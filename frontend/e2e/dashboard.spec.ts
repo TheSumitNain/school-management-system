@@ -265,12 +265,12 @@ test("dashboard shows a helpful empty state when the account has no overview per
 });
 
 
-test("dashboard reports malformed metric payloads and recovers on retry instead of showing a false zero", async ({ page }) => {
-  let classRequests = 0;
+test("dashboard reports malformed metric payloads across all metrics and recovers on retry instead of showing false zeros", async ({ page }) => {
+  const requests = { staff: 0, classes: 0, years: 0, enrollments: 0 };
   await page.route("**/api/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
-    const path = url.pathname.replace(/^\/api/, "");
+    const path = url.pathname.replace(/^\\/api/, "");
     if (path === "/auth/refresh") {
       await route.fulfill({ status: 401, json: { message: "No active session" } });
       return;
@@ -286,17 +286,34 @@ test("dashboard reports malformed metric payloads and recovers on retry instead 
     if (path === "/auth/me") {
       await route.fulfill({ json: {
         principal_id: 155, principal_type: "staff", school_id: 10,
-        username: "e2e-dashboard-malformed", permissions: ["classes.read"],
+        username: "e2e-dashboard-malformed",
+        permissions: ["users.read", "classes.read", "academic_years.read", "students.read_basic"],
       } });
       return;
     }
+    if (path === "/school/staff/summary") {
+      requests.staff += 1;
+      await route.fulfill({ json: { summary: requests.staff === 1 ? { total: "7" } : { total: 7 } } });
+      return;
+    }
     if (path === "/school/classes") {
-      classRequests += 1;
-      if (classRequests === 1) {
-        await route.fulfill({ json: { classes: { total: 0 } } });
-      } else {
-        await route.fulfill({ json: { classes: [{ id: 1 }] } });
-      }
+      requests.classes += 1;
+      await route.fulfill({ json: { classes: requests.classes === 1 ? { total: 0 } : [{ id: 1 }] } });
+      return;
+    }
+    if (path === "/school/academic-years") {
+      requests.years += 1;
+      await route.fulfill({ json: { academic_years: requests.years === 1
+        ? [{ id: "bad", is_current: true, status: "active" }]
+        : [{ id: 9, is_current: true, status: "active" }] } });
+      return;
+    }
+    if (path === "/school/enrollments") {
+      expect(url.searchParams.get("academic_year_id")).toBe("9");
+      requests.enrollments += 1;
+      await route.fulfill({ json: { enrollments: requests.enrollments === 1
+        ? { total: 0 }
+        : [{ id: 1 }, { id: 2 }, { id: 3 }] } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked dashboard request: ${request.method()} ${path}` } });
@@ -307,11 +324,25 @@ test("dashboard reports malformed metric payloads and recovers on retry instead 
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
 
-  await expect(page.getByRole("alert")).toContainText("Classes: Invalid classes response");
-  await expect(page.locator(".stat").filter({ hasText: "Classes" })).toHaveCount(0);
+  const alert = page.getByRole("alert");
+  await expect(alert).toContainText("Staff accounts: Invalid staff summary response");
+  await expect(alert).toContainText("Classes: Invalid classes response");
+  await expect(alert).toContainText("Academic years: Invalid academic years response");
+  await expect(alert).toContainText("Accessible enrollments: Invalid enrollment response");
+  await expect(page.locator(".stat")).toHaveCount(0);
+
   await page.getByRole("button", { name: /Retry/ }).click();
-  const classesMetric = page.locator(".stat").filter({ hasText: "Classes" });
-  await expect(classesMetric).toBeVisible();
-  await expect(classesMetric.locator("strong")).toHaveText("1");
-  expect(classRequests).toBe(2);
+  const expected = [
+    ["Staff accounts", "7"],
+    ["Classes", "1"],
+    ["Academic years", "1"],
+    ["Accessible enrollments", "3"],
+  ] as const;
+  for (const [label, value] of expected) {
+    const metric = page.locator(".stat").filter({ hasText: label });
+    await expect(metric).toBeVisible();
+    await expect(metric.locator("strong")).toHaveText(value);
+  }
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  expect(requests).toEqual({ staff: 2, classes: 2, years: 2, enrollments: 2 });
 });
