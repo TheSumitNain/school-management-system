@@ -4071,7 +4071,7 @@ test("staff substitution assigns a dated cover, validates the timetable weekday 
     await route.fulfill({ json: { events: [] } });
   });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Original Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.original" }).click();
   const originalProfile = page.getByRole("dialog", { name: "Original Teacher" });
   await originalProfile.getByRole("button", { name: "History & Activity" }).click();
   await expect(originalProfile.getByText("No audited activity is recorded for this employee yet.")).toBeVisible();
@@ -4130,7 +4130,7 @@ test("staff substitution assigns a dated cover, validates the timetable weekday 
   await expect(record.getByRole("button", { name: "Cancel cover" })).toHaveCount(0);
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Original Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.original" }).click();
   const refreshedOriginalProfile = page.getByRole("dialog", { name: "Original Teacher" });
   await refreshedOriginalProfile.getByRole("button", { name: "History & Activity" }).click();
   await expect.poll(() => auditReads).toBeGreaterThan(firstSubstitutionAuditRead);
