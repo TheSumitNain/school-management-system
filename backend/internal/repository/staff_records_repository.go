@@ -728,7 +728,7 @@ func (r *UserRepository) updateStaffQualificationVerification(ctx context.Contex
 	if err != nil { return nil, fmt.Errorf("save qualification verification: %w", err) }
 	action := "staff.qualification." + status
 	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		VALUES($1,$2,$3,'staff_qualification',$4,'success',jsonb_build_object('record_type','qualification','staff_principal_id',$5::bigint,'previous_status',$6,'new_status',$7,'note',NULLIF($8,'')))`,
+		VALUES($1,$2,$3,'staff_qualification',$4,'success',jsonb_build_object('record_type','qualification','staff_principal_id',$5::bigint,'previous_status',$6::text,'new_status',$7::text,'note',NULLIF($8::text,'')))`,
 		actorID, schoolID, action, fmt.Sprint(recordID), staffID, previous, status, note); err != nil { return nil, fmt.Errorf("audit qualification verification: %w", err) }
 	if err = tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit qualification verification: %w", err) }
 	return &saved, nil
@@ -757,7 +757,7 @@ func (r *UserRepository) VerifyStaffCertification(ctx context.Context, actorID, 
 	if err != nil { return nil, fmt.Errorf("save certification verification: %w", err) }
 	action := "staff.certification." + status
 	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
-		VALUES($1,$2,$3,'staff_certification',$4,'success',jsonb_build_object('record_type','certification','staff_principal_id',$5::bigint,'previous_status',$6,'new_status',$7,'note',NULLIF($8,'')))`,
+		VALUES($1,$2,$3,'staff_certification',$4,'success',jsonb_build_object('record_type','certification','staff_principal_id',$5::bigint,'previous_status',$6::text,'new_status',$7::text,'note',NULLIF($8::text,'')))`,
 		actorID, schoolID, action, fmt.Sprint(recordID), staffID, previous, status, note); err != nil { return nil, fmt.Errorf("audit certification verification: %w", err) }
 	if err = tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit certification verification: %w", err) }
 	return &saved, nil
