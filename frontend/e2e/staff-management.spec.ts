@@ -1685,6 +1685,34 @@ test("staff profile edit uses the shared employment-status select and sends the 
 });
 
 
+test("staff profile explains that Teacher role must be revoked before changing staff type", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 304, school_id: 10, username: "teacher.guard",
+    employee_code: "EMP-GUARD-01", full_name: "Guard Teacher", designation: "Science Teacher",
+    mobile_number: "9876543214", email: "guard.teacher@example.com", joining_date: "2025-04-01",
+    employment_status: "active", staff_type: "teaching", profile_complete: true, status: "active",
+    must_change_password: false,
+  }];
+  const message = "Remove the Teacher role in Staff Directory → Employee Profile → Account & Access before changing Staff Type away from Teaching.";
+  let attempts = 0;
+  await signInAndOpenStaff(page, rows, async (_path, route) => {
+    attempts += 1;
+    await route.fulfill({ status: 409, json: { status: "error", code: "staff_teacher_role_assigned", message } });
+  }, ["users.read", "users.update"]);
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "Edit employee profile for teacher.guard" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit employee profile" });
+  await dialog.getByRole("button", { name: "Staff type" }).click();
+  await dialog.getByRole("listbox", { name: "Staff type" }).getByRole("option", { name: "Non-teaching" }).click();
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(message)).toBeVisible();
+  expect(attempts).toBe(1);
+  await expect(dialog.getByRole("listbox", { name: "Staff type" })).toHaveCount(0);
+});
+
 test("staff profile edit preserves entered values after a server failure and succeeds on retry", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 302, school_id: 10, username: "teacher.retry",
