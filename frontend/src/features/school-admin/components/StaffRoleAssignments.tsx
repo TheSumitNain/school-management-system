@@ -62,10 +62,20 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
       setRoleToRevoke(null);
     }
   }, [canAssign, protectedSchoolAdmin]);
+  const canReceiveTeacherRole =
+    staff.staff_type === "teaching" &&
+    staff.employment_status === "active" &&
+    staff.status === "active";
+  const teacherRoleAvailable =
+    (rolesQuery.data?.roles ?? []).some(role => role.role_key === "teacher") &&
+    !canReceiveTeacherRole &&
+    !assignments.some(assigned => assigned.role_key === "teacher");
   const availableRoles = useMemo(
     () => (rolesQuery.data?.roles ?? []).filter(role =>
-      role.role_key !== "school_admin" && !assignments.some(assigned => assigned.role_id === role.id)),
-    [rolesQuery.data?.roles, assignments],
+      role.role_key !== "school_admin" &&
+      (role.role_key !== "teacher" || canReceiveTeacherRole) &&
+      !assignments.some(assigned => assigned.role_id === role.id)),
+    [rolesQuery.data?.roles, assignments, canReceiveTeacherRole],
   );
   const busy = assign.isPending || revoke.isPending;
   function submitAssign(event: FormEvent<HTMLFormElement>) {
@@ -103,6 +113,7 @@ export function StaffRoleAssignments({ staff, canAssign }: Props) {
           {canAssign && !protectedSchoolAdmin && <form className="staff-role-assign" onSubmit={submitAssign}>
             <label>Assign a role</label>
             <div><Select ariaLabel={`Role to assign to ${staff.username}`} invalid={Boolean(roleError)} describedBy={roleError?`role-select-error-${staff.principal_id}`:undefined} value={roleID} onChange={value=>{setRoleID(value);setRoleError("");}} disabled={busy||availableRoles.length===0} placeholder="Choose an available role" options={availableRoles.map(role=>({value:String(role.id),label:role.name+(role.is_system?" (system)":" (custom)")}))}/>{roleError&&<small className="app-field-error" id={`role-select-error-${staff.principal_id}`} role="alert">{roleError}</small>}<button className="primary" type="submit" disabled={busy||availableRoles.length===0}><Check size={15}/>{assign.isPending?"Assigning…":"Assign"}</button></div>
+            {teacherRoleAvailable && <small>Teacher role is available only for an account with an active login and an active Teaching employee profile.</small>}
             {availableRoles.length === 0 && <small>There are no other assignable roles available.</small>}
           </form>}
         </>}
