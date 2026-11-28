@@ -2367,7 +2367,7 @@ test("academic assignment workspace creates and revokes subject and class in-cha
     await route.fallback();
   });
 
-  await page.getByRole("button", { name: "Manage academic assignments" }).click();
+  await page.getByRole("button", { name: "Academic Assignments", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Teacher assignments" })).toBeVisible();
 
   await page.getByRole("button", { name: "Assign subject teacher" }).click();
@@ -2445,7 +2445,7 @@ test("academic assignment read-only permissions show history without management 
     }
     await route.fallback();
   });
-  await page.getByRole("button", { name: "Manage academic assignments" }).click();
+  await page.getByRole("button", { name: "Academic Assignments", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Teacher assignments" })).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: "Mathematics" })).toContainText("Active");
   await expect(page.getByRole("row").filter({ hasText: "teacher.alpha" }).filter({ hasText: "Class 6 · A" })).toContainText("Active");
