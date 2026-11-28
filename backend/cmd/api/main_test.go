@@ -1475,7 +1475,7 @@ func TestDashboardAcademicReadRoutesEnforceTheirLivePermissions(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, permissions := range [][]string{nil, { "unrelated.permission" }} {
+			for _, permissions := range [][]string{nil, []string{"unrelated.permission"}} {
 				router, err := setupTestRouterWithHandlers(
 					fakeDatabase{}, nil, validator,
 					fakePrincipalLoader{principal: principal},
