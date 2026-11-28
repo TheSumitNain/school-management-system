@@ -600,14 +600,14 @@ History & Activity retry regression note (2026-11-28): the Playwright retry test
 - Rejection requires a reason; verification may include an optional note. Status and verifier/time are visible in the profile.
 - Any factual edit to a previously verified/rejected qualification or certification resets it to Pending and clears verifier metadata. Both changes and their audit events must commit atomically.
 - No hard deletion. Archive/retention semantics require a separate product decision. Document upload remains deferred.
-- Implementation has now been added on `work` through V74, backend repository/service/handler routes and the permission-gated profile UI. Backend integration and Playwright coverage are present; current CI reruns and authenticated local role/responsive acceptance remain pending. Do not treat the policy decision alone as completion.
+- Implementation has now been added on `work` through V74, backend repository/service/handler routes and the permission-gated profile UI. Backend Go/PostgreSQL/vet CI and Frontend CI succeeded (200 Playwright tests: 198 passed, 2 flaky passed on retry); authenticated local role/responsive acceptance remains pending. Do not treat the policy decision alone as completion.
 
 
 ## 2026-11-28 — ACCESS-22: Staff credential verification
 
 | ID | Area | Expected rule | Current implementation | Verification status |
 |---|---|---|---|---|
-| ACCESS-22 | Qualifications & Experience | Only a School Admin with the dedicated non-delegable `staff.credentials.verify` permission may Verify/Reject education qualifications and professional certifications. Reject requires a reason. Factual edits reset a prior decision to Pending. Prior employment remains self-reported. | V74 provisions the permission for existing/future School Admin roles; route and repository enforce it; decisions and audit events are transactional; profile UI is permission-gated and displays reviewer/time. | Implemented in code on `work`; backend integration, Playwright, CI and authenticated local acceptance pending. |
+| ACCESS-22 | Qualifications & Experience | Only a School Admin with the dedicated non-delegable `staff.credentials.verify` permission may Verify/Reject education qualifications and professional certifications. Reject requires a reason. Factual edits reset a prior decision to Pending. Prior employment remains self-reported. | V74 provisions the permission for existing/future School Admin roles; route and repository enforce it; decisions and audit events are transactional; profile UI is permission-gated and displays reviewer/time. | Implemented in code on `work`; backend integration and frontend CI passed, including credential-verification Playwright cases; authenticated local acceptance pending. |
 
 - `users.update` is not a substitute for verification permission.
 - Verification does not imply document inspection. The UI explicitly states no supporting document has been uploaded or reviewed.
