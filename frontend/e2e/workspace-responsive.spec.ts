@@ -90,6 +90,18 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
   await page.getByRole("button", { name: "Close navigation", exact: true }).click();
   await expect(openNavigation).toHaveAttribute("aria-expanded", "false");
 
+  for (const width of [768, 900]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(openNavigation).toBeVisible();
+    await openNavigation.click();
+    await expect.poll(() => page.locator("#workspace-sidebar").evaluate(element => Math.round(element.getBoundingClientRect().left))).toBe(0);
+    await page.getByRole("button", { name: "Close navigation", exact: true }).click();
+  }
+  await page.setViewportSize({ width: 901, height: 900 });
+  await expect(openNavigation).toBeHidden();
+  await expect.poll(() => page.locator("#workspace-sidebar").evaluate(element => Math.round(element.getBoundingClientRect().left))).toBe(0);
+  await expect(page.locator(".main")).toHaveCSS("margin-left", "250px");
+
   const pages = [
     { path: "/", heading: /good (morning|afternoon|evening),/i },
     { path: "/roles", heading: /roles/i },
