@@ -206,13 +206,23 @@ func TestStaffDirectorySummaryMatchesFilteredCountsAndEnforcesLivePermissionPost
 	`).Scan(&usersReadPermissionID); err != nil {
 		t.Fatalf("load users.read permission for DENY regression: %v", err)
 	}
+	var overrideDelegationID int64
+	if err := denyTx.QueryRow(fixture.ctx, `
+		SELECT id FROM role_permission_delegations
+		 WHERE school_id=$1 AND permission_id=$2
+		   AND can_override_users=TRUE AND revoked_at IS NULL
+		 LIMIT 1
+	`, fixture.schoolID, usersReadPermissionID).Scan(&overrideDelegationID); err != nil {
+		t.Skipf("users.read has no active user-override delegation in this test database: %v", err)
+	}
 	if _, err := denyTx.Exec(fixture.ctx, `
 		INSERT INTO user_permission_overrides
-			(principal_id, school_id, permission_id, effect, reason, granted_by)
-		VALUES ($1,$2,$3,'deny','staff directory DENY regression',$4)
+			(principal_id, school_id, permission_id, effect, reason, granted_by, delegation_id)
+		VALUES ($1,$2,$3,'deny','staff directory DENY regression',$4,$5)
 		ON CONFLICT (principal_id, school_id, permission_id)
-		DO UPDATE SET effect='deny', reason=EXCLUDED.reason, granted_by=EXCLUDED.granted_by
-	`, fixture.adminPrincipalID, fixture.schoolID, usersReadPermissionID, fixture.adminPrincipalID); err != nil {
+		DO UPDATE SET effect='deny', reason=EXCLUDED.reason, granted_by=EXCLUDED.granted_by,
+		              delegation_id=EXCLUDED.delegation_id
+	`, fixture.adminPrincipalID, fixture.schoolID, usersReadPermissionID, fixture.adminPrincipalID, overrideDelegationID); err != nil {
 		t.Fatalf("apply users.read DENY override: %v", err)
 	}
 	if denied, err := denyRepo.GetStaffDirectorySummary(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID); err == nil || denied != nil {
