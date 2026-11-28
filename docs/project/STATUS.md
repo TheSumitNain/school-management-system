@@ -3195,3 +3195,13 @@ cd /d D:\school-management-system && git pull --ff-only origin work && cd /d D:\
 - Gap: no delete/archive routes or UI actions; qualification/certification verification state is not editable through normal update; no dedicated verification endpoint/permission exists; experience model does not expose verification status. Existing E2E coverage includes create/edit, field/date validation, retry, no-op unchanged edits and duplicate-submit suppression.
 - **Approval gate:** verification authority and permission are undefined in the current permission dictionary. Do not reuse/broaden `users.update` or add a permission/migration without explicit product/security approval. Do not add deletion/archive until retention and audit semantics are defined. Document upload remains deferred/excluded.
 - No code or schema change in this audit batch. Documentation updated in `docs/product/STAFF-MANAGEMENT-ROADMAP.md` (commit `cb00a4f257d973c351665fad094affe0228c8890`) and this status file. Work only on `work`; `main` untouched.
+
+
+## 2026-11-28 — Qualifications & Experience verification policy approved
+
+- User delegated the usability/security decision. Final V1 design: separate non-delegable `staff.credentials.verify` permission, automatically included in the School Admin system role for existing and future schools by migration. No manual school setup or custom-role configuration.
+- This corrects the immediately preceding assistant proposal to reuse `users.update`; the backend contract explicitly keeps verification separate from ordinary record editing.
+- Verify/reject education qualifications and professional certifications only. Experience stays self-reported. Rejection requires a short reason; verification allows an optional note. Show status and verifier/time.
+- Editing credential facts after approval resets status to Pending and clears verifier metadata in the same audited transaction. Verification/rejection and edits are tenant-scoped and audit-transactional.
+- No hard delete; archive/retention policy remains separate. Document upload is deferred and excluded.
+- Implementation is not yet complete. Pending: migration/down migration; approved permission allowlist and system-role exact-bundle integration tests; repository/service/handler verification and rollback tests; UI actions and status/reason presentation; Playwright permission, tenant isolation, audit rollback, edit-reset and responsive coverage; then CI and local verification. No production code or database changed in this policy/documentation batch. Work only on `work`; `main` untouched.
