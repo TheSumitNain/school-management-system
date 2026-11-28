@@ -2125,7 +2125,7 @@ test("staff qualification and certification verification decisions are audited a
   await expect(certification.getByText("Note: Certificate number could not be confirmed.")).toBeVisible();
   await expect(certification.getByText(/Reviewed by account #9001/)).toBeVisible();
   expect(decisions).toEqual([
-    {collection:"qualifications",recordID:961,payload:{status:"verified"}},
+    {collection:"qualifications",recordID:961,payload:{status:"verified",note:""}},
     {collection:"certifications",recordID:962,payload:{status:"rejected",note:"Certificate number could not be confirmed."}},
   ]);
 });
