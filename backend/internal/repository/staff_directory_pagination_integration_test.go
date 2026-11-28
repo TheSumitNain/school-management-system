@@ -191,4 +191,29 @@ func TestStaffDirectorySummaryMatchesFilteredCountsAndEnforcesSchoolAdminPostgre
 	if forgedSummary, err := repo.GetStaffDirectorySummary(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID+1); err == nil || forgedSummary != nil {
 		t.Fatalf("School Admin unexpectedly read a forged foreign-school directory summary: summary=%+v err=%v", forgedSummary, err)
 	}
+
+	// Repository reads must honor the same live DENY override as AuthMiddleware,
+	// even when the principal still has the School Admin system-role grant.
+	var usersReadPermissionID int64
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT id FROM permissions WHERE permission_key='users.read' AND scope_type='school'
+	`).Scan(&usersReadPermissionID); err != nil {
+		t.Fatalf("load users.read permission for DENY regression: %v", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		INSERT INTO user_permission_overrides
+			(principal_id, school_id, permission_id, effect, reason, granted_by)
+		VALUES ($1,$2,$3,'deny','staff directory DENY regression',$4)
+		ON CONFLICT (principal_id, school_id, permission_id)
+		DO UPDATE SET effect='deny', reason=EXCLUDED.reason, granted_by=EXCLUDED.granted_by
+	`, fixture.adminPrincipalID, fixture.schoolID, usersReadPermissionID, fixture.adminPrincipalID); err != nil {
+		t.Fatalf("apply users.read DENY override: %v", err)
+	}
+	if denied, err := repo.GetStaffDirectorySummary(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID); err == nil || denied != nil {
+		t.Fatalf("staff directory summary ignored users.read DENY override: summary=%+v err=%v", denied, err)
+	}
+	if denied, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID,
+		models.StaffDirectoryFilter{Limit: 10}); err == nil || denied != nil {
+		t.Fatalf("staff directory page ignored users.read DENY override: page=%+v err=%v", denied, err)
+	}
 }
