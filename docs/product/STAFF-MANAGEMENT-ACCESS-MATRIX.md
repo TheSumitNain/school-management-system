@@ -371,3 +371,42 @@ New gap ACCESS-20: Directory table makes Employment status visible but not Login
 5. Update this matrix, the roadmap and project status with exact commit and verified test evidence before moving to the next page.
 
 **Continuation rule:** In a new chat, read this matrix and the latest roadmap/status checkpoint first. Continue on `work` only, in batches, without asking the user to repeat these decisions. Do not mark any page 100% without automated and authenticated manual acceptance. Document upload remains deferred and excluded.
+
+## 19. Batch 2 — permission control to backend route reconciliation
+
+### Permission-control screens and backend endpoints
+
+| User goal | Screen | UI capability | Backend route / guard |
+|---|---|---|---|
+| Open role list | School Admin → Roles & permissions | `roles.read` | `GET /school/roles` — `roles.read` |
+| Create reusable custom role | Roles & permissions → Create role | `roles.create_custom` | `POST /school/roles` — `roles.create_custom`; repository requires School Admin authority |
+| Read permission catalogue | Roles & permissions | `permissions.read` | `GET /school/permissions` — `permissions.read` OR `permissions.override` |
+| Add/remove permission on a custom role | Roles & permissions → select custom role → Manage permissions | `permissions.assign` AND `roles.update_custom`; exact active delegation must allow `can_assign_to_roles` | `POST/DELETE /school/roles/:roleID/permissions...` — both permissions; repository validates exact delegation and school |
+| Delegate permission capability to a school | Platform Admin → Delegate school permissions | Platform Admin: `platform.permissions.delegate` (and school list access) | `GET/POST /platform/schools/:schoolID/permission-delegations`, `GET /platform/permissions/delegable`, `POST /platform/permission-delegations/:delegationID/revoke` |
+| View one employee's assigned roles | Staff Directory → employee → Account & Access (or Manage roles dialog) | `roles.read` | `GET /school/staff/:principalID/roles` — `roles.read` |
+| Assign/revoke one employee role | Same Account & Access panel/dialog | `roles.read` to load panel + `roles.assign` to mutate | `POST /school/staff/:principalID/roles/:roleID` and matching DELETE route — `roles.assign`; repository enforces School Admin authority, same-school target, no self-mutation, protected School Admin and Teacher eligibility |
+| View/set/remove one employee ALLOW/DENY override | Staff Directory → employee → Account & Access (or Permission overrides dialog) | `permissions.override` controls both viewing and mutation | `GET/POST /school/staff/:principalID/permission-overrides` and DELETE route — `permissions.override`; exact active delegation with `can_override_users`, reason and same-school target required |
+
+**Important distinction:** Platform Admin delegates *which permission keys and which grant mechanisms* a school may use. School Admin then either adds those keys to a reusable custom role or grants a per-person exception. Assigning a role to an employee is a separate action from editing the permissions inside that role.
+
+### Current automated coverage located in source
+
+- Frontend Playwright contains focused cases for role read-only access, protected peer School Admin accounts, role assign/revoke with confirmation and pending-request suppression, Teacher role exclusion for active Non-teaching staff, override delegation/reason/removal confirmation, and standalone access dialogs refreshing data on reopen.
+- Backend PostgreSQL repository integration covers custom role and permission grants/revokes, Platform Admin delegation grant/revoke, staff role assignment/revocation, ALLOW/DENY overrides, self-escalation rejection, cross-school target denial, and audit-write rollback.
+- Real HTTP/PostgreSQL RBAC integration exercises permission override changes taking effect on the next protected request and cross-school denial paths.
+- These tests are present in the branch. This source audit does not itself execute them; local Windows results and current Frontend CI evidence are still required.
+
+### Permission model constraints confirmed
+
+- `roles.assign`, `roles.create_custom`, `roles.update_custom`, `permissions.assign` and `permissions.override` are non-delegable in the current catalogue. Role administration and individual overrides therefore remain School Admin-only.
+- `permissions.read` and `roles.read` are separate from mutation permissions.
+- ACCESS-16 remains: `roles.assign` without `roles.read` cannot use the UI panel because the role list must be read first. Current product-safe rule is to require both for the visible assign/revoke workflow; do not silently add a broad role-read grant.
+- ACCESS-17 remains: `permissions.override` combines read and write; there is no separate read-only permission to inspect overrides.
+- Staff operational permissions V58–V60 are non-delegable. Do not make them delegable as a shortcut to giving operational staff access.
+
+### Batch 2 status
+
+- UI-to-route mapping for role list, custom-role creation/grants, Platform Admin delegation, staff role assignment and per-user overrides is now documented.
+- Existing automated test coverage has been located; execution status is not inferred from test presence.
+- Remaining checks: exact actor-authority SQL for each mutation; test assertions for exact delegation revocation, self-mutation and audit rollback; frontend CI and local focused suite on the current branch; stale authenticated navigation after effective permission changes.
+- Next: complete the permission-key dictionary and inspect employment/login lifecycle end-to-end, then run the focused local Account & Access and lifecycle test batches.
