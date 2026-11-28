@@ -560,7 +560,7 @@ These are product/security decisions, not quick permission toggles. Keep the cur
 
 ### Acceptance status
 
-- Code checkpoint before the docs update: `ce4b156d5811767311e52dafa5be849e9f8a44f7`.
+- Code checkpoint before the docs update: `613016782d95b32516511963f774fac2efcb11f8`. Follow-up CSS explicitly hides the mobile trigger above 520px; Playwright asserts desktop-hidden/mobile-visible behaviour.
 - Frontend CI [46146670940](https://github.com/TheSumitNain/school-management-system/actions/runs/46146670940) and Backend CI [46146671047](https://github.com/TheSumitNain/school-management-system/actions/runs/46146671047) were pending when recorded. Local Windows verification is pending.
 - User has manually confirmed mobile bottom-sheet modal and centred tablet modal behaviour. New mobile action menu and 768px/900px sidebar changes are awaiting local acceptance.
 - Account & Access remains in progress; no 100% completion claim. Continue on this page until role-wise, responsive, automated and local acceptance gates are met.

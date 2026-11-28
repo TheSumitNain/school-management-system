@@ -4,7 +4,9 @@
 - Shared sidebar now switches to a hamburger drawer at widths up to 900px, including iPad mini portrait (768px). At 901px and above, the fixed sidebar remains visible. Dashboard's independent 740px content-stacking breakpoint is unchanged.
 - Account & Access Effect selector is now disabled when no individual-override delegation exists, matching the already-disabled permission picker and Save button.
 - Added Playwright tests for mobile row-action visibility and permitted actions, no-delegation override control locking, and sidebar breakpoints at 768px/900px/901px.
-- Code checkpoint: `ce4b156d5811767311e52dafa5be849e9f8a44f7` on `work`. Frontend CI [46146670940](https://github.com/TheSumitNain/school-management-system/actions/runs/46146670940) and Backend CI [46146671047](https://github.com/TheSumitNain/school-management-system/actions/runs/46146671047) were pending; local Windows checks remain pending.
+- Code checkpoint: `613016782d95b32516511963f774fac2efcb11f8` on `work`.
+- Follow-up polish in code commit `613016782d95b32516511963f774fac2efcb11f8`: explicitly hide the three-dot trigger above 520px, and extend the Playwright test to assert desktop-hidden/mobile-visible behaviour.
+ Frontend CI [46146670940](https://github.com/TheSumitNain/school-management-system/actions/runs/46146670940) and Backend CI [46146671047](https://github.com/TheSumitNain/school-management-system/actions/runs/46146671047) were pending; local Windows checks remain pending.
 - User previously confirmed mobile bottom-sheet and tablet centred modal behaviour. New row menu/sidebar behaviour still requires local verification.
 - Account & Access is not closed; keep the page open until automated CI and authenticated local responsive checks pass. Document upload remains deferred/excluded; `main` untouched.
 
