@@ -5,8 +5,8 @@
 - Editing factual qualification/certification details resets prior verification to Pending and clears reviewer metadata; unchanged values preserve the decision. Prior employment remains self-reported.
 - Profile UI now exposes permission-gated Verify/Reject controls, reason entry, status, reviewer account ID and review time; History & Activity labels verification decisions. UI clarifies that no document has been uploaded or reviewed.
 - No delete/archive operation was added. Document upload remains deferred and excluded from completion percentage.
-- Latest code checkpoint before this documentation update: `85a3c8601539a71428bf71c5b1b6f178396c69ae` on `work`.
-- Backend unit/integration, frontend typecheck/build, Playwright, CI and authenticated local acceptance are **pending**. Do not call Qualifications & Experience complete until all pass.
+- Latest code checkpoint before this documentation update: `27156c95d62138df4b4c9d62656c7d1d612d2b3e` on `work`.
+- Backend Go/PostgreSQL/vet and frontend typecheck/build/Playwright CI were running on `27156c95d62138df4b4c9d62656c7d1d612d2b3e` when this note was refreshed. Authenticated local acceptance remains pending. An earlier backend run exposed two test failures (untyped audit JSON parameters and V13's expected School Admin permission count); both were corrected in subsequent commits. Read the latest CI result before accepting. Do not call Qualifications & Experience complete until all pass.
 
 ---
 
