@@ -600,7 +600,7 @@ History & Activity retry regression note (2026-11-28): the Playwright retry test
 - Rejection requires a reason; verification may include an optional note. Status and verifier/time are visible in the profile.
 - Any factual edit to a previously verified/rejected qualification or certification resets it to Pending and clears verifier metadata. Both changes and their audit events must commit atomically.
 - No hard deletion. Archive/retention semantics require a separate product decision. Document upload remains deferred.
-- Implementation and verification are pending; do not treat this policy decision as code completion.
+- Implementation has now been added on `work` through V74, backend repository/service/handler routes and the permission-gated profile UI. Backend integration and Playwright coverage are present; current CI reruns and authenticated local role/responsive acceptance remain pending. Do not treat the policy decision alone as completion.
 
 
 ## 2026-11-28 — ACCESS-22: Staff credential verification
