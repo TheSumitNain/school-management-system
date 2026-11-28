@@ -175,3 +175,60 @@ For each batch record:
 Work only on `work`; never merge or push to `main` as part of this workflow. Do not ask the user to repeat decisions already documented. Continue in batches without pausing for routine approvals; pause only for a genuinely product/security-sensitive decision that cannot be safely inferred.
 
 **Definition of 100%:** approved scope implemented; all role/page visibility rules mapped; UI and backend authorization match; relevant automated tests pass; tenant isolation and lifecycle paths are covered; authenticated manual acceptance evidence exists; documentation is current. Document upload is excluded until separately approved.
+
+
+## 10. Verified default role bundles and role-specific navigation
+
+### School Admin system role
+
+The migration chain seeds an exact 51-permission school-scoped School Admin base bundle. Later staff-module migrations add another 12 permissions to the School Admin system role for existing and newly created schools:
+
+- V58 staff attendance: `staff.attendance.read`, `staff.attendance.mark`, `staff.attendance.update_same_day`, `staff.attendance.correct_past` (4).
+- V59 leave/holidays: `staff.leave.read`, `staff.leave.manage_types`, `staff.leave.manage_requests`, `staff.leave.decide`, `staff.holidays.read`, `staff.holidays.manage` (6).
+- V60 substitutions: `staff.substitutions.read`, `staff.substitutions.manage` (2).
+
+Therefore the currently approved School Admin system bundle is 63 permission keys (51 + 4 + 6 + 2), assuming the complete migration chain has been applied. V58/V59/V60 explicitly backfill existing schools through temporary-table trigger invocations; this is not limited to future schools.
+
+### Teacher system role
+
+The Teacher system role is asserted by the migration to have exactly these seven default permissions:
+
+- `students.read_basic`
+- `attendance.read`
+- `attendance.mark`
+- `attendance.update_same_day`
+- `timetable.read`
+- `homework.read`
+- `notices.read`
+
+It does **not** receive `users.read`, `users.create`, `roles.read`, `roles.assign`, staff attendance/leave/substitution permissions, or class/subject assignment-management permissions by default. Teacher resource endpoints still enforce assigned class/subject scope and active Teaching employment; role permissions alone do not grant school-wide data.
+
+New Teaching staff onboarding assigns this Teacher role transactionally. New Non-teaching staff are not assigned the Teacher role. Existing accounts are not automatically backfilled.
+
+### What each role currently sees in the shared navigation
+
+- **School Admin:** Dashboard, Staff, Roles & permissions, Academics, Students, Attendance, Timetable, Settings (assuming the standard system role and no DENY override).
+- **Teacher:** Dashboard, Staff, Students, Attendance, Timetable, Settings. The Staff entry appears because the Teacher bundle includes `timetable.read`; within Staff the initial tab becomes Workload Report. The separate Timetable page is also visible. Teacher does not get Staff Directory or employee-account controls by default.
+- **Non-teaching staff with no additional role:** after the new onboarding behaviour, no default role is assigned. With no effective permissions, the shared shell shows Dashboard and Settings only. A School Admin must assign an approved custom/system role before other pages appear.
+
+These are current code-derived navigation outcomes, not the final approved product UX. In particular, the Teacher seeing a top-level “Staff” page whose only available tab is “Workload Report” is confusing and should be reviewed in the role-aware navigation batch.
+
+## 11. Additional verified gaps and constraints
+
+| ID | Finding | Severity | Current evidence / consequence | Next action |
+|---|---|---:|---|---|
+| ACCESS-11 | Manual Teacher role assignment does not verify target staff type/employment. | P0 | The StaffRoleAssignments UI offers every role except School Admin; `AssignStaffRole` checks same-school active principal and role scope but does not check target `staff_profiles.staff_type='teaching'` and `employment_status='active'`. New onboarding correctly defaults Teacher only for Teaching staff, but manual assignment can bypass that rule. | Add UI filtering plus authoritative repository/database guard; preserve existing assignments and audit them rather than silently rewriting historical data. Add PostgreSQL and Playwright negative tests for Non-teaching, Unclassified and inactive targets. |
+| ACCESS-12 | Teacher's Staff workspace entry is driven by `timetable.read`, and the tab is labelled Workload Report. | P1 | Teacher default bundle includes `timetable.read`; Staff nav therefore appears, initial tab becomes Workload Report, while the separate Timetable page also appears. Workload component heading currently says “School-wide Workload Report”; backend report scope must remain teacher-own for Teacher. | Pass explicit principal/role context or use server response scope to render an accurate title and navigation label; verify Teacher cannot see school-wide workload. |
+| ACCESS-13 | Staff attendance, leave/holiday and substitution permissions are marked non-delegable in the permission catalogue. | P1 / product policy | V58, V59 and V60 create these permission keys with `is_delegable=FALSE`. They are added to the School Admin system role, but cannot be granted through custom-role delegation or individual overrides. | Keep School Admin-only unless the product explicitly approves additional operational roles; do not flip delegability without a permission-scope review. |
+| ACCESS-14 | Account & Access profile tab is shown to every user who can open Staff profiles. | P1 | Profile tabs are always rendered (except Workload & Timetable, which requires `timetable.read`). Inside Account & Access, missing `roles.read` or `permissions.override` produces explanatory text rather than hiding each unavailable panel. | Decide whether a single visible tab with partial read-only messaging is desired, or hide inaccessible panels/tab; keep API checks authoritative. |
+| ACCESS-15 | Workload Report UI copy may overstate the viewer's data scope. | P1 | Component heading and summaries say “School-wide”; the backend integration contract previously established School Admin school-wide vs Teacher own workload. | Add a role-scope-aware title, export labels and tests. |
+
+## 12. Status update after source audit
+
+- ACCESS-01: **UI tab predicates confirmed** for all nine workspace tabs; corresponding route-level permission and resource checks still need one-to-one reconciliation.
+- ACCESS-02: **Default role bundles confirmed** from V4/V13/V58/V59/V60 migrations: School Admin 63 keys; Teacher exactly 7.
+- ACCESS-03: **Shared navigation outcomes confirmed** for default School Admin, Teacher and role-less Non-teaching account; actual authenticated browser acceptance remains pending.
+- ACCESS-04: **Confirmed** — Account & Access tab is visible to Staff Directory readers; role/override panels individually show permission guidance.
+- ACCESS-05: **Database lifecycle confirmed in code** — setting employment inactive disables the principal, increments token version and revokes refresh sessions; active login cannot be restored until employment is Active. Live login/refresh/API E2E remains pending.
+- ACCESS-06: **Partially verified** — role/override mutations invalidate relevant query caches and server checks are live; authenticated navigation refresh after role changes still needs E2E.
+- ACCESS-11 through ACCESS-15: newly recorded findings above; none is marked fixed.
