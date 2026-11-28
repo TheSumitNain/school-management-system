@@ -323,6 +323,7 @@ var approvedSchoolAdminPermissions = map[string]bool{
 	"staff.holidays.manage":              true,
 	"staff.substitutions.read":            true,
 	"staff.substitutions.manage":          true,
+	"staff.credentials.verify":            true,
 	"timetable.read":                    true,
 	"timetable.manage":                  true,
 	"homework.read":                     true,
