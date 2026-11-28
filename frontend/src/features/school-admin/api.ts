@@ -601,7 +601,7 @@ export type StaffQualification = {
   id: number; staff_principal_id: number; qualification_type: "school" | "diploma" | "undergraduate" | "postgraduate" | "doctorate" | "other";
   qualification_name: string; specialization?: string; institution: string; board_university?: string;
   completion_year?: number | null; score?: number | null; score_scale?: "percentage" | "cgpa" | "gpa" | "marks" | "grade";
-  credential_reference?: string; verification_status: "pending" | "verified" | "rejected"; created_at: string; updated_at: string;
+  credential_reference?: string; verification_status: "pending" | "verified" | "rejected"; verification_notes?: string; verified_by_principal_id?: number | null; verified_at?: string | null; created_at: string; updated_at: string;
 };
 export type StaffCertification = {
   id: number; staff_principal_id: number; certificate_name: string; issuing_organization: string;
@@ -638,6 +638,14 @@ export function updateStaffQualification(principalID: number, recordID: number, 
 export function updateStaffCertification(principalID: number, recordID: number, input: Omit<StaffCertification,"id"|"staff_principal_id"|"verification_status"|"created_at"|"updated_at">) {
   return api<{ certification: StaffCertification }>(`/school/staff/${principalID}/certifications/${recordID}`, { method:"PATCH", body:JSON.stringify(input) });
 }
+
+export function verifyStaffQualification(principalID:number,recordID:number,input:{status:"verified"|"rejected";note?:string}) {
+  return api<{qualification:StaffQualification}>(`/school/staff/${principalID}/qualifications/${recordID}/verification`,{method:"POST",body:JSON.stringify(input)});
+}
+export function verifyStaffCertification(principalID:number,recordID:number,input:{status:"verified"|"rejected";note?:string}) {
+  return api<{certification:StaffCertification}>(`/school/staff/${principalID}/certifications/${recordID}/verification`,{method:"POST",body:JSON.stringify(input)});
+}
+
 export function updateStaffExperience(principalID: number, recordID: number, input: Omit<StaffExperience,"id"|"staff_principal_id"|"created_at"|"updated_at">) {
   return api<{ experience: StaffExperience }>(`/school/staff/${principalID}/experience/${recordID}`, { method:"PATCH", body:JSON.stringify(input) });
 }
