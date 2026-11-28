@@ -658,7 +658,7 @@ test("staff leave decisions refresh the employee audit history when the profile 
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Leave Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for leave.teacher" }).click();
   const profile = page.getByRole("dialog", { name: "Leave Teacher" });
   await profile.getByRole("button", { name: "History & Activity" }).click();
   await expect(profile.getByText("No audited activity is recorded for this employee yet.")).toBeVisible();
@@ -673,7 +673,7 @@ test("staff leave decisions refresh the employee audit history when the profile 
   await expect(page.getByText("No leave requests match these filters.")).toBeVisible();
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Leave Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for leave.teacher" }).click();
   const reopenedProfile = page.getByRole("dialog", { name: "Leave Teacher" });
   await reopenedProfile.getByRole("button", { name: "History & Activity" }).click();
   await expect.poll(() => auditReads).toBeGreaterThan(firstAuditReadCount);
@@ -694,7 +694,7 @@ test("staff leave creation and cancellation refresh employee audit history", asy
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Leave Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for leave.teacher" }).click();
   let profile = page.getByRole("dialog", { name: "Leave Teacher" });
   await profile.getByRole("button", { name: "History & Activity" }).click();
   await expect(profile.getByText("No audited activity is recorded for this employee yet.")).toBeVisible();
@@ -717,7 +717,7 @@ test("staff leave creation and cancellation refresh employee audit history", asy
   await expect(createdRequest).toBeVisible();
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Leave Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for leave.teacher" }).click();
   profile = page.getByRole("dialog", { name: "Leave Teacher" });
   await profile.getByRole("button", { name: "History & Activity" }).click();
   await expect.poll(() => auditReads).toBeGreaterThan(firstAuditReadCount);
@@ -731,7 +731,7 @@ test("staff leave creation and cancellation refresh employee audit history", asy
   await expect(createdRequest).toHaveCount(0);
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Leave Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for leave.teacher" }).click();
   profile = page.getByRole("dialog", { name: "Leave Teacher" });
   await profile.getByRole("button", { name: "History & Activity" }).click();
   await expect.poll(() => auditReads).toBeGreaterThan(afterCreateAuditReadCount);
