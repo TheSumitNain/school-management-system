@@ -313,7 +313,7 @@ test("dashboard reports malformed metric payloads across all metrics and recover
       requests.enrollments += 1;
       await route.fulfill({ json: { enrollments: requests.enrollments === 1
         ? { total: 0 }
-        : [{ id: 1 }, { id: 2 }, { id: 3 }] } });
+        : [{ id: 1, status: "active" }, { id: 2, status: "active" }, { id: 3, status: "transferred" }] } });
       return;
     }
     await route.fulfill({ status: 404, json: { message: `Unmocked dashboard request: ${request.method()} ${path}` } });
@@ -331,7 +331,7 @@ test("dashboard reports malformed metric payloads across all metrics and recover
   await expect(page.locator(".stat")).toHaveCount(0);
 
   await page.getByRole("button", { name: /Retry/ }).click();
-  await expect(page.getByRole("alert")).toContainText("Accessible enrollments: Invalid enrollment response");
+  await expect(page.getByRole("alert")).toContainText("Active enrollments: Invalid enrollment response");
   await expect(page.locator(".stat").filter({ hasText: "Staff accounts" }).locator("strong")).toHaveText("7");
   await expect(page.locator(".stat").filter({ hasText: "Classes" }).locator("strong")).toHaveText("1");
   await expect(page.locator(".stat").filter({ hasText: "Academic years" }).locator("strong")).toHaveText("1");
