@@ -1348,7 +1348,7 @@ textarea[aria-invalid="true"]:focus,
   outline-offset: 2px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 740px) {
   .dashboard-workspaces {
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
