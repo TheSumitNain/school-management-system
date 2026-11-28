@@ -590,3 +590,14 @@ These are product/security decisions, not quick permission toggles. Keep the cur
 - This verifies the user-visible manual recovery control deterministically without duplicating the global React Query retry-policy test. Local focused/full-suite verification is pending.
 
 History & Activity retry regression note (2026-11-28): the Playwright retry test now simulates a network failure by aborting the initial audit request and the single configured automatic network retry, then verifies that the visible manual Try again action recovers successfully. This avoids relying on mocked HTTP 400 behavior while exercising the actual React Query network retry policy. The profile remains pending final local focused/full-suite and backend verification.
+
+
+## 12. Credential verification authority — approved 2026-11-28
+
+- Add `staff.credentials.verify` as a separate non-delegable permission. It is automatically provisioned to the School Admin system role for existing and future schools; no manual setup is required.
+- `users.update` continues to govern ordinary employee/credential detail editing only. It does not authorize Verify/Reject actions.
+- Verify/reject applies to education qualifications and professional certifications only. Previous employment remains self-reported.
+- Rejection requires a reason; verification may include an optional note. Status and verifier/time are visible in the profile.
+- Any factual edit to a previously verified/rejected qualification or certification resets it to Pending and clears verifier metadata. Both changes and their audit events must commit atomically.
+- No hard deletion. Archive/retention semantics require a separate product decision. Document upload remains deferred.
+- Implementation and verification are pending; do not treat this policy decision as code completion.
