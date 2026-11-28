@@ -328,3 +328,46 @@ New Non-teaching employees receive no default system role. After login, with no 
 - Employment status is changed from Staff Directory → Edit employee profile → Employment status (users.update). Moving to Inactive disables the login and revokes sessions; moving back to Active does not automatically enable a disabled login.
 
 New gap ACCESS-20: Directory table makes Employment status visible but not Login status; the separate filter and profile overview expose it. Consider a dedicated Login column so School Admin can distinguish an employed employee whose login is disabled from an employee whose employment is inactive without opening each profile.
+
+## 18. Batch 1 continuation checkpoint — 2026-11-28
+
+**Audited branch head:** `work` at `7c697f205bb68c9cdab07f9afcc5109b9e986268`. `main` was not changed.
+
+### Confirmed UI entry points
+
+- Shared sidebar: `App.tsx` exposes the Staff entry when the user has at least one of `users.read`, `users.create`, `staff.attendance.read`, `staff.leave.read`, `staff.holidays.read`, `staff.holidays.manage`, `staff.substitutions.read`, `teacher_assignments.read`, `class_incharge_assignments.read`, or `timetable.read`. It labels the entry **Staff** when any non-workload staff capability is present; otherwise **My Workload**.
+- Staff workspace tabs and their exact predicates are recorded in sections 3 and 11. A restricted Leave tab is rendered disabled as an explanatory affordance; it is not an accessible workspace.
+- Employee profile tabs are shown to Staff Directory readers, with Workload & Timetable additionally gated by `timetable.read`. Account & Access itself remains visible; each internal panel has its own gate and explanatory message.
+- Role assignments can be opened from the employee profile's Account & Access tab and from the directory's standalone Access roles action where rendered. Individual overrides can be opened from Account & Access and the directory's Permission overrides action where rendered.
+- Inside Account & Access: role list requires `roles.read`; role mutations additionally require `roles.assign`. Individual override panel requires `permissions.override` for both listing and mutation. This confirms gaps ACCESS-16 and ACCESS-17 remain permission-model limitations, not hidden UI bugs.
+- Employment status is changed in Edit employee profile; login disable/enable are separate account actions. The current UI gates disable with `users.disable`, enable with `users.update`, and reset password with `users.password_reset`.
+
+### Verified default navigation outcomes (code + migration-derived; live login acceptance pending)
+
+- School Admin system role: 63 school permissions after V4 base 51 plus V58/V59/V60 staff-module additions, assuming all migrations are applied.
+- Teacher system role: exactly seven keys listed in section 10. It sees Dashboard, My Workload, Students, Attendance, Timetable and Settings in the current shared shell. Resource APIs still enforce assignment scope.
+- New Non-teaching staff: no default role; with no additional role, only Dashboard and Settings are available.
+- These are code/migration-derived outcomes. Do not claim live authenticated role acceptance until separately tested.
+
+### Batch 1 disposition
+
+- ACCESS-01: Staff workspace JSX visibility predicates captured; route-by-route backend authorization reconciliation remains open.
+- ACCESS-02: default role bundles captured from migrations; verify actual target DB migration state during local acceptance.
+- ACCESS-03: shared navigation outcomes captured; authenticated School Admin, Teacher and Non-teaching browser acceptance remains open.
+- ACCESS-04: Account & Access tab and internal panel visibility confirmed.
+- ACCESS-05: employment inactivation and login disable distinction documented; end-to-end password, refresh, stale token and protected API lifecycle acceptance remains open.
+- ACCESS-06: mutation query invalidation is present; live session/navigation permission refresh after role or override changes remains open.
+- ACCESS-07: protected School Admin/self-mutation/delegation/tenant controls have repository coverage in places; full negative-path inventory and test reconciliation remain open.
+- ACCESS-08: ID Cards, reports, History and Workload API route-to-UI authorization reconciliation remains open.
+- ACCESS-11/12: code changes are present in this branch; check current CI and local Windows test results before treating them as accepted.
+- ACCESS-13 through ACCESS-20: product constraints and UX gaps remain tracked; no implicit permission broadening is approved.
+
+### Next batch — Account & Access and permission-control reconciliation
+
+1. Inspect Roles & permissions UI, Platform Admin delegation UI, role/override APIs and repository authorization as one end-to-end workflow.
+2. Build a permission dictionary: key, plain-language meaning, page/tab, read/action level, delegable flag, granting screen, revoking screen and target resource scope.
+3. Verify School Admin authority ceiling, custom role grants, individual ALLOW/DENY, protected School Admin targets, self-escalation and cross-school denial.
+4. Add or repair authenticated Playwright + PostgreSQL regression tests for the gaps found; do not change policy or widen default roles silently.
+5. Update this matrix, the roadmap and project status with exact commit and verified test evidence before moving to the next page.
+
+**Continuation rule:** In a new chat, read this matrix and the latest roadmap/status checkpoint first. Continue on `work` only, in batches, without asking the user to repeat these decisions. Do not mark any page 100% without automated and authenticated manual acceptance. Document upload remains deferred and excluded.
