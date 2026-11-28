@@ -132,7 +132,7 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 		EmployerName:"Previous School",Designation:"Senior Mathematics Teacher",EmploymentType:"permanent",StartDate:"2018-04-01",EndDate:"2021-03-31",
 	})
 
-    // Force audit inserts to fail and verify all six record write paths roll back.
+    // Force audit inserts to fail and verify all record write paths, including verification, roll back.
     auditFailureFunction := "test_staff_record_audit_failure_" + suffix
     auditFailureTrigger := "test_staff_record_audit_failure_trigger_" + suffix
     if _, err := tx.Exec(ctx, fmt.Sprintf("CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $staff_record_audit_failure$ BEGIN IF NEW.action IN ('staff.qualification.created','staff.qualification.updated','staff.certification.created','staff.certification.updated','staff.experience.created','staff.experience.updated','staff.qualification.verified','staff.qualification.rejected','staff.certification.verified','staff.certification.rejected') THEN RAISE EXCEPTION 'injected staff record audit failure'; END IF; RETURN NEW; END; $staff_record_audit_failure$; CREATE TRIGGER %s BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION %s();", auditFailureFunction, auditFailureTrigger, auditFailureFunction)); err != nil {
@@ -177,7 +177,7 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
     if err := tx.QueryRow(ctx, "SELECT qualification_name FROM staff_qualifications WHERE id=$1", qualification.ID).Scan(&qualificationName); err != nil { t.Fatalf("read qualification after audit failure: %v", err) }
     if err := tx.QueryRow(ctx, "SELECT certificate_name FROM staff_certifications WHERE id=$1", certification.ID).Scan(&certificationName); err != nil { t.Fatalf("read certification after audit failure: %v", err) }
     if err := tx.QueryRow(ctx, "SELECT designation FROM staff_experience WHERE id=$1", experience.ID).Scan(&experienceDesignation); err != nil { t.Fatalf("read experience after audit failure: %v", err) }
-    if qualificationName != "M.Sc. Applied Mathematics" || certificationName != "Advanced Teacher Training" || experienceDesignation != "Senior Mathematics Teacher" {
+    if qualificationName != "M.Sc. Applied Mathematics (Revised)" || certificationName != "Advanced Teacher Training (Revised)" || experienceDesignation != "Senior Mathematics Teacher" {
         t.Fatalf("audit failure did not roll back updates: qualification=%q certification=%q experience=%q", qualificationName, certificationName, experienceDesignation)
     }
     if _, err := tx.Exec(ctx, fmt.Sprintf("DROP TRIGGER %s ON audit_events; DROP FUNCTION %s();", auditFailureTrigger, auditFailureFunction)); err != nil {
