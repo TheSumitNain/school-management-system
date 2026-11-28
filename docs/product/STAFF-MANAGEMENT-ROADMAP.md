@@ -1,3 +1,14 @@
+## 2026-11-28 — ACCESS-11 Teacher-role eligibility guard implemented
+
+- Added V73 PostgreSQL guards so the Teacher system role is assigned only to an active Teaching employee, and a profile cannot be converted away from Teaching until the Teacher role is revoked.
+- Added repository validation, a clear HTTP 422 response, effective-permission suppression for legacy inconsistent assignments, and UI filtering/message in Account & Access.
+- Added a PostgreSQL integration test and Playwright test for Non-teaching staff. Existing assignments are not auto-rewritten.
+- Verification: Backend CI and Frontend CI were pending at commit d38e4e23996a99ab98a86462e8cb2a8a7967bd29 when checked. Local tests not yet run. Do not call this fixed until CI + local focused tests pass.
+- Full implementation details and operator workflow are in [STAFF-MANAGEMENT-ACCESS-MATRIX.md](STAFF-MANAGEMENT-ACCESS-MATRIX.md).
+- Next: resolve CI, run focused tests, then continue Account & Access audit and role-specific lifecycle.
+
+---
+
 ## 2026-11-28 — Staff Management role/page audit findings
 
 - Source audit completed for all Staff workspace tab visibility predicates and the complete default system-role bundles.
