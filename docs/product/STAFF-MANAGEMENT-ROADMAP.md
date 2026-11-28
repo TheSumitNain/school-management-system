@@ -1621,3 +1621,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Current code commit 9506a04 fixes the remaining known Staff/Platform permission navigation selectors and workload heading; Backend CI passed, Frontend CI 46115928660 was still running.
 - Previous Frontend CI 46115486523 had 182 passed, 10 failed and 1 flaky. Staff lifecycle and profile-record/date-picker tests passed after fixes; remaining Platform Admin and workload heading failures were corrected in 9506a04, while Student Management failures are outside this Staff Management batch.
 - Next: read final Frontend CI, run focused local Windows tests, and complete authenticated School Admin acceptance for Account & Access. Do not move to the next page or claim 100% before acceptance.
+
+
+## 2026-11-28 — Local verification and CI result reconciliation
+
+- User-run local verification at branch head `8ad794d70c260050d774d63c3360fd1628efbd82`: complete Go/PostgreSQL integration tests **PASS**, `go vet` **PASS**, frontend design-token check/typecheck **PASS**, Vite production build **PASS**.
+- Frontend CI [46115928660](https://github.com/TheSumitNain/school-management-system/actions/runs/46115928660) completed **FAIL**: build and Chromium setup passed; Playwright **185 passed, 5 failed, 3 flaky**. All failed/flaky tests are Student Management strict-locator conflicts where `getByRole('button', {name: 'Students'})` matches both the sidebar item and dashboard shortcut. The job log showed no Staff Management test failures. Backend CI [46115928661](https://github.com/TheSumitNain/school-management-system/actions/runs/46115928661) **PASS**.
+- This does not replace local Account & Access/lifecycle browser acceptance or authenticated School Admin sign-off. Keep the Account & Access page open; do not advance to another Staff Management page until those gates pass.
+- Next batch is one combined Windows Playwright run for Staff Account & Access/lifecycle, workload-only Teacher, failed Teacher Assignment refresh, Role Management and Platform Admin. Keep the page scope unchanged; document upload remains deferred and excluded. `main` remains untouched.
