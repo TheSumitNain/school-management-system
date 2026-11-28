@@ -828,3 +828,87 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 			schoolAdminAuditCount, platformAdminAuditCount)
 	}
 }
+
+
+func TestTeacherRoleAssignmentRequiresActiveTeachingProfilePostgresIntegration(t *testing.T) {
+	_, pool, actorPrincipalID := newPostgresIntegrationRepository(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin Teacher role eligibility integration transaction: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var schoolID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT school_id FROM users WHERE principal_id=$1
+	`, actorPrincipalID).Scan(&schoolID); err != nil {
+		t.Fatalf("load School Admin school: %v", err)
+	}
+
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	var targetPrincipalID int64
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (school_id,username,password_hash,status)
+		VALUES ($1,$2,$3,'active')
+		RETURNING principal_id
+	`, schoolID, "teacher-guard-"+suffix, "integration-test-password-hash").Scan(&targetPrincipalID); err != nil {
+		t.Fatalf("create Teacher role eligibility target: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO staff_profiles
+			(principal_id,school_id,employee_code,full_name,designation,mobile_number,employment_status,staff_type)
+		VALUES ($1,$2,$3,'Role Guard Target','Support Staff','9876543210','active','non_teaching')
+	`, targetPrincipalID, schoolID, "TG-"+suffix); err != nil {
+		t.Fatalf("create Non-teaching target profile: %v", err)
+	}
+
+	var teacherRoleID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM roles
+		WHERE school_id=$1 AND principal_type='staff' AND scope_type='school'
+		  AND role_key='teacher' AND is_system=TRUE
+	`, schoolID).Scan(&teacherRoleID); err != nil {
+		t.Fatalf("load school Teacher system role: %v", err)
+	}
+
+	repo := NewRoleRepository(tx)
+	if err := repo.AssignStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, teacherRoleID); !errors.Is(err, ErrTeacherRoleRequiresTeachingStaff) {
+		t.Fatalf("Teacher role assignment to Non-teaching employee error = %v, want ErrTeacherRoleRequiresTeachingStaff", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE staff_profiles SET staff_type='teaching' WHERE principal_id=$1 AND school_id=$2
+	`, targetPrincipalID, schoolID); err != nil {
+		t.Fatalf("classify target as Teaching: %v", err)
+	}
+	if err := repo.AssignStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, teacherRoleID); err != nil {
+		t.Fatalf("assign Teacher role to active Teaching employee: %v", err)
+	}
+
+	if _, err := tx.Exec(ctx, "SAVEPOINT teacher_role_profile_transition"); err != nil {
+		t.Fatalf("create Teacher profile transition savepoint: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE staff_profiles SET staff_type='non_teaching' WHERE principal_id=$1 AND school_id=$2
+	`, targetPrincipalID, schoolID); err == nil {
+		t.Fatal("database allowed a Teaching employee with an active Teacher role to become Non-teaching")
+	}
+	if _, err := tx.Exec(ctx, "ROLLBACK TO SAVEPOINT teacher_role_profile_transition"); err != nil {
+		t.Fatalf("rollback rejected Teacher profile transition: %v", err)
+	}
+	if _, err := tx.Exec(ctx, "RELEASE SAVEPOINT teacher_role_profile_transition"); err != nil {
+		t.Fatalf("release Teacher profile transition savepoint: %v", err)
+	}
+
+	if err := repo.RevokeStaffRole(ctx, actorPrincipalID, schoolID, targetPrincipalID, teacherRoleID); err != nil {
+		t.Fatalf("revoke Teacher role before changing staff type: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE staff_profiles SET staff_type='non_teaching' WHERE principal_id=$1 AND school_id=$2
+	`, targetPrincipalID, schoolID); err != nil {
+		t.Fatalf("change staff type after Teacher role revocation: %v", err)
+	}
+}
