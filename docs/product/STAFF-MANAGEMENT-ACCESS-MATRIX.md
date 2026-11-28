@@ -1,0 +1,177 @@
+# Staff Management — Access, Page Visibility & Workflow Blueprint
+
+**Status:** Batch 1 audit baseline — in progress  
+**Branch:** `work` only. Never update `main`.  
+**Last audited:** 2026-11-28  
+**Scope:** School Admin, Teacher and Non-teaching Staff access to Staff Management; Platform Admin delegation controls that govern school permissions.  
+**Deferred:** Staff document upload/storage remains out of current scope and is excluded from completion percentage.
+
+> This is an evidence-based baseline from the current `work` branch. “Confirmed” means the current code explicitly implements the behaviour. “Needs verification” means the rule is not yet fully proven across UI, backend, data and real authenticated role sessions. Do not treat an intended role design as an implemented guarantee.
+
+## 1. The access model — four separate concepts
+
+| Concept | Meaning | Where it is currently controlled |
+|---|---|---|
+| Principal/account status | Whether the login principal can authenticate. Current staff account states include active and disabled. | Staff Management → Staff Directory account actions (disable / enable); backend account lifecycle endpoints. |
+| Employment status | Whether the employee is Active or Inactive as an employee record. | Staff Management → Add/Edit Staff → Edit employee profile → Employment status. |
+| Role assignment | Which school-scoped role bundles are assigned to a staff principal (e.g. Teacher, custom role). | Staff Management → open employee profile → Account & Access → Assigned roles; also role assignment modal from directory where available. |
+| Individual permission override | A documented per-user ALLOW or DENY exception, only for a permission delegated for individual overrides. | Staff Management → open employee profile → Account & Access → Individual permission overrides. |
+
+These concepts must not be conflated. Employment Inactive is not the same as login Disabled. Reactivating employment does not automatically enable a disabled login. Disabling an account revokes active sessions. Role changes and overrides are evaluated on protected requests; the UI message says changes take effect on the next protected request.
+
+## 2. Top-level application navigation — current code gates
+
+The shared shell builds navigation from the authenticated user's current permission list in `frontend/src/App.tsx`.
+
+| Main page | Current navigation condition | What this proves / limitation |
+|---|---|---|
+| Dashboard | Always included for authenticated users. | Dashboard content still needs its own data/action permission checks. |
+| Platform Admin | Principal must be `platform_admin` and have one of: `platform.admins.manage`, `platform.audit.read`, both `platform.permissions.delegate` + `platform.schools.read`, or both `platform.schools.create` + `platform.school_admins.create`. | Platform-only page; its tabs have separate permission gates. |
+| Staff | Any one of `users.read`, `users.create`, `staff.attendance.read`, `staff.leave.read`, `staff.holidays.read`, `staff.holidays.manage`, `staff.substitutions.read`, `teacher_assignments.read`, `class_incharge_assignments.read`, `timetable.read`. | This is a broad entry gate, not full access to every Staff tab. Each tab/action must be checked separately. |
+| Roles & permissions | `roles.read`. | Role creation and permission grants have stricter action permissions on the page/API. |
+| Academics | Any one of `classes.read`, `academic_years.read`, `subjects.read`, `teacher_assignments.read`, `class_incharge_assignments.read`. | Individual academic workspaces have separate gates. |
+| Students | Any one of `students.read_sensitive` or `students.read_basic`. | Data visibility and sensitive fields require additional checks. |
+| Attendance | `attendance.read`. | Separate from Staff Attendance permission family. |
+| Timetable | `timetable.read`. | Teacher data must also be restricted to assigned resources server-side. |
+| Settings | Included for authenticated users. | Settings actions require their own controls/API authorization. |
+
+A visible sidebar item is only a navigation decision. It is never a substitute for backend authorization.
+
+## 3. Staff Management workspace — current known page gates
+
+The Staff workspace uses a broad entry gate from the shell, then chooses an initial tab based on available permissions.
+
+| Staff workspace tab | Current visibility/entry rule in `StaffManagementPage.tsx` | Notes |
+|---|---|---|
+| Overview | `users.read` OR `users.create`. | Create-only users may enter without directory read access; verify overview does not leak directory data. |
+| Staff Directory | `users.read`. | Main employee list and profile entry point. |
+| Academic Assignments | `teacher_assignments.read` OR `class_incharge_assignments.read`. | Separate subject and class-in-charge permissions are used within the assignment panel/API. |
+| Attendance | `staff.attendance.read` (verify exact JSX and mutation gates in the next audit pass). | Do not infer write access from read access. |
+| Leave | Leave/holiday read/manage permission family; exact per-tab predicate to be captured in the next audit pass. | Requests, approvals, leave types and holidays have separate action scopes. |
+| Substitutions | `staff.substitutions.read` OR (`users.read` AND `staff.substitutions.manage`). | Exact actions still require backend authorization. |
+| Reports | `users.read` for the staff report; additional operational reports can be exposed by their own read permissions. | Report fields/export must remain privacy-allowlisted. |
+| Workload Report | Initial-tab fallback can use `timetable.read`; exact tab gate needs explicit verification. | School-wide vs own workload depends on role and scope. |
+| ID Cards | Exact tab predicate and API gate need verification. | Do not assume `users.read` alone is sufficient until handler authorization is checked. |
+
+**Audit requirement:** before declaring this matrix final, enumerate every JSX tab predicate and every corresponding backend route permission. Do not rely on this initial summary for unlisted conditions.
+
+## 4. Staff profile tabs — current known behaviour
+
+The profile is opened from Staff Directory and maintains a selected employee plus a selected profile tab.
+
+| Profile tab | Current implementation evidence | Access/edit rule to verify |
+|---|---|---|
+| Overview | Shows employee code, staff type, designation, employment and login state. | Edit shortcut requires `users.update` and excludes protected School Admin accounts. |
+| Personal Details | Shows name, employee code, mobile and email. | Edit requires `users.update`; protected School Admin excluded. |
+| Employment | Shows staff type, designation, joining date, employment and login status. | Edit requires `users.update`; employment Active/Inactive is changed in Edit employee profile. |
+| Qualifications & Experience | Loads qualifications, certifications and experience for selected employee. | Mutations require `users.update`; backend audit/tenant enforcement must be checked. |
+| Documents | Placeholder only; secure upload is not enabled. | Deferred, excluded from current completion scope. |
+| Academic Assignments | Uses selected employee's academic assignment panel. | Separate assignment read/manage permissions; teaching eligibility and same-school restrictions are backend enforced. |
+| Account & Access | Renders role assignments and individual overrides. | Role list: `roles.read`; role assign/revoke: `roles.assign`; individual overrides: `permissions.override`. |
+| History & Activity | Uses staff history panel. | Exact audit-read permission and field redaction need verification. |
+| Workload & Timetable | Renders workload panel when `timetable.read` is present. | Backend restricts teacher's own/assigned data; verify role-specific output. |
+
+Important current UI behaviour: when the user lacks `roles.read`, the Account & Access content displays “You do not have permission to view role assignments.” When the user lacks `permissions.override`, it displays “You do not have permission to manage individual permission overrides.” The profile tab itself is not proven to be hidden by these permissions.
+
+## 5. Exactly where permissions are changed today
+
+### A. Platform Admin — delegates permission capabilities to a school
+
+**Screen:** Platform Admin → Delegate school permissions.
+
+**Required page permissions:** `platform.permissions.delegate` and `platform.schools.read`.
+
+Platform Admin chooses a school and a delegable permission, then chooses whether the School Admin may:
+- assign that permission to custom school roles (`can_assign_to_roles`); and/or
+- create individual staff overrides (`can_override_users`).
+
+Platform Admin can revoke a delegation. This is the ceiling of what the school can grant; School Admin cannot self-create a delegation. Backend routes live under `/platform/schools/:schoolID/permission-delegations` and require `platform.permissions.delegate`.
+
+### B. School Admin — builds reusable custom roles
+
+**Screen:** Roles & permissions.
+
+- View roles: `roles.read`.
+- Create custom role: `roles.create_custom`.
+- View permission catalogue: `permissions.read`.
+- Grant/revoke a delegated permission to a custom role: both `permissions.assign` and `roles.update_custom`.
+- Only active Platform Admin delegations with `can_assign_to_roles=true` can be used.
+- Backend routes are under `/school/roles` and `/school/roles/:roleID/permissions`.
+
+### C. School Admin — assigns roles to an individual employee
+
+**Screen:** Staff Management → Staff Directory → open employee profile → Account & Access → Assign a role.
+
+- View assigned roles: `roles.read`.
+- Assign/revoke a role: `roles.assign`.
+- Protected School Admin target accounts cannot be changed through this panel.
+- Self role assignment/revocation is rejected in repository logic.
+- Assignment is school-scoped and audited; backend checks actor authority and tenant membership.
+- Default Teacher role provisioning for newly created teaching accounts is a separate onboarding rule; existing accounts are not automatically backfilled.
+
+### D. School Admin — adds individual ALLOW/DENY exception
+
+**Screen:** Staff Management → Staff Directory → open employee profile → Account & Access → Individual permission overrides.
+
+- Requires `permissions.override`.
+- Only active Platform Admin delegations with `can_override_users=true` and a delegable permission are offered.
+- A reason is mandatory (maximum 1,000 characters).
+- Effect is ALLOW or DENY; removal is separately confirmed.
+- Protected School Admin target accounts and self-overrides are rejected.
+- Changes are audited; backend enforces same-school target and delegation capability.
+
+**Important:** individual override is an exception, not a replacement for role design. Prefer a custom role when the same permission set is needed by multiple staff members.
+
+## 6. Active / Inactive / Disabled — do not mix the statuses
+
+| Status/control | Where changed | Current known effect | Still needs proof |
+|---|---|---|---|
+| Employment Active / Inactive | Staff Directory → Edit employee profile → Employment status. | Inactive employees cannot sign in; UI explicitly says reactivating employment does not automatically enable a disabled login. Teaching-only workflows reject inactive employment. | Confirm every Staff and non-Staff endpoint consistently rejects inactive employment where required; verify reactivation workflow. |
+| Login Enabled / Disabled | Staff Directory account actions: Disable account / Enable staff account. | Disable revokes active sessions. Enable requires a new temporary password and forces password change at next sign-in. | Confirm disabled account cannot use password login, refresh, old access token, MFA recovery and all APIs; confirm audit and UI filters. |
+| Role assigned / revoked | Account & Access. | Changes affect effective access on next protected request. | Confirm stale frontend navigation/session permissions refresh after role change and logout/login behaviour. |
+| Permission override added / removed | Account & Access. | Effective permissions recalculate on protected requests. | Confirm effective-permission cache/token behaviour and UI refresh after change. |
+| Staff Type Teaching / Non-teaching / Unclassified | Add/Edit Staff profile. | Teaching classification is required for teacher-specific assignments; it does not itself grant Teacher role. | Confirm all teacher-only routes, existing-account onboarding and conversion impact. |
+
+Current code distinguishes **employment status** (`staff_profiles.employment_status`) from **login account status** (`users.status` and `auth_principals.status`). Avoid calling both simply “Active/Inactive” in the UI or documentation.
+
+## 7. Initial role-to-page design target — not yet an implementation claim
+
+The product target is:
+- **School Admin:** school-wide Staff Management according to explicitly delegated permissions.
+- **Teacher:** teacher workspace and only assigned classes, subjects, students and own employment/self-service data. No school-wide Staff Directory, employee account management or permission administration by default.
+- **Non-teaching Staff:** no Teacher role by default. A login and additional role should be granted only when the employee actually needs an approved system workflow. No broad teacher/academic permissions by default.
+- **Platform Admin:** platform setup and school permission delegation, not routine school employee management.
+
+The actual effective role bundles and landing pages for Teacher and Non-teaching staff must be derived from the seeded role-permission rows, auth response and live navigation. They are not yet certified by this document. Do not invent a default permission list.
+
+## 8. Batch 1 audit gaps and next work
+
+| ID | Gap / question | Priority | Evidence required |
+|---|---|---:|---|
+| ACCESS-01 | Capture every Staff workspace tab's exact JSX visibility condition and API route permissions. | P0 | Full source audit + page/route matrix. |
+| ACCESS-02 | Confirm School Admin, Teacher and Non-teaching seeded role permission bundles from migrations/database fixtures. | P0 | Seed migration review + auth integration tests. |
+| ACCESS-03 | Confirm where Teacher and Non-teaching land after login and which pages they see. | P0 | Auth/nav code + authenticated E2E for each role. |
+| ACCESS-04 | Verify whether Account & Access tab is visible to users with only one of `roles.read` / `permissions.override`; avoid confusing partial access. | P0 | UX review + E2E. |
+| ACCESS-05 | Audit disable/enable vs employment inactivation across authentication, refresh, API authorization and teacher assignments. | P0 | Repository + handler + PostgreSQL lifecycle tests. |
+| ACCESS-06 | Verify role changes/overrides refresh effective permissions and navigation without stale access. | P0 | Auth/session/query cache audit + E2E. |
+| ACCESS-07 | Audit protected School Admin handling, self-escalation, delegation ceiling, cross-school denial and audit rollback. | P0 | Existing tests + missing negative-path tests. |
+| ACCESS-08 | Reconcile ID Cards, reports, History and Workload UI visibility with actual backend authorization. | P1 | Route-by-route permission matrix + tests. |
+| ACCESS-09 | Verify non-teaching profile onboarding, optional login, and no implicit Teacher role for old accounts. | P1 | Onboarding tests + explicit migration/backfill decision. |
+| ACCESS-10 | Produce screenshot evidence for the three roles at desktop and mobile sizes. | P1 | Authenticated browser acceptance. |
+
+## 9. Working agreement and continuation protocol
+
+Every batch must update this file and `docs/product/STAFF-MANAGEMENT-ROADMAP.md` (and `docs/project/STATUS.md` when project-wide status changes).
+
+For each batch record:
+1. Date, branch and commit SHA.
+2. Scope completed and files changed.
+3. Decisions made and why.
+4. Frontend tests, backend tests, migrations, typecheck/build and CI evidence (never claim a test ran unless output/CI proves it).
+5. Manual acceptance still pending.
+6. Remaining gaps with stable IDs from this document.
+7. Exact next batch.
+
+Work only on `work`; never merge or push to `main` as part of this workflow. Do not ask the user to repeat decisions already documented. Continue in batches without pausing for routine approvals; pause only for a genuinely product/security-sensitive decision that cannot be safely inferred.
+
+**Definition of 100%:** approved scope implemented; all role/page visibility rules mapped; UI and backend authorization match; relevant automated tests pass; tenant isolation and lifecycle paths are covered; authenticated manual acceptance evidence exists; documentation is current. Document upload is excluded until separately approved.
