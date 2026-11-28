@@ -1,3 +1,16 @@
+## Mandatory continuation protocol for future chats
+
+1. Before any Staff Management work, read this file's latest dated entry, docs/product/STAFF-MANAGEMENT-ACCESS-MATRIX.md and docs/product/STAFF-MANAGEMENT-ROADMAP.md.
+2. Continue from the latest explicit “Next” action. Do not restart the general audit or switch to a different module unless the user asks.
+3. Work in batches, keep moving through the planned sequence without asking the user to approve every small step. Ask only when a genuine product-policy choice cannot be safely inferred.
+4. Complete one page/workflow at a time. For each batch: inspect existing code → document actual visibility/permissions → implement the agreed fix → add backend + UI regression tests → verify CI → give one exact Windows command for local confirmation.
+5. Update the access matrix, roadmap and this status file at the end of every meaningful batch. Record actual commit SHA, tests run and tests pending. Do not claim a test passed unless its output/CI result is visible.
+6. Do not call a page 100% until role-wise manual acceptance, responsive UI, backend authorization, database behaviour, error/edge cases and automated tests are verified. Separate “automated pass” from “manual acceptance pending”.
+7. Use work branch only; never touch main. Preserve uncommitted local files; do not reset, delete or revert package-lock/test-results without explicit review.
+8. Document upload remains deferred and excluded from Staff Management completion percentage.
+
+---
+
 ## 2026-11-28 — Teacher and Non-teaching experience gaps added to the access map
 
 - Added ACCESS-18/19: Teacher currently has a generic Dashboard, My Workload, Students, Attendance and Timetable; homework.read/notices.read are not surfaced by navigation; no self-profile or self-service leave workflow exists. Non-teaching accounts receive no default role and only shared Dashboard/Settings until a custom role is assigned.
