@@ -291,3 +291,32 @@ This is an intentional central-control boundary in the current code, not an impl
 - Added Playwright assertions for Teacher-only My Workload navigation, personal summary/export and the new Staff Type guidance/error path.
 - Backend integration fixtures that create Teacher role assignments were updated to create/mark Teaching profiles before assigning the role. Legacy unclassified Teacher access assertions now expect explicit authorization denial because the effective permission resolver suppresses the whole Teacher bundle for non-Teaching profiles.
 - Verification is pending on latest code commits: Backend CI and Frontend CI must both pass; local Windows test commands still required from the user. Do not mark ACCESS-11/12 as accepted until results are green.
+
+## 16. Teacher and Non-teaching experience — pages that are still missing
+
+### Teacher — actual current experience
+
+With the default seven-key Teacher role and no additional custom role, the shared shell exposes:
+
+- Dashboard — currently generic; it does not yet provide a complete Teacher Today experience and may show no overview metrics.
+- My Workload — personal recurring timetable workload only.
+- Students — basic student access, limited by server-side assigned class/subject scope.
+- Attendance — read/mark/update within the Teacher's authorized attendance scope.
+- Timetable — own assigned timetable entries.
+- Settings — shared account/settings surface.
+
+Teacher does **not** see Staff Directory, staff-wide reports, ID Cards, Roles & permissions, Academic Assignments management, Staff Attendance, Leave & Holidays, Substitutions or school-wide Workload Report by default. The Teacher system role does include homework.read and notices.read, but App.tsx currently has no Homework or Notices navigation/page entry, so those permissions are not surfaced in the current UI.
+
+There is also no separate My Profile page for a Teacher to view/update their own employment profile, and no Teacher self-service leave request workflow in the current permission catalogue/UI. The Staff Leave workspace is an admin operations workspace gated by staff.leave.read / holiday permissions; Teacher has none of those. These are product gaps, not permissions that should be granted blindly.
+
+### Non-teaching — actual current experience
+
+New Non-teaching employees receive no default system role. After login, with no effective permissions, they see only shared Dashboard and Settings. They do not get Teacher pages, Staff Directory, My Profile, leave request, or any operational page unless an approved custom role is assigned. Current code does not include a dedicated Non-teaching self-service role or dashboard.
+
+### Follow-up product gaps
+
+| ID | Gap | Why it matters | Next action |
+|---|---|---|---|
+| ACCESS-18 | Teacher dashboard is generic; Homework/Notices permission keys have no matching app pages; no self-profile or self-service leave workflow. | The Teacher role has permissions that the UI does not surface, while important teacher tasks are absent. | Define Teacher home, homework/notices, own profile and leave request scope before adding more permissions. Build role-specific UX and tests after School Admin Account & Access is accepted. |
+| ACCESS-19 | Non-teaching accounts have no default role or self-service experience. | A new Non-teaching login has no useful pages beyond shared Dashboard/Settings. | Decide whether non-teaching users need a limited base role (e.g. own profile and leave request) or remain login-disabled/role-less until assigned. Do not grant Teacher role. |
+
