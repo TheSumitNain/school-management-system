@@ -1660,3 +1660,5 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - This is a shared-shell UX improvement, not a Staff permission change. Account & Access remains open pending verification.
 
 - Follow-up verification note (2026-11-28): user confirms tablet rendering looks correct; local typecheck and production build passed. Corrected the responsive test's multi-element hidden assertion (strict-mode issue, not an observed visual defect). Re-run `workspace-responsive.spec.ts` and the complete `staff-management.spec.ts` suite before closing Account & Access.
+
+- 2026-11-28 responsive regression follow-up: the desktop sidebar assertion also treated the 8 `.nav-item-label` elements as a single locator. Updated it to assert that every desktop navigation label is rendered and visible, matching the tablet assertion's collection-safe approach. Awaiting local responsive and Staff Management Playwright rerun; Account & Access is not yet marked complete.
