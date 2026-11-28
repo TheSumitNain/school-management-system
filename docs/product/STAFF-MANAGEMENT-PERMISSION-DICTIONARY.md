@@ -16,6 +16,14 @@ This document answers four questions for every permission: what it means, which 
 
 **Important:** users.read is non-delegable. A custom role cannot be used to give a Non-teaching employee access to the Staff Directory in the current permission model.
 
+### Staff credential verification
+
+| Key | Meaning / UI effect | Delegable? | Where granted or changed |
+|---|---|---:|---|
+| staff.credentials.verify | Verify or reject education qualifications and professional certifications; rejection requires a reason. It does not cover previous employment history. | No | Automatically granted to the School Admin system role by V74 for existing and future schools. The Qualifications & Experience profile tab shows Verify/Reject actions only when this permission is effective. |
+
+**Important:** `users.update` allows staff-record editing but does not grant credential verification. A factual edit to a verified/rejected qualification or certification resets its status to Pending and clears reviewer metadata. Verification/rejection is audited transactionally.
+
 ## 2. Roles, custom roles and individual overrides
 
 | Key | Meaning / UI effect | Delegable? | Where granted or changed |
