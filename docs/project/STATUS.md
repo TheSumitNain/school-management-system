@@ -1,3 +1,13 @@
+## 2026-11-28 — Teacher and Non-teaching experience gaps added to the access map
+
+- Added ACCESS-18/19: Teacher currently has a generic Dashboard, My Workload, Students, Attendance and Timetable; homework.read/notices.read are not surfaced by navigation; no self-profile or self-service leave workflow exists. Non-teaching accounts receive no default role and only shared Dashboard/Settings until a custom role is assigned.
+- Added ACCESS-20: Staff Directory table shows Employment status but not Login status; login filter and profile Overview expose the latter. Disable uses users.disable; enable uses users.update and requires complete profile + Active employment; employment Inactive revokes login sessions, and reactivation does not automatically re-enable login.
+- Role & permission control map records exact screens and gates: Platform Admin delegation; School Admin Roles & permissions; Staff Profile → Account & Access for role assignment and ALLOW/DENY overrides. Role creation/assignment/override mutation capabilities remain non-delegable under current policy.
+- Backend CI is green for the latest backend code checkpoint. Frontend production build/typecheck is green; Playwright browser acceptance suite is still running. Local Windows verification remains pending.
+- Continue from docs/product/STAFF-MANAGEMENT-ACCESS-MATRIX.md. Keep document upload deferred/excluded; keep main untouched.
+
+---
+
 ## 2026-11-28 — Staff access matrix and role-specific UX implementation in progress
 
 - Canonical continuation document: docs/product/STAFF-MANAGEMENT-ACCESS-MATRIX.md. Start every future chat by reading this file and this status entry; continue on work only, never main.
