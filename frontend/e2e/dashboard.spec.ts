@@ -293,17 +293,17 @@ test("dashboard reports malformed metric payloads across all metrics and recover
     }
     if (path === "/school/staff/summary") {
       requests.staff += 1;
-      await route.fulfill({ json: { summary: requests.staff === 1 ? { total: "7" } : { total: 7 } } });
+      await route.fulfill({ json: { summary: requests.staff <= 2 ? { total: "7" } : { total: 7 } } });
       return;
     }
     if (path === "/school/classes") {
       requests.classes += 1;
-      await route.fulfill({ json: { classes: requests.classes === 1 ? { total: 0 } : [{ id: 1 }] } });
+      await route.fulfill({ json: { classes: requests.classes <= 2 ? { total: 0 } : [{ id: 1 }] } });
       return;
     }
     if (path === "/school/academic-years") {
       requests.years += 1;
-      await route.fulfill({ json: { academic_years: requests.years === 1
+      await route.fulfill({ json: { academic_years: requests.years <= 2
         ? [{ id: "bad", is_current: true, status: "active" }]
         : [{ id: 9, is_current: true, status: "active" }] } });
       return;
