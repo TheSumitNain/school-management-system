@@ -28,6 +28,9 @@ type StaffQualification struct {
 	ScoreScale string `json:"score_scale,omitempty"`
 	CredentialReference string `json:"credential_reference,omitempty"`
 	VerificationStatus string `json:"verification_status"`
+	VerificationNotes string `json:"verification_notes,omitempty"`
+	VerifiedByPrincipalID *int64 `json:"verified_by_principal_id,omitempty"`
+	VerifiedAt *time.Time `json:"verified_at,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -41,6 +44,9 @@ type StaffCertification struct {
 	ExpiryDate string `json:"expiry_date,omitempty"`
 	CredentialID string `json:"credential_id,omitempty"`
 	VerificationStatus string `json:"verification_status"`
+	VerificationNotes string `json:"verification_notes,omitempty"`
+	VerifiedByPrincipalID *int64 `json:"verified_by_principal_id,omitempty"`
+	VerifiedAt *time.Time `json:"verified_at,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -140,7 +146,7 @@ func (r *UserRepository) ListStaffQualifications(ctx context.Context, actorID, s
 		SELECT id, staff_principal_id, qualification_type, qualification_name,
 		       COALESCE(specialization,''), institution, COALESCE(board_university,''),
 		       completion_year, score::float8, COALESCE(score_scale,''),
-		       COALESCE(credential_reference,''), verification_status, created_at, updated_at
+		       COALESCE(credential_reference,''), verification_status, COALESCE(verification_notes,''), verified_by_principal_id, verified_at, created_at, updated_at
 		FROM staff_qualifications
 		WHERE school_id=$1 AND staff_principal_id=$2
 		ORDER BY completion_year DESC NULLS LAST, id DESC
@@ -152,8 +158,8 @@ func (r *UserRepository) ListStaffQualifications(ctx context.Context, actorID, s
 		var item StaffQualification
 		if err := rows.Scan(&item.ID, &item.StaffPrincipalID, &item.QualificationType, &item.QualificationName,
 			&item.Specialization, &item.Institution, &item.BoardUniversity, &item.CompletionYear,
-			&item.Score, &item.ScoreScale, &item.CredentialReference, &item.VerificationStatus,
-			&item.CreatedAt, &item.UpdatedAt); err != nil { return nil, fmt.Errorf("scan staff qualification: %w", err) }
+			&item.Score, &item.ScoreScale, &item.CredentialReference, &item.VerificationStatus, &item.VerificationNotes,
+			&item.VerifiedByPrincipalID, &item.VerifiedAt, &item.CreatedAt, &item.UpdatedAt); err != nil { return nil, fmt.Errorf("scan staff qualification: %w", err) }
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil { return nil, fmt.Errorf("iterate staff qualifications: %w", err) }
@@ -172,7 +178,7 @@ func (r *UserRepository) CreateStaffQualification(ctx context.Context, actorID, 
 		VALUES ($1,$2,$3,$4,NULLIF($5,''),$6,NULLIF($7,''),$8,$9,NULLIF($10,''),NULLIF($11,''))
 		RETURNING id,staff_principal_id,qualification_type,qualification_name,COALESCE(specialization,''),institution,
 		          COALESCE(board_university,''),completion_year,score::float8,COALESCE(score_scale,''),
-		          COALESCE(credential_reference,''),verification_status,created_at,updated_at
+		          COALESCE(credential_reference,''),verification_status,COALESCE(verification_notes,''),verified_by_principal_id,verified_at,created_at,updated_at
 	`, schoolID,staffID,item.QualificationType,item.QualificationName,item.Specialization,item.Institution,
 		item.BoardUniversity,item.CompletionYear,item.Score,item.ScoreScale,item.CredentialReference).Scan(
 		&saved.ID,&saved.StaffPrincipalID,&saved.QualificationType,&saved.QualificationName,&saved.Specialization,&saved.Institution,
@@ -192,7 +198,7 @@ func (r *UserRepository) ListStaffCertifications(ctx context.Context, actorID, s
 	rows,err:=r.db.Query(ctx,`
 		SELECT id,staff_principal_id,certificate_name,issuing_organization,
 		       COALESCE(issue_date::text,''),COALESCE(expiry_date::text,''),COALESCE(credential_id,''),
-		       verification_status,created_at,updated_at
+		       verification_status,COALESCE(verification_notes,''),verified_by_principal_id,verified_at,created_at,updated_at
 		FROM staff_certifications WHERE school_id=$1 AND staff_principal_id=$2
 		ORDER BY issue_date DESC NULLS LAST,id DESC
 	`,schoolID,staffID)
@@ -200,7 +206,7 @@ func (r *UserRepository) ListStaffCertifications(ctx context.Context, actorID, s
 	defer rows.Close()
 	items:=make([]StaffCertification,0)
 	for rows.Next(){var item StaffCertification
-		if err:=rows.Scan(&item.ID,&item.StaffPrincipalID,&item.CertificateName,&item.IssuingOrganization,&item.IssueDate,&item.ExpiryDate,&item.CredentialID,&item.VerificationStatus,&item.CreatedAt,&item.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan staff certification: %w",err)}
+		if err:=rows.Scan(&item.ID,&item.StaffPrincipalID,&item.CertificateName,&item.IssuingOrganization,&item.IssueDate,&item.ExpiryDate,&item.CredentialID,&item.VerificationStatus,&item.VerificationNotes,&item.VerifiedByPrincipalID,&item.VerifiedAt,&item.CreatedAt,&item.UpdatedAt);err!=nil{return nil,fmt.Errorf("scan staff certification: %w",err)}
 		items=append(items,item)}
 	if err:=rows.Err();err!=nil{return nil,fmt.Errorf("iterate staff certifications: %w",err)}
 	return items,nil
@@ -216,9 +222,9 @@ func (r *UserRepository) CreateStaffCertification(ctx context.Context, actorID, 
 		INSERT INTO staff_certifications(school_id,staff_principal_id,certificate_name,issuing_organization,issue_date,expiry_date,credential_id)
 		VALUES($1,$2,$3,$4,NULLIF($5,'')::date,NULLIF($6,'')::date,NULLIF($7,''))
 		RETURNING id,staff_principal_id,certificate_name,issuing_organization,COALESCE(issue_date::text,''),COALESCE(expiry_date::text,''),
-		          COALESCE(credential_id,''),verification_status,created_at,updated_at
+		          COALESCE(credential_id,''),verification_status,COALESCE(verification_notes,''),verified_by_principal_id,verified_at,created_at,updated_at
 	`,schoolID,staffID,item.CertificateName,item.IssuingOrganization,item.IssueDate,item.ExpiryDate,item.CredentialID).Scan(
-		&saved.ID,&saved.StaffPrincipalID,&saved.CertificateName,&saved.IssuingOrganization,&saved.IssueDate,&saved.ExpiryDate,&saved.CredentialID,&saved.VerificationStatus,&saved.CreatedAt,&saved.UpdatedAt)
+		&saved.ID,&saved.StaffPrincipalID,&saved.CertificateName,&saved.IssuingOrganization,&saved.IssueDate,&saved.ExpiryDate,&saved.CredentialID,&saved.VerificationStatus,&saved.VerificationNotes,&saved.VerifiedByPrincipalID,&saved.VerifiedAt,&saved.CreatedAt,&saved.UpdatedAt)
 	if err!=nil{return nil,fmt.Errorf("insert staff certification: %w",err)}
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
 		VALUES($1,$2,'staff.certification.created','staff_certification',$3,'success',jsonb_build_object('record_type','certification','staff_principal_id',$4::bigint))`,actorID,schoolID,fmt.Sprint(saved.ID),staffID);err!=nil{return nil,fmt.Errorf("audit staff certification creation: %w",err)}
@@ -278,15 +284,24 @@ func (r *UserRepository) UpdateStaffQualification(ctx context.Context, actorID, 
 	var saved StaffQualification
 	err = tx.QueryRow(ctx, `
 		UPDATE staff_qualifications SET qualification_type=$4, qualification_name=$5, specialization=NULLIF($6,''), institution=$7,
-		 board_university=NULLIF($8,''), completion_year=$9, score=$10, score_scale=NULLIF($11,''), credential_reference=NULLIF($12,''), updated_at=NOW()
+		 board_university=NULLIF($8,''), completion_year=$9, score=$10, score_scale=NULLIF($11,''), credential_reference=NULLIF($12,''),
+		 verification_status=CASE WHEN (qualification_type,qualification_name,specialization,institution,board_university,completion_year,score,score_scale,credential_reference)
+		   IS DISTINCT FROM ($4,$5,NULLIF($6,''),$7,NULLIF($8,''),$9,$10,NULLIF($11,''),NULLIF($12,'')) THEN 'pending' ELSE verification_status END,
+		 verification_notes=CASE WHEN (qualification_type,qualification_name,specialization,institution,board_university,completion_year,score,score_scale,credential_reference)
+		   IS DISTINCT FROM ($4,$5,NULLIF($6,''),$7,NULLIF($8,''),$9,$10,NULLIF($11,''),NULLIF($12,'')) THEN NULL ELSE verification_notes END,
+		 verified_by_principal_id=CASE WHEN (qualification_type,qualification_name,specialization,institution,board_university,completion_year,score,score_scale,credential_reference)
+		   IS DISTINCT FROM ($4,$5,NULLIF($6,''),$7,NULLIF($8,''),$9,$10,NULLIF($11,''),NULLIF($12,'')) THEN NULL ELSE verified_by_principal_id END,
+		 verified_at=CASE WHEN (qualification_type,qualification_name,specialization,institution,board_university,completion_year,score,score_scale,credential_reference)
+		   IS DISTINCT FROM ($4,$5,NULLIF($6,''),$7,NULLIF($8,''),$9,$10,NULLIF($11,''),NULLIF($12,'')) THEN NULL ELSE verified_at END,
+		 updated_at=NOW()
 		WHERE id=$1 AND school_id=$2 AND staff_principal_id=$3
 		RETURNING id,staff_principal_id,qualification_type,qualification_name,COALESCE(specialization,''),institution,
 		 COALESCE(board_university,''),completion_year,score::float8,COALESCE(score_scale,''),COALESCE(credential_reference,''),
-		 verification_status,created_at,updated_at
+		 verification_status,COALESCE(verification_notes,''),verified_by_principal_id,verified_at,created_at,updated_at
 	`, recordID,schoolID,staffID,item.QualificationType,item.QualificationName,item.Specialization,item.Institution,
 		item.BoardUniversity,item.CompletionYear,item.Score,item.ScoreScale,item.CredentialReference).Scan(
 		&saved.ID,&saved.StaffPrincipalID,&saved.QualificationType,&saved.QualificationName,&saved.Specialization,&saved.Institution,
-		&saved.BoardUniversity,&saved.CompletionYear,&saved.Score,&saved.ScoreScale,&saved.CredentialReference,&saved.VerificationStatus,&saved.CreatedAt,&saved.UpdatedAt)
+		&saved.BoardUniversity,&saved.CompletionYear,&saved.Score,&saved.ScoreScale,&saved.CredentialReference,&saved.VerificationStatus,&saved.VerificationNotes,&saved.VerifiedByPrincipalID,&saved.VerifiedAt,&saved.CreatedAt,&saved.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) { return nil, ErrInvalidStaffRecord }
 	if err != nil { return nil, fmt.Errorf("update staff qualification: %w", err) }
 	if _,err=tx.Exec(ctx,`INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
@@ -303,10 +318,19 @@ func (r *UserRepository) UpdateStaffCertification(ctx context.Context, actorID, 
 	var saved StaffCertification
 	err=tx.QueryRow(ctx,`
 		UPDATE staff_certifications SET certificate_name=$4,issuing_organization=$5,issue_date=NULLIF($6,'')::date,
-		 expiry_date=NULLIF($7,'')::date,credential_id=NULLIF($8,''),updated_at=NOW()
+		 expiry_date=NULLIF($7,'')::date,credential_id=NULLIF($8,''),
+		 verification_status=CASE WHEN (certificate_name,issuing_organization,issue_date,expiry_date,credential_id)
+		   IS DISTINCT FROM ($4,$5,NULLIF($6,'')::date,NULLIF($7,'')::date,NULLIF($8,'')) THEN 'pending' ELSE verification_status END,
+		 verification_notes=CASE WHEN (certificate_name,issuing_organization,issue_date,expiry_date,credential_id)
+		   IS DISTINCT FROM ($4,$5,NULLIF($6,'')::date,NULLIF($7,'')::date,NULLIF($8,'')) THEN NULL ELSE verification_notes END,
+		 verified_by_principal_id=CASE WHEN (certificate_name,issuing_organization,issue_date,expiry_date,credential_id)
+		   IS DISTINCT FROM ($4,$5,NULLIF($6,'')::date,NULLIF($7,'')::date,NULLIF($8,'')) THEN NULL ELSE verified_by_principal_id END,
+		 verified_at=CASE WHEN (certificate_name,issuing_organization,issue_date,expiry_date,credential_id)
+		   IS DISTINCT FROM ($4,$5,NULLIF($6,'')::date,NULLIF($7,'')::date,NULLIF($8,'')) THEN NULL ELSE verified_at END,
+		 updated_at=NOW()
 		WHERE id=$1 AND school_id=$2 AND staff_principal_id=$3
 		RETURNING id,staff_principal_id,certificate_name,issuing_organization,COALESCE(issue_date::text,''),COALESCE(expiry_date::text,''),
-		 COALESCE(credential_id,''),verification_status,created_at,updated_at
+		 COALESCE(credential_id,''),verification_status,COALESCE(verification_notes,''),verified_by_principal_id,verified_at,created_at,updated_at
 	`,recordID,schoolID,staffID,item.CertificateName,item.IssuingOrganization,item.IssueDate,item.ExpiryDate,item.CredentialID).Scan(
 		&saved.ID,&saved.StaffPrincipalID,&saved.CertificateName,&saved.IssuingOrganization,&saved.IssueDate,&saved.ExpiryDate,&saved.CredentialID,&saved.VerificationStatus,&saved.CreatedAt,&saved.UpdatedAt)
 	if errors.Is(err,pgx.ErrNoRows){return nil,ErrInvalidStaffRecord}
@@ -670,4 +694,71 @@ func (r *UserRepository) ListStaffExperienceReport(ctx context.Context, actorID,
     rows.Close()
     if err:=tx.Commit(ctx);err!=nil{return nil,fmt.Errorf("commit staff experience report snapshot: %w",err)}
     return page,nil
+}
+
+
+// VerifyStaffQualification changes only the verification decision; it never accepts
+// school, staff or verifier identity from the request body.
+func (r *UserRepository) VerifyStaffQualification(ctx context.Context, actorID, schoolID, staffID, recordID int64, status, note string) (*StaffQualification, error) {
+	return r.updateStaffQualificationVerification(ctx, actorID, schoolID, staffID, recordID, status, note)
+}
+
+func (r *UserRepository) updateStaffQualificationVerification(ctx context.Context, actorID, schoolID, staffID, recordID int64, status, note string) (*StaffQualification, error) {
+	if r == nil || r.db == nil || recordID <= 0 { return nil, ErrStaffRecordAccessDenied }
+	tx, err := r.db.Begin(ctx); if err != nil { return nil, fmt.Errorf("begin qualification verification: %w", err) }
+	defer func(){ _ = tx.Rollback(ctx) }()
+	if err = authorizeStaffRecord(ctx, tx, actorID, schoolID, staffID, "staff.credentials.verify"); err != nil { return nil, err }
+	var previous string
+	err = tx.QueryRow(ctx, `SELECT verification_status FROM staff_qualifications WHERE id=$1 AND school_id=$2 AND staff_principal_id=$3 FOR UPDATE`, recordID, schoolID, staffID).Scan(&previous)
+	if errors.Is(err, pgx.ErrNoRows) { return nil, ErrInvalidStaffRecord }
+	if err != nil { return nil, fmt.Errorf("lock qualification for verification: %w", err) }
+	var saved StaffQualification
+	err = tx.QueryRow(ctx, `
+		UPDATE staff_qualifications
+		   SET verification_status=$4, verification_notes=NULLIF($5,''), verified_by_principal_id=$6,
+		       verified_at=NOW(), updated_at=NOW()
+		 WHERE id=$1 AND school_id=$2 AND staff_principal_id=$3
+		RETURNING id,staff_principal_id,qualification_type,qualification_name,COALESCE(specialization,''),institution,
+		  COALESCE(board_university,''),completion_year,score::float8,COALESCE(score_scale,''),COALESCE(credential_reference,''),
+		  verification_status,COALESCE(verification_notes,''),verified_by_principal_id,verified_at,created_at,updated_at
+	`, recordID, schoolID, staffID, status, note, actorID).Scan(
+		&saved.ID,&saved.StaffPrincipalID,&saved.QualificationType,&saved.QualificationName,&saved.Specialization,&saved.Institution,
+		&saved.BoardUniversity,&saved.CompletionYear,&saved.Score,&saved.ScoreScale,&saved.CredentialReference,
+		&saved.VerificationStatus,&saved.VerificationNotes,&saved.VerifiedByPrincipalID,&saved.VerifiedAt,&saved.CreatedAt,&saved.UpdatedAt)
+	if err != nil { return nil, fmt.Errorf("save qualification verification: %w", err) }
+	action := "staff.qualification." + status
+	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,$3,'staff_qualification',$4,'success',jsonb_build_object('record_type','qualification','staff_principal_id',$5::bigint,'previous_status',$6,'new_status',$7,'note',NULLIF($8,'')))`,
+		actorID, schoolID, action, fmt.Sprint(recordID), staffID, previous, status, note); err != nil { return nil, fmt.Errorf("audit qualification verification: %w", err) }
+	if err = tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit qualification verification: %w", err) }
+	return &saved, nil
+}
+
+func (r *UserRepository) VerifyStaffCertification(ctx context.Context, actorID, schoolID, staffID, recordID int64, status, note string) (*StaffCertification, error) {
+	if r == nil || r.db == nil || recordID <= 0 { return nil, ErrStaffRecordAccessDenied }
+	tx, err := r.db.Begin(ctx); if err != nil { return nil, fmt.Errorf("begin certification verification: %w", err) }
+	defer func(){ _ = tx.Rollback(ctx) }()
+	if err = authorizeStaffRecord(ctx, tx, actorID, schoolID, staffID, "staff.credentials.verify"); err != nil { return nil, err }
+	var previous string
+	err = tx.QueryRow(ctx, `SELECT verification_status FROM staff_certifications WHERE id=$1 AND school_id=$2 AND staff_principal_id=$3 FOR UPDATE`, recordID, schoolID, staffID).Scan(&previous)
+	if errors.Is(err, pgx.ErrNoRows) { return nil, ErrInvalidStaffRecord }
+	if err != nil { return nil, fmt.Errorf("lock certification for verification: %w", err) }
+	var saved StaffCertification
+	err = tx.QueryRow(ctx, `
+		UPDATE staff_certifications
+		   SET verification_status=$4, verification_notes=NULLIF($5,''), verified_by_principal_id=$6,
+		       verified_at=NOW(), updated_at=NOW()
+		 WHERE id=$1 AND school_id=$2 AND staff_principal_id=$3
+		RETURNING id,staff_principal_id,certificate_name,issuing_organization,COALESCE(issue_date::text,''),COALESCE(expiry_date::text,''),
+		  COALESCE(credential_id,''),verification_status,COALESCE(verification_notes,''),verified_by_principal_id,verified_at,created_at,updated_at
+	`, recordID, schoolID, staffID, status, note, actorID).Scan(
+		&saved.ID,&saved.StaffPrincipalID,&saved.CertificateName,&saved.IssuingOrganization,&saved.IssueDate,&saved.ExpiryDate,
+		&saved.CredentialID,&saved.VerificationStatus,&saved.VerificationNotes,&saved.VerifiedByPrincipalID,&saved.VerifiedAt,&saved.CreatedAt,&saved.UpdatedAt)
+	if err != nil { return nil, fmt.Errorf("save certification verification: %w", err) }
+	action := "staff.certification." + status
+	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(actor_principal_id,school_id,action,resource_type,resource_id,outcome,metadata)
+		VALUES($1,$2,$3,'staff_certification',$4,'success',jsonb_build_object('record_type','certification','staff_principal_id',$5::bigint,'previous_status',$6,'new_status',$7,'note',NULLIF($8,'')))`,
+		actorID, schoolID, action, fmt.Sprint(recordID), staffID, previous, status, note); err != nil { return nil, fmt.Errorf("audit certification verification: %w", err) }
+	if err = tx.Commit(ctx); err != nil { return nil, fmt.Errorf("commit certification verification: %w", err) }
+	return &saved, nil
 }
