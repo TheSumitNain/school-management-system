@@ -1,5 +1,9 @@
 # Staff Qualifications & Documents — Backend Contract
 
+**Status:** V57 schema and school-scoped GET/POST/PATCH APIs for qualifications, certifications and experience are implemented. V74 now adds a separate non-delegable `staff.credentials.verify` permission, automatically granted to existing and future School Admin system roles. Qualification/certification Verify/Reject handlers, transactional repository writes and audit events, reviewer metadata, and reset-to-Pending on factual edits are implemented on `work`. Backend integration/unit tests and frontend acceptance coverage have been added or are being completed; CI and local Windows verification are still pending. Staff document upload/download remains deferred and excluded from completion percentage.
+**Reviewed branch:** `work`
+**Review date:** 2026-11-28
+
 **Status:** V57 schema and school-scoped GET/POST/PATCH APIs for qualifications, certifications and experience, with frontend create/edit integration, are committed on `work`. Browser acceptance covers create, validation and edit flows for all three record types. The school-wide qualifications/certifications and experience reports are implemented with bounded pagination, controlled filters, school scoping and safe export fields. Report-specific Playwright scenarios are included in the passing frontend suite (153 tests on checkpoint `a105ebd50c6e32c2160750c39743059c02786d7d`). Pool-backed report reads execute aggregate counts and page rows in one read-only repeatable-read transaction so concurrent record changes cannot make the response's totals disagree with its rows; caller-owned transactions retain their existing isolation. Backend CI (full Go suite, PostgreSQL integration and `go vet`) passed on `dfd88270723ab8e4ab069380c7c66d6a12b97d37`; a dedicated pool-backed PostgreSQL integration test also verifies that both report endpoints can open and complete the read-only repeatable-read path (passing CI `45823465290` on `e9a4e4d1963053d8d4d9a0718f2037d933fb5f14`). Both report handlers and repositories now validate supported record/status/employment filters, enforce page sizes from 1–200, and cap offsets at 1,000,000 before querying. Backend CI [45824021653](https://github.com/TheSumitNain/school-management-system/actions/runs/45824021653) **PASS** on `e1032f027b5b1e14a000bbe337c760ea6fe60c51`, including the full migration chain, Go tests, PostgreSQL integration tests and `go vet`. The dedicated verification workflow remains intentionally unavailable pending a separate permission decision; private document upload/download remains gated on a private storage adapter. Do not infer local or persistent database migration state from CI.
 **Reviewed branch:** `work`
 **Review date:** 2026-11-26
@@ -12,7 +16,7 @@ This contract extends the existing school-scoped `staff_profiles` foundation. It
 - Existing profile fields are employee code, full name, designation, mobile, optional email/joining date, and employment status.
 - Employee codes are unique case-insensitively within a school.
 - Existing account and profile mutations use transactions and append audit events.
-- V57 adds school-scoped education, certification and experience tables. GET/POST/PATCH APIs and the Staff Management profile tab support listing, creating and editing these records; verification is a separate deferred workflow.
+- V57 adds school-scoped education, certification and experience tables. GET/POST/PATCH APIs and the Staff Management profile tab support listing, creating and editing these records. V74 adds a separately permission-gated Verify/Reject workflow for education and certification records; employment history remains self-reported.
 - No private staff-document storage/upload/download implementation was found during this source review. Do not implement a public URL, web-root upload, or unauthenticated download.
 
 ## 2. Qualifications & Experience data model
@@ -203,3 +207,16 @@ The product decision is to keep credential verification separate from ordinary p
 - Do not add hard delete. Archive/retention semantics remain a separate decision and existing records stay intact.
 - Migration must provision the permission for existing and future schools, update the approved School Admin permission allowlist and its exact-bundle integration tests, and keep the permission non-delegable. No manual setup should be required from schools.
 - Document upload/download remains deferred until a private storage provider is selected. It is not a prerequisite for verifying the structured qualification/certification details, but the UI must not imply that an uploaded document was checked when no document is attached.
+
+
+## 5. Credential verification workflow (V74)
+
+- Permission key: `staff.credentials.verify`; school-scoped, non-delegable, and included in the School Admin runtime permission allowlist.
+- V74 backfills the grant to every existing School Admin system role and grants it to each newly created school's School Admin system role. Ordinary `users.update` access does not imply verification access.
+- Verify/Reject is supported only for education qualifications and professional certifications. Prior employment remains self-reported.
+- Reject requires a reason (1–1000 characters); Verify accepts an optional note. The API derives school, staff and verifier IDs from authenticated context and route ownership, never from client-supplied identity fields.
+- Verification status, note, verifier principal and timestamp are written with the audit event in one database transaction. Audit metadata records record type, staff principal, previous/new status and note; it does not include document bytes.
+- Editing factual qualification/certification fields resets an existing decision to Pending and clears note/verifier/timestamp only when a factual value actually changes. A no-op edit preserves the decision.
+- The profile displays status, reviewer account ID and review time. It explicitly states that no supporting document has been uploaded or reviewed. Document upload/download remains deferred pending a private storage adapter and authorization design.
+- No hard-delete or archive endpoint is introduced; retention policy remains a separate decision.
+- Verification state is not complete until backend integration tests, Playwright, CI and authenticated local role/responsive acceptance all pass.
