@@ -31,13 +31,13 @@ func TestStaffLeaveApprovalAndSubstitutionAssignmentShareSlotLockPostgresIntegra
 		f.schoolID).Scan(&teacherRoleID); err != nil {
 		t.Fatalf("load Teacher role: %v", err)
 	}
-	if _, err := f.pool.Exec(ctx, `INSERT INTO principal_roles(principal_id,role_id,assigned_by)
-		VALUES($1,$2,$3) ON CONFLICT DO NOTHING`, f.staffPrincipalID, teacherRoleID, f.adminPrincipalID); err != nil {
-		t.Fatalf("assign Teacher role to substitute: %v", err)
-	}
 	if _, err := f.pool.Exec(ctx, `UPDATE staff_profiles SET staff_type='teaching'
 		WHERE principal_id=$1 AND school_id=$2`, f.staffPrincipalID, f.schoolID); err != nil {
 		t.Fatalf("classify substitute as Teaching staff: %v", err)
+	}
+	if _, err := f.pool.Exec(ctx, `INSERT INTO principal_roles(principal_id,role_id,assigned_by)
+		VALUES($1,$2,$3) ON CONFLICT DO NOTHING`, f.staffPrincipalID, teacherRoleID, f.adminPrincipalID); err != nil {
+		t.Fatalf("assign Teacher role to substitute: %v", err)
 	}
 
 	var originalID int64
