@@ -832,7 +832,8 @@ func TestRoleRepositoryAdministrationPostgresIntegration(t *testing.T) {
 
 
 func TestTeacherRoleAssignmentRequiresActiveTeachingProfilePostgresIntegration(t *testing.T) {
-	_, pool, actorPrincipalID := newPostgresIntegrationRepository(t)
+	_, pool, actorUserID := newPostgresIntegrationRepository(t)
+	platformAdminPrincipalID := ensurePlatformAdminLifecycleActor(t, pool)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -842,11 +843,23 @@ func TestTeacherRoleAssignmentRequiresActiveTeachingProfilePostgresIntegration(t
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	var schoolID int64
+	var schoolID, actorPrincipalID, schoolAdminRoleID int64
 	if err := tx.QueryRow(ctx, `
-		SELECT school_id FROM users WHERE principal_id=$1
-	`, actorPrincipalID).Scan(&schoolID); err != nil {
-		t.Fatalf("load School Admin school: %v", err)
+		SELECT school_id,principal_id FROM users WHERE id=$1
+	`, actorUserID).Scan(&schoolID, &actorPrincipalID); err != nil {
+		t.Fatalf("load School Admin actor fixture: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
+		  AND scope_type='school' AND role_key='school_admin' AND is_system=TRUE
+	`, schoolID).Scan(&schoolAdminRoleID); err != nil {
+		t.Fatalf("load School Admin system role: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO principal_roles(principal_id,role_id,assigned_by)
+		VALUES($1,$2,$3)
+	`, actorPrincipalID, schoolAdminRoleID, platformAdminPrincipalID); err != nil {
+		t.Fatalf("grant School Admin role to Teacher eligibility actor: %v", err)
 	}
 
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
