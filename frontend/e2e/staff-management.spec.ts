@@ -6358,12 +6358,14 @@ test("mobile staff directory groups permitted row actions into an accessible thr
   await signInAndOpenStaff(page, rows, undefined, [
     "users.read", "users.update", "users.password_reset", "users.disable", "roles.read", "permissions.override",
   ]);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole("button", { name: /Staff Directory/ }).click();
 
   const row = page.getByRole("row").filter({ hasText: "Mobile Action Teacher" });
-  await expect(row.locator(".staff-row-actions-desktop")).toBeHidden();
   const trigger = row.getByRole("button", { name: "More actions for mobile.actions" });
+  await expect(trigger).toBeHidden();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(row.locator(".staff-row-actions-desktop")).toBeHidden();
   await expect(trigger).toBeVisible();
   await trigger.click();
 
