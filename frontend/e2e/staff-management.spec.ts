@@ -5706,7 +5706,7 @@ test("staff directory retries after a transient server error and accepts a subse
   expect(attempts).toBe(3);
 
   await page.getByRole("textbox", { name: "Search staff by name, code, designation, mobile or username" }).fill("recovered");
-  await expect(page.getByRole("button", { name: "Recovered Staff" })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "Recovered Staff" })).toBeVisible();
   expect(attempts).toBe(4);
 });
 
