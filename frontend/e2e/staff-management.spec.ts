@@ -6518,9 +6518,9 @@ test("staff History & Activity exposes a retry after an audit request fails", as
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "school.audit.read"]);
   await page.route("**/api/school/staff/593/audit-events**", async route => {
     auditReads += 1;
-    // React Query retries failed requests automatically (initial attempt + 3 retries).
-    // Keep every automatic attempt unavailable so the explicit UI retry is what recovers.
-    if (auditReads <= 4) {
+    // The shared QueryClient is configured for one retry: initial attempt + one retry.
+    // Keep both automatic attempts unavailable so the explicit UI retry is what recovers.
+    if (auditReads <= 2) {
       await route.fulfill({ status: 503, json: { message: "Audit history temporarily unavailable" } });
       return;
     }
