@@ -167,6 +167,17 @@ WHERE pr.principal_id = $1
   AND pr.revoked_at IS NULL
   AND p.is_active = TRUE
   AND (
+      r.role_key <> 'teacher'
+      OR EXISTS (
+          SELECT 1
+          FROM staff_profiles teacher_profile
+          WHERE teacher_profile.principal_id = pr.principal_id
+            AND teacher_profile.school_id = r.school_id
+            AND teacher_profile.staff_type = 'teaching'
+            AND teacher_profile.employment_status = 'active'
+      )
+  )
+  AND (
       (r.is_system = TRUE AND rp.delegation_id IS NULL)
       OR
       (r.is_system = FALSE AND r.scope_type = 'school' AND d.id IS NOT NULL)
