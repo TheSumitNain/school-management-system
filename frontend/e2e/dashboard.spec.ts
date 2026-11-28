@@ -201,6 +201,22 @@ test("dashboard metrics and feedback remain readable without viewport overflow",
     expect(cardsFit, `dashboard metric cards should fit within ${width}px`).toBe(true);
   }
 
+  const workspaces = page.getByRole("region", { name: "Go to a workspace" });
+  await expect(workspaces).toBeVisible();
+  for (const width of [320, 360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const rect = await workspaces.boundingBox();
+    expect(rect, `workspace section should have a layout at ${width}px`).not.toBeNull();
+    expect(rect!.x).toBeGreaterThanOrEqual(0);
+    expect(rect!.x + rect!.width).toBeLessThanOrEqual(width + 1);
+  }
+
+  const surfaceBefore = await workspaces.evaluate(element => getComputedStyle(element).backgroundColor);
+  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await expect(page.getByRole("button", { name: "Switch to light mode" })).toBeVisible();
+  const surfaceAfter = await workspaces.evaluate(element => getComputedStyle(element).backgroundColor);
+  expect(surfaceAfter).not.toBe(surfaceBefore);
+
   await page.setViewportSize({ width: 844, height: 390 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await expect(page.locator(".dashboard-page > .heading p")).toBeVisible();
