@@ -56,6 +56,12 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	if _,err:=tx.Exec(ctx,`INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)`,actorID,schoolAdminRoleID,platformAdminID);err!=nil{
 		t.Fatalf("assign School Admin fixture role: %v",err)
 	}
+	var verificationDelegable bool
+	if err:=tx.QueryRow(ctx,`SELECT is_delegable FROM permissions WHERE permission_key='staff.credentials.verify' AND scope_type='school' AND is_active=TRUE`).Scan(&verificationDelegable);err!=nil{
+		t.Fatalf("load credential verification permission catalogue row: %v",err)
+	}
+	if verificationDelegable { t.Fatal("staff credential verification permission must not be delegable") }
+
 
 	repo:=NewUserRepository(tx)
 	suffix:=fmt.Sprintf("%d",time.Now().UnixNano())
@@ -124,6 +130,13 @@ func TestStaffRecordsRepositoryPostgresIntegration(t *testing.T) {
 	})
 	if err!=nil||changedCertification.VerificationStatus!="pending"||changedCertification.VerifiedByPrincipalID!=nil||changedCertification.VerifiedAt!=nil||changedCertification.VerificationNotes!="" {
 		t.Fatalf("changed certification details must clear stale verification: item=%+v err=%v",changedCertification,err)
+	}
+	unprivileged,err:=repo.CreateStaffAccountWithProfile(ctx,actorID,schoolID,"staffverify-noadmin-"+suffix,"integration-test-password-hash",models.StaffProfile{
+		StaffType:"teaching",EmployeeCode:"SV-"+suffix,FullName:"Unprivileged Staff",Designation:"Teacher",MobileNumber:"9876543211",EmploymentStatus:"active",
+	})
+	if err!=nil { t.Fatalf("create non-admin verification actor: %v",err) }
+	if _,err:=repo.VerifyStaffQualification(ctx,unprivileged.PrincipalID,schoolID,staff.PrincipalID,qualification.ID,"verified","");!errors.Is(err,ErrStaffRecordAccessDenied) {
+		t.Fatalf("non-admin actor verification error=%v",err)
 	}
 	if _,err:=repo.VerifyStaffQualification(ctx,actorID,schoolID+1,staff.PrincipalID,qualification.ID,"verified","");!errors.Is(err,ErrStaffRecordAccessDenied) {
 		t.Fatalf("cross-school qualification verification error=%v",err)
