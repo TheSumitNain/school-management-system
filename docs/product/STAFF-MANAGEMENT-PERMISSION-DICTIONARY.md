@@ -1,6 +1,6 @@
 # Staff Management Permission Dictionary
 
-**Source:** V4, V58, V59 and V60 permission catalogue migrations, current App.tsx navigation, StaffManagementPage.tsx, RoleManagementPage.tsx, PlatformAdminPage.tsx and backend route/repository authorization.
+**Source:** V4, V58, V59, V60 and V74 permission catalogue migrations, current App.tsx navigation, StaffManagementPage.tsx, RoleManagementPage.tsx, PlatformAdminPage.tsx and backend route/repository authorization.
 
 This document answers four questions for every permission: what it means, which UI it controls, whether it can be delegated, and where an administrator changes it. “Delegable” means Platform Admin may allow School Admin to grant that permission to a custom role or to one user through an individual override. It does not mean the permission is automatically granted.
 
