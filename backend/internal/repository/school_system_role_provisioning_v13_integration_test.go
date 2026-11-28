@@ -113,6 +113,7 @@ func TestSchoolSystemRoleProvisioningV13PostgresIntegration(t *testing.T) {
             "staff.holidays.manage": true,
             "staff.substitutions.read": true,
             "staff.substitutions.manage": true,
+            "staff.credentials.verify": true,
 		},
 		"teacher": {
 			"students.read_basic": true,
