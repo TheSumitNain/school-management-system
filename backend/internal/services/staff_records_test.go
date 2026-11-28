@@ -27,6 +27,9 @@ func(f *fakeStaffRecordsRepository) CreateStaffExperience(_ context.Context,_,_,
 func(f *fakeStaffRecordsRepository) UpdateStaffQualification(_ context.Context,_,_,_,_ int64,item repository.StaffQualification)(*repository.StaffQualification,error){f.calls++;f.qualification=&item;return &item,nil}
 func(f *fakeStaffRecordsRepository) UpdateStaffCertification(_ context.Context,_,_,_,_ int64,item repository.StaffCertification)(*repository.StaffCertification,error){f.calls++;f.certification=&item;return &item,nil}
 func(f *fakeStaffRecordsRepository) UpdateStaffExperience(_ context.Context,_,_,_,_ int64,item repository.StaffExperience)(*repository.StaffExperience,error){f.calls++;f.experience=&item;return &item,nil}
+func(f *fakeStaffRecordsRepository) VerifyStaffQualification(_ context.Context,_,_,_,_ int64,status,note string)(*repository.StaffQualification,error){f.calls++;item:=f.qualification;if item==nil{item=&repository.StaffQualification{}};item.VerificationStatus=status;item.VerificationNotes=note;return item,nil}
+func(f *fakeStaffRecordsRepository) VerifyStaffCertification(_ context.Context,_,_,_,_ int64,status,note string)(*repository.StaffCertification,error){f.calls++;item:=f.certification;if item==nil{item=&repository.StaffCertification{}};item.VerificationStatus=status;item.VerificationNotes=note;return item,nil}
+
 func(f *fakeStaffRecordsRepository) ListStaffAuditEvents(context.Context,int64,int64,int64,repository.StaffAuditEventFilter)(*repository.StaffAuditEventPage,error){return &repository.StaffAuditEventPage{Events:[]repository.StaffAuditEvent{}},nil}
 
 func TestStaffRecordsServiceValidatesAndNormalizesQualification(t *testing.T){
@@ -405,5 +408,32 @@ func TestStaffRecordCredentialReferenceLimitsCountUnicodeCharacters(t *testing.T
 				} else if err != nil || repo.calls != 1 { t.Fatalf("valid Unicode credential ID: error=%v calls=%d", err, repo.calls) }
 			})
 		}
+	}
+}
+
+func TestStaffCredentialVerificationRequiresValidDecisionAndRejectionReason(t *testing.T) {
+	repo := &fakeStaffRecordsRepository{}
+	svc := NewStaffRecordsService(repo)
+	tests := []struct{name,status,note string}{
+		{"invalid status","approved",""},
+		{"rejection without reason","rejected","   "},
+		{"overlong note","verified",strings.Repeat("x",1001)},
+	}
+	for _,tt := range tests {
+		t.Run(tt.name,func(t *testing.T){
+			_,err:=svc.VerifyQualification(context.Background(),1,2,3,4,tt.status,tt.note)
+			if !errors.Is(err,ErrInvalidStaffRecord){t.Fatalf("error=%v want validation error",err)}
+		})
+	}
+	if repo.calls!=0 { t.Fatalf("invalid verification reached repository %d times",repo.calls) }
+}
+
+func TestStaffCredentialVerificationNormalizesDecisionAndNote(t *testing.T) {
+	repo:=&fakeStaffRecordsRepository{}
+	svc:=NewStaffRecordsService(repo)
+	got,err:=svc.VerifyCertification(context.Background(),1,2,3,4,"rejected","  Duplicate certificate number  ")
+	if err!=nil { t.Fatalf("verify certification: %v",err) }
+	if got.VerificationStatus!="rejected" || got.VerificationNotes!="Duplicate certificate number" || repo.calls!=1 {
+		t.Fatalf("unexpected verification result: %+v calls=%d",got,repo.calls)
 	}
 }
