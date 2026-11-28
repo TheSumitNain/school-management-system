@@ -601,3 +601,16 @@ History & Activity retry regression note (2026-11-28): the Playwright retry test
 - Any factual edit to a previously verified/rejected qualification or certification resets it to Pending and clears verifier metadata. Both changes and their audit events must commit atomically.
 - No hard deletion. Archive/retention semantics require a separate product decision. Document upload remains deferred.
 - Implementation and verification are pending; do not treat this policy decision as code completion.
+
+
+## 2026-11-28 — ACCESS-22: Staff credential verification
+
+| ID | Area | Expected rule | Current implementation | Verification status |
+|---|---|---|---|---|
+| ACCESS-22 | Qualifications & Experience | Only a School Admin with the dedicated non-delegable `staff.credentials.verify` permission may Verify/Reject education qualifications and professional certifications. Reject requires a reason. Factual edits reset a prior decision to Pending. Prior employment remains self-reported. | V74 provisions the permission for existing/future School Admin roles; route and repository enforce it; decisions and audit events are transactional; profile UI is permission-gated and displays reviewer/time. | Implemented in code on `work`; backend integration, Playwright, CI and authenticated local acceptance pending. |
+
+- `users.update` is not a substitute for verification permission.
+- Verification does not imply document inspection. The UI explicitly states no supporting document has been uploaded or reviewed.
+- No delete/archive workflow is added; retention policy remains open.
+- Document upload/storage/download remains deferred and excluded from completion percentage.
+- Do not mark Qualifications & Experience complete until role-wise permission denial/allowance, audit rollback, edit-reset, mobile/tablet/desktop and full CI checks pass.
