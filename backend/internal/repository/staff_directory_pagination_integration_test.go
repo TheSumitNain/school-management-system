@@ -194,13 +194,19 @@ func TestStaffDirectorySummaryMatchesFilteredCountsAndEnforcesSchoolAdminPostgre
 
 	// Repository reads must honor the same live DENY override as AuthMiddleware,
 	// even when the principal still has the School Admin system-role grant.
+	denyTx, err := fixture.pool.Begin(fixture.ctx)
+	if err != nil {
+		t.Fatalf("begin rollback-scoped users.read DENY regression: %v", err)
+	}
+	defer func() { _ = denyTx.Rollback(fixture.ctx) }()
+	denyRepo := NewUserRepository(denyTx)
 	var usersReadPermissionID int64
-	if err := fixture.pool.QueryRow(fixture.ctx, `
+	if err := denyTx.QueryRow(fixture.ctx, `
 		SELECT id FROM permissions WHERE permission_key='users.read' AND scope_type='school'
 	`).Scan(&usersReadPermissionID); err != nil {
 		t.Fatalf("load users.read permission for DENY regression: %v", err)
 	}
-	if _, err := fixture.pool.Exec(fixture.ctx, `
+	if _, err := denyTx.Exec(fixture.ctx, `
 		INSERT INTO user_permission_overrides
 			(principal_id, school_id, permission_id, effect, reason, granted_by)
 		VALUES ($1,$2,$3,'deny','staff directory DENY regression',$4)
@@ -209,10 +215,10 @@ func TestStaffDirectorySummaryMatchesFilteredCountsAndEnforcesSchoolAdminPostgre
 	`, fixture.adminPrincipalID, fixture.schoolID, usersReadPermissionID, fixture.adminPrincipalID); err != nil {
 		t.Fatalf("apply users.read DENY override: %v", err)
 	}
-	if denied, err := repo.GetStaffDirectorySummary(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID); err == nil || denied != nil {
+	if denied, err := denyRepo.GetStaffDirectorySummary(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID); err == nil || denied != nil {
 		t.Fatalf("staff directory summary ignored users.read DENY override: summary=%+v err=%v", denied, err)
 	}
-	if denied, err := repo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID,
+	if denied, err := denyRepo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID,
 		models.StaffDirectoryFilter{Limit: 10}); err == nil || denied != nil {
 		t.Fatalf("staff directory page ignored users.read DENY override: page=%+v err=%v", denied, err)
 	}
