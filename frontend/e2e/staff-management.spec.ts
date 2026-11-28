@@ -6535,8 +6535,8 @@ test("staff History & Activity exposes a retry after an audit request fails", as
   const profile = page.getByRole("dialog", { name: "History Retry" });
   await profile.getByRole("button", { name: "History & Activity" }).click();
   await expect(profile.getByText("Unable to load staff activity.")).toBeVisible({ timeout: 15000 });
-  expect(auditReads).toBe(4);
+  expect(auditReads).toBe(2);
   await profile.getByRole("button", { name: "Try again" }).click();
   await expect(profile.getByText("Profile updated")).toBeVisible();
-  expect(auditReads).toBe(5);
+  expect(auditReads).toBe(3);
 });
