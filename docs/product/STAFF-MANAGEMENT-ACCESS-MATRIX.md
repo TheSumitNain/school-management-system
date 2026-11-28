@@ -410,3 +410,47 @@ New gap ACCESS-20: Directory table makes Employment status visible but not Login
 - Existing automated test coverage has been located; execution status is not inferred from test presence.
 - Remaining checks: exact actor-authority SQL for each mutation; test assertions for exact delegation revocation, self-mutation and audit rollback; frontend CI and local focused suite on the current branch; stale authenticated navigation after effective permission changes.
 - Next: complete the permission-key dictionary and inspect employment/login lifecycle end-to-end, then run the focused local Account & Access and lifecycle test batches.
+
+## 20. Batch 3 — employment and login lifecycle audit
+
+### Current states and exact transitions
+
+| State | Where changed | Server-side effect | Re-enable path |
+|---|---|---|---|
+| Employment Active → Inactive | Staff Directory → Edit employee profile → Employment status (`users.update`) | V28/V29 database trigger disables the canonical staff principal, increments `token_version`, and revokes active refresh sessions in the same transaction. User status is synchronized from principal status. | Edit employment back to Active first; this does **not** enable login. |
+| Login Enabled → Disabled | Staff Directory → Disable account action (`users.disable`) | Repository disables principal (user status syncs), increments `token_version`, revokes refresh sessions and writes an audit event in the same transaction. Self-disable and protected School Admin targets are rejected. Active substitution coverage can block the operation. | Use Enable staff account only after employment is Active. |
+| Login Disabled → Enabled | Staff Directory → Enable account action (`users.update`) | Requires disabled account, complete same-school profile, Active employment and a new temporary password. Principal is reactivated, `token_version` increments, password is replaced, `must_change_password=TRUE`, stale sessions are revoked and an audit event is written atomically. | Staff member must change the temporary password at next sign-in. |
+| Password reset | Staff Directory → Reset password (`users.password_reset`) | Active same-school staff account only; new temporary password, `must_change_password=TRUE`, token-version increment, refresh-session revocation and audit are transactional. | Staff member changes password at next sign-in. |
+
+The database trigger also disables a profile inserted directly as Inactive. A separate database guard rejects attempts to activate a principal while the employment profile is still Inactive. These protections apply beyond the Staff Management UI.
+
+### What “Active / Inactive” does not mean
+
+- Current employment status supports only `active` and `inactive`.
+- Current login status supports `active` and `disabled`.
+- There is no distinct persisted `Suspended`, `Relieved`, `Archived`, `Resigned` or `Terminated` employment state in this workflow.
+- Do not hard-delete staff to simulate exit; preserve historical attendance, leave, academic assignments, substitutions and audit events.
+- Product roadmap language about relieving/archiving is a future lifecycle target, not a currently implemented status.
+
+**New gap ACCESS-21 (P1):** define a formal employee exit workflow (relieving date, reason, final working day, archive/read-only treatment and handling of active assignments/leave/substitutions) before adding a new employment status or database migration. Keep this separate from the immediate Active/Inactive + Login Enable/Disable behaviour.
+
+### Lifecycle test evidence located
+
+- Frontend Playwright cases exist for disable confirmation, enable with temporary password, duplicate-submit suppression, inactive-employment re-enable conflict, employment-status edit, and protected School Admin lifecycle actions.
+- PostgreSQL lifecycle integration tests cover disable/enable status, token version, refresh-session revocation, inactive-employment re-enable rejection, audit-write rollback and retry behaviour.
+- V28/V29 migration triggers enforce the employment/login relationship at the database boundary.
+- Test definitions and migration code were inspected; this audit did not execute them locally.
+
+### CI checkpoint discovered during audit
+
+- Backend CI run [46113123536](https://github.com/TheSumitNain/school-management-system/actions/runs/46113123536) **PASS** on code commit `a73f16c2c750fae9d18f2601e0f6766c553f8fd1`.
+- Frontend CI run [46113046959](https://github.com/TheSumitNain/school-management-system/actions/runs/46113046959) **FAIL** on `25d39647187bdf66aa7724ccf4985e1ffe7d48c7`: Vite production build passed, but Playwright reported 19 failures, 173 passes and 1 flaky test. Failures included Staff disable/enable and Account & Access tests timing out before the expected employee row/profile was available; unrelated Platform Admin, Student and Teacher Assignment tests also failed. A separate Roles & permissions test had an ambiguous button locator. This is a real red Frontend CI checkpoint, not a passing result.
+- The diff from `25d3964` to `a73f16c` changes only `backend/internal/repository/user_repository.go`; therefore the frontend test source at the failing checkpoint is unchanged by that later backend commit. No green Frontend CI run was found for `a73f16c`.
+- Local Windows evidence currently available in this conversation: frontend typecheck passed; Academic Assignments Playwright 6/6 passed; full backend tests and `go vet` passed. The focused Account & Access/lifecycle Playwright suite has not yet been confirmed locally.
+
+### Next batch
+
+1. Reproduce the focused Staff Account & Access and disable/enable tests locally on the current `work` head.
+2. Inspect the first failed network request and test fixture/route handling; do not increase timeouts or weaken assertions to hide the issue.
+3. Fix the root cause, then rerun the focused group and the full Frontend CI suite.
+4. Record the exact passing commit and test output. Keep ACCESS-21 as a product-design gap; do not add a new status field/migration without a complete exit workflow.
