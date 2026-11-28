@@ -6346,3 +6346,77 @@ test("adding qualifications, certifications and experience scrolls to and focuse
     await expect(form).toHaveCount(0);
   }
 });
+
+
+test("mobile staff directory groups permitted row actions into an accessible three-dot menu", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 518, school_id: 10, username: "mobile.actions", staff_type: "teaching",
+    employee_code: "EMP-MOBILE-ACTIONS", full_name: "Mobile Action Teacher", designation: "English Teacher",
+    mobile_number: "9876543218", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, rows, undefined, [
+    "users.read", "users.update", "users.password_reset", "users.disable", "roles.read", "permissions.override",
+  ]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+
+  const row = page.getByRole("row").filter({ hasText: "Mobile Action Teacher" });
+  await expect(row.locator(".staff-row-actions-desktop")).toBeHidden();
+  const trigger = row.getByRole("button", { name: "More actions for mobile.actions" });
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+
+  const menu = page.getByRole("menu", { name: "Actions for mobile.actions" });
+  for (const label of [
+    "View profile", "Edit employee profile", "Reset password", "Manage roles",
+    "Manage permission overrides", "Disable account",
+  ]) {
+    await expect(menu.getByRole("menuitem", { name: label })).toBeVisible();
+  }
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await trigger.click();
+  await menu.getByRole("menuitem", { name: "View profile" }).click();
+  await expect(page.getByRole("dialog", { name: "Mobile Action Teacher" })).toBeVisible();
+});
+
+test("permission override effect stays disabled when Platform Admin has delegated no override permissions", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 519, school_id: 10, username: "teacher.no-delegation", staff_type: "teaching",
+    employee_code: "EMP-NO-DELEGATION", full_name: "No Delegation Teacher", designation: "Science Teacher",
+    mobile_number: "9876543219", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "roles.read", "permissions.override"]);
+  await page.route("**/api/school/roles", async route => {
+    await route.fulfill({ json: { roles: [
+      { id: 4, role_key: "teacher", name: "Teacher", is_system: true, created_at: "2026-01-01T00:00:00Z" },
+    ] } });
+  });
+  await page.route("**/api/school/staff/519/roles", async route => {
+    await route.fulfill({ json: { roles: [
+      { role_id: 4, role_key: "teacher", name: "Teacher", is_system: true, assigned_at: "2026-01-01T00:00:00Z" },
+    ] } });
+  });
+  await page.route("**/api/school/permissions", async route => {
+    await route.fulfill({ json: { permissions: [
+      { permission_key: "students.read_basic", description: "Read basic student information", is_delegable: true },
+    ] } });
+  });
+  await page.route("**/api/school/permission-delegations", async route => {
+    await route.fulfill({ json: { delegations: [] } });
+  });
+  await page.route("**/api/school/staff/519/permission-overrides**", async route => {
+    await route.fulfill({ json: { overrides: [] } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "View profile for teacher.no-delegation" }).click();
+  const profile = page.getByRole("dialog", { name: "No Delegation Teacher" });
+  await profile.getByRole("button", { name: "Account & Access" }).click();
+  await expect(profile.getByText("No permissions have been delegated by the Platform Admin for individual overrides.")).toBeVisible();
+  await expect(profile.getByRole("button", { name: "Delegated permission override for teacher.no-delegation" })).toBeDisabled();
+  await expect(profile.getByRole("button", { name: "Permission override effect" })).toBeDisabled();
+  await expect(profile.getByRole("button", { name: "Save override" })).toBeDisabled();
+});
