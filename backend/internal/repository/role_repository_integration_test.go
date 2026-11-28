@@ -888,6 +888,44 @@ func TestTeacherRoleAssignmentRequiresActiveTeachingProfilePostgresIntegration(t
 		t.Fatalf("assign Teacher role to active Teaching employee: %v", err)
 	}
 
+	target := &models.AuthPrincipal{
+		ID: targetPrincipalID, Type: "staff", Status: "active",
+		TokenVersion: 1, SchoolID: schoolID,
+	}
+	resolved, err := loadEffectivePermissions(ctx, tx, target)
+	if err != nil {
+		t.Fatalf("resolve active Teaching employee permissions: %v", err)
+	}
+	if !slices.Contains(resolved, "students.read_basic") || !slices.Contains(resolved, "timetable.read") {
+		t.Fatalf("active Teaching employee did not receive Teacher role permissions: %v", resolved)
+	}
+
+	// Simulate a legacy inconsistent row to prove the runtime resolver also
+	// suppresses Teacher permissions if a non-Teaching profile is encountered.
+	if _, err := tx.Exec(ctx, "ALTER TABLE public.staff_profiles DISABLE TRIGGER trg_v73_guard_teacher_profile_type_transition"); err != nil {
+		t.Fatalf("temporarily disable Teacher profile transition guard: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE staff_profiles SET staff_type='non_teaching' WHERE principal_id=$1 AND school_id=$2
+	`, targetPrincipalID, schoolID); err != nil {
+		t.Fatalf("simulate legacy Non-teaching profile with Teacher role: %v", err)
+	}
+	if _, err := tx.Exec(ctx, "ALTER TABLE public.staff_profiles ENABLE TRIGGER trg_v73_guard_teacher_profile_type_transition"); err != nil {
+		t.Fatalf("restore Teacher profile transition guard: %v", err)
+	}
+	resolved, err = loadEffectivePermissions(ctx, tx, target)
+	if err != nil {
+		t.Fatalf("resolve legacy Non-teaching employee permissions: %v", err)
+	}
+	if slices.Contains(resolved, "students.read_basic") || slices.Contains(resolved, "timetable.read") {
+		t.Fatalf("legacy Non-teaching employee retained Teacher role permissions: %v", resolved)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE staff_profiles SET staff_type='teaching' WHERE principal_id=$1 AND school_id=$2
+	`, targetPrincipalID, schoolID); err != nil {
+		t.Fatalf("restore Teaching profile after legacy resolver check: %v", err)
+	}
+
 	if _, err := tx.Exec(ctx, "SAVEPOINT teacher_role_profile_transition"); err != nil {
 		t.Fatalf("create Teacher profile transition savepoint: %v", err)
 	}
