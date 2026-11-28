@@ -59,13 +59,13 @@ func TestStaffSubstitutionV60DatabaseGuardsPostgresIntegration(t *testing.T) {
 	var teacherRoleID int64
 	if err=tx.QueryRow(ctx,`SELECT id FROM roles WHERE school_id=$1 AND principal_type='staff'
 		AND scope_type='school' AND role_key='teacher' AND is_system=TRUE`,schoolID).Scan(&teacherRoleID);err!=nil{t.Fatalf("load Teacher role: %v",err)}
-	for _,teacherID:=range []int64{originalID,substituteID,secondOriginalID}{
-		if _,err=tx.Exec(ctx,`INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)`,teacherID,teacherRoleID,actorPrincipalID);err!=nil{t.Fatalf("assign Teacher role to %d: %v",teacherID,err)}
-	}
-
 	for _,staff:=range []struct{id int64;code,name string}{{originalID,fmt.Sprintf("OR-%d",suffix),"Original Teacher"},{substituteID,fmt.Sprintf("SU-%d",suffix),"Substitute Teacher"},{secondOriginalID,fmt.Sprintf("OR2-%d",suffix),"Second Original Teacher"}} {
 		if _,err=tx.Exec(ctx,`INSERT INTO staff_profiles(principal_id,school_id,employee_code,full_name,designation,mobile_number,staff_type)
 			VALUES($1,$2,$3,$4,'Teacher','9876543210','teaching')`,staff.id,schoolID,staff.code,staff.name);err!=nil{t.Fatalf("create staff profile %s: %v",staff.name,err)}
+	}
+
+	for _,teacherID:=range []int64{originalID,substituteID,secondOriginalID}{
+		if _,err=tx.Exec(ctx,`INSERT INTO principal_roles(principal_id,role_id,assigned_by) VALUES($1,$2,$3)`,teacherID,teacherRoleID,actorPrincipalID);err!=nil{t.Fatalf("assign Teacher role to %d: %v",teacherID,err)}
 	}
 
 	var yearID,classID,sectionID,subjectID,periodID,originalAssignmentID,substituteAssignmentID,timetableEntryID int64
