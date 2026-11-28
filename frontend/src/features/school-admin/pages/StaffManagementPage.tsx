@@ -21,6 +21,7 @@ import {
   useStaffQualificationsQuery, useStaffCertificationsQuery, useStaffExperienceQuery,
   useCreateStaffQualificationMutation, useCreateStaffCertificationMutation, useCreateStaffExperienceMutation,
   useUpdateStaffQualificationMutation, useUpdateStaffCertificationMutation, useUpdateStaffExperienceMutation,
+  useVerifyStaffQualificationMutation, useVerifyStaffCertificationMutation,
   schoolAdminQueryKeys,
 } from "../queries";
 import { getSchoolStaffDirectory, type StaffDirectoryFilters, type StaffRecord } from "../api";
@@ -242,6 +243,11 @@ export function StaffManagementPage({ permissions }: Props) {
   const updateQualification = useUpdateStaffQualificationMutation(staffRecordID);
   const updateCertification = useUpdateStaffCertificationMutation(staffRecordID);
   const updateExperience = useUpdateStaffExperienceMutation(staffRecordID);
+  const verifyQualification = useVerifyStaffQualificationMutation(staffRecordID);
+  const verifyCertification = useVerifyStaffCertificationMutation(staffRecordID);
+  const canVerifyCredentials = permissions.includes("staff.credentials.verify");
+  const [credentialDecision, setCredentialDecision] = useState<{kind:"qualification"|"certification";recordID:number}|null>(null);
+  const [credentialDecisionNote, setCredentialDecisionNote] = useState("");
   const [editingRecordID, setEditingRecordID] = useState<number | null>(null);
   const editingQualification = qualificationsQuery.data?.qualifications.find(item => item.id === editingRecordID);
   const editingCertification = certificationsQuery.data?.certifications.find(item => item.id === editingRecordID);
@@ -548,6 +554,25 @@ export function StaffManagementPage({ permissions }: Props) {
       notifyToast("error", "Clipboard access is unavailable. Use the password-reset flow if needed.");
     }
   }
+  async function applyCredentialDecision(kind:"qualification"|"certification",recordID:number,status:"verified"|"rejected",note="") {
+    if (!canVerifyCredentials || !profileFor) return;
+    try {
+      if (kind === "qualification") await verifyQualification.mutateAsync({recordID,status,note});
+      else await verifyCertification.mutateAsync({recordID,status,note});
+      setCredentialDecision(null);
+      setCredentialDecisionNote("");
+      notifyToast("success", status === "verified" ? "Credential marked as verified." : "Credential rejected with reason recorded.");
+    } catch (error) {
+      notifyToast("error", error instanceof Error ? error.message : "Unable to update credential verification.");
+    }
+  }
+  async function submitCredentialDecision(event:FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!credentialDecision) return;
+    const note = credentialDecisionNote.trim();
+    if (!note) { notifyToast("error","Enter a reason before rejecting this credential."); return; }
+    await applyCredentialDecision(credentialDecision.kind,credentialDecision.recordID,"rejected",note);
+  }
   function clearRecordFieldError(field: string) {
     setRecordFieldErrors(current => {
       if (!current[field]) return current;
@@ -697,7 +722,7 @@ export function StaffManagementPage({ permissions }: Props) {
   }
 
   const pending = create.isPending || update.isPending || reset.isPending || enable.isPending;
-  const recordMutationPending = createQualification.isPending || createCertification.isPending || createExperience.isPending || updateQualification.isPending || updateCertification.isPending || updateExperience.isPending;
+  const recordMutationPending = createQualification.isPending || createCertification.isPending || createExperience.isPending || updateQualification.isPending || updateCertification.isPending || updateExperience.isPending || verifyQualification.isPending || verifyCertification.isPending;
   const formTitle = action === "create" ? "Add employee" : action === "edit" ? "Edit employee profile" : action === "reset" ? "Reset staff password" : "Enable staff account";
   const passwordLabel = action === "create" ? "Initial password" : action === "reset" ? "New temporary password" : "Temporary password";
 
@@ -861,14 +886,14 @@ export function StaffManagementPage({ permissions }: Props) {
             {qualificationsQuery.isLoading && <p role="status">Loading qualifications…</p>}
             {qualificationsQuery.isError && <div className="staff-record-error" role="alert"><span>Unable to load qualifications.</span><button type="button" onClick={() => void qualificationsQuery.refetch()}>Retry</button></div>}
             {!qualificationsQuery.isLoading && !qualificationsQuery.isError && (qualificationsQuery.data?.qualifications.length ?? 0) === 0 && <p className="staff-record-empty">No education records added yet.</p>}
-            {qualificationsQuery.data?.qualifications.map(item => <article className="staff-record-card" key={item.id}><div><strong>{item.qualification_name}</strong><span>{item.institution}{item.completion_year ? ` · ${item.completion_year}` : ""}</span>{item.specialization && <small>{item.specialization}</small>}</div><span className="staff-record-status">{item.verification_status}</span>{canUpdate && <button type="button" className="staff-text-button" disabled={recordMutationPending} onClick={() => {setRecordError("");setRecordFieldErrors({});setEditingRecordID(item.id);setRecordFormKind("qualification");}}>Edit</button>}</article>)}
+            {qualificationsQuery.data?.qualifications.map(item => <article className="staff-record-card" key={item.id}><div><strong>{item.qualification_name}</strong><span>{item.institution}{item.completion_year ? ` · ${item.completion_year}` : ""}</span>{item.specialization && <small>{item.specialization}</small>}</div><span className={`staff-record-status is-${item.verification_status}`}>{item.verification_status}</span>{item.verification_notes && <small className="staff-record-verification-note">Note: {item.verification_notes}</small>}{item.verified_at && <small className="staff-record-verification-meta">Reviewed {new Intl.DateTimeFormat("en-IN",{dateStyle:"medium",timeStyle:"short"}).format(new Date(item.verified_at))}</small>}{canVerifyCredentials && <div className="staff-record-verification-actions"><button type="button" className="staff-text-button" disabled={recordMutationPending} onClick={() => void applyCredentialDecision("qualification",item.id,"verified")}>Verify</button><button type="button" className="staff-text-button" disabled={recordMutationPending} onClick={() => {setCredentialDecision({kind:"qualification",recordID:item.id});setCredentialDecisionNote("");}}>Reject</button></div>}{credentialDecision?.kind === "qualification" && credentialDecision.recordID === item.id && <form className="staff-record-rejection-form" onSubmit={submitCredentialDecision}><label>Reason for rejection <textarea value={credentialDecisionNote} maxLength={1000} required onChange={event=>setCredentialDecisionNote(event.target.value)} rows={2}/></label><div><button type="submit" className="staff-text-button" disabled={recordMutationPending || !credentialDecisionNote.trim()}>Confirm rejection</button><button type="button" className="staff-text-button" disabled={recordMutationPending} onClick={()=>{setCredentialDecision(null);setCredentialDecisionNote("");}}>Cancel</button></div></form>}{canUpdate && <button type="button" className="staff-text-button" disabled={recordMutationPending} onClick={() => {setRecordError("");setRecordFieldErrors({});setEditingRecordID(item.id);setRecordFormKind("qualification");}}>Edit</button>}</article>)}
           </div>
           <div className="staff-record-group">
             <div className="staff-record-group-heading"><h4>Certifications</h4>{canUpdate && <button className="staff-secondary-button" type="button" disabled={recordMutationPending} onClick={() => {setRecordError("");setRecordFieldErrors({});setEditingRecordID(null);setCertificationIssueDate("");setCertificationExpiryDate("");setRecordFormKind("certification");}}>Add certification</button>}</div>
             {certificationsQuery.isLoading && <p role="status">Loading certifications…</p>}
             {certificationsQuery.isError && <div className="staff-record-error" role="alert"><span>Unable to load certifications.</span><button type="button" onClick={() => void certificationsQuery.refetch()}>Retry</button></div>}
             {!certificationsQuery.isLoading && !certificationsQuery.isError && (certificationsQuery.data?.certifications.length ?? 0) === 0 && <p className="staff-record-empty">No certifications added yet.</p>}
-            {certificationsQuery.data?.certifications.map(item => <article className="staff-record-card" key={item.id}><div><strong>{item.certificate_name}</strong><span>{item.issuing_organization}</span><small>{item.issue_date || "Issue date not provided"}{item.expiry_date ? ` · Expires ${item.expiry_date}` : ""}</small></div><span className="staff-record-status">{item.verification_status}</span>{canUpdate && <button type="button" className="staff-text-button" disabled={recordMutationPending} onClick={() => {setRecordError("");setRecordFieldErrors({});setEditingRecordID(item.id);setCertificationIssueDate(item.issue_date ?? "");setCertificationExpiryDate(item.expiry_date ?? "");setRecordFormKind("certification");}}>Edit</button>}</article>)}
+            {certificationsQuery.data?.certifications.map(item => <article className="staff-record-card" key={item.id}><div><strong>{item.certificate_name}</strong><span>{item.issuing_organization}</span><small>{item.issue_date || "Issue date not provided"}{item.expiry_date ? ` · Expires ${item.expiry_date}` : ""}</small></div><span className={`staff-record-status is-${item.verification_status}`}>{item.verification_status}</span>{item.verification_notes && <small className="staff-record-verification-note">Note: {item.verification_notes}</small>}{item.verified_at && <small className="staff-record-verification-meta">Reviewed {new Intl.DateTimeFormat("en-IN",{dateStyle:"medium",timeStyle:"short"}).format(new Date(item.verified_at))}</small>}{canVerifyCredentials && <div className="staff-record-verification-actions"><button type="button" className="staff-text-button" disabled={recordMutationPending} onClick={() => void applyCredentialDecision("certification",item.id,"verified")}>Verify</button><button type="button" className="staff-text-button" disabled={recordMutationPending} onClick={() => {setCredentialDecision({kind:"certification",recordID:item.id});setCredentialDecisionNote("");}}>Reject</button></div>}{credentialDecision?.kind === "certification" && credentialDecision.recordID === item.id && <form className="staff-record-rejection-form" onSubmit={submitCredentialDecision}><label>Reason for rejection <textarea value={credentialDecisionNote} maxLength={1000} required onChange={event=>setCredentialDecisionNote(event.target.value)} rows={2}/></label><div><button type="submit" className="staff-text-button" disabled={recordMutationPending || !credentialDecisionNote.trim()}>Confirm rejection</button><button type="button" className="staff-text-button" disabled={recordMutationPending} onClick={()=>{setCredentialDecision(null);setCredentialDecisionNote("");}}>Cancel</button></div></form>}{canUpdate && <button type="button" className="staff-text-button" disabled={recordMutationPending} onClick={() => {setRecordError("");setRecordFieldErrors({});setEditingRecordID(item.id);setCertificationIssueDate(item.issue_date ?? "");setCertificationExpiryDate(item.expiry_date ?? "");setRecordFormKind("certification");}}>Edit</button>}</article>)}
           </div>
           <div className="staff-record-group">
             <div className="staff-record-group-heading"><h4>Employment history</h4>{canUpdate && <button className="staff-secondary-button" type="button" disabled={recordMutationPending} onClick={() => {setRecordError("");setRecordFieldErrors({});setEditingRecordID(null);setExperienceStartDate("");setExperienceEndDate("");setRecordFormKind("experience");}}>Add experience</button>}</div>
