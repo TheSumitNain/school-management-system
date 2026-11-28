@@ -27,6 +27,8 @@ func TestStaffRecordsHandlersReturnUnavailableWithoutService(t *testing.T) {
 		{"create experience", (*StaffRecordsHandler).CreateExperience},
 		{"update qualification", (*StaffRecordsHandler).UpdateQualification},
 		{"update certification", (*StaffRecordsHandler).UpdateCertification},
+		{"verify qualification", (*StaffRecordsHandler).VerifyQualification},
+		{"verify certification", (*StaffRecordsHandler).VerifyCertification},
 		{"update experience", (*StaffRecordsHandler).UpdateExperience},
 		{"list audit events", (*StaffRecordsHandler).ListAuditEvents},
 		{"qualifications report", (*StaffRecordsHandler).ListQualificationsReport},
@@ -89,6 +91,8 @@ func (nilStaffRecordsResultService) CreateExperience(context.Context,int64,int64
 func (nilStaffRecordsResultService) UpdateQualification(context.Context,int64,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error){return nil,nil}
 func (nilStaffRecordsResultService) UpdateCertification(context.Context,int64,int64,int64,int64,repository.StaffCertification)(*repository.StaffCertification,error){return nil,nil}
 func (nilStaffRecordsResultService) UpdateExperience(context.Context,int64,int64,int64,int64,repository.StaffExperience)(*repository.StaffExperience,error){return nil,nil}
+func (nilStaffRecordsResultService) VerifyQualification(context.Context,int64,int64,int64,int64,string,string)(*repository.StaffQualification,error){return nil,nil}
+func (nilStaffRecordsResultService) VerifyCertification(context.Context,int64,int64,int64,int64,string,string)(*repository.StaffCertification,error){return nil,nil}
 func (nilStaffRecordsResultService) ListQualificationsReport(context.Context,int64,int64,repository.StaffQualificationReportFilter)(*repository.StaffQualificationReportPage,error){return nil,nil}
 func (nilStaffRecordsResultService) ListExperienceReport(context.Context,int64,int64,repository.StaffExperienceReportFilter)(*repository.StaffExperienceReportPage,error){return nil,nil}
 
@@ -102,6 +106,8 @@ func TestStaffRecordsHandlersRejectNilSuccessfulResults(t *testing.T) {
 		{"create experience",http.MethodPost,"/staff/42/experience",`{}`,(*StaffRecordsHandler).CreateExperience},
 		{"update qualification",http.MethodPut,"/staff/42/qualifications/7",`{}`,(*StaffRecordsHandler).UpdateQualification},
 		{"update certification",http.MethodPut,"/staff/42/certifications/7",`{}`,(*StaffRecordsHandler).UpdateCertification},
+		{"verify qualification",http.MethodPost,"/staff/42/qualifications/7/verification",`{"status":"verified"}`,(*StaffRecordsHandler).VerifyQualification},
+		{"verify certification",http.MethodPost,"/staff/42/certifications/7/verification",`{"status":"verified"}`,(*StaffRecordsHandler).VerifyCertification},
 		{"update experience",http.MethodPut,"/staff/42/experience/7",`{}`,(*StaffRecordsHandler).UpdateExperience},
 		{"qualifications report",http.MethodGet,"/staff/qualifications/report","",(*StaffRecordsHandler).ListQualificationsReport},
 		{"experience report",http.MethodGet,"/staff/experience/report","",(*StaffRecordsHandler).ListExperienceReport},
