@@ -90,17 +90,27 @@ test("school workspace pages stay within narrow, tablet, and desktop viewports",
   await page.getByRole("button", { name: "Close navigation", exact: true }).click();
   await expect(openNavigation).toHaveAttribute("aria-expanded", "false");
 
-  for (const width of [768, 900]) {
+  for (const width of [521, 768, 900]) {
     await page.setViewportSize({ width, height: 900 });
-    await expect(openNavigation).toBeVisible();
-    await openNavigation.click();
-    await expect.poll(() => page.locator("#workspace-sidebar").evaluate(element => Math.round(element.getBoundingClientRect().left))).toBe(0);
-    await page.getByRole("button", { name: "Close navigation", exact: true }).click();
+    await expect(openNavigation).toBeHidden();
+    const sidebar = page.locator("#workspace-sidebar");
+    await expect(sidebar).toBeVisible();
+    await expect(sidebar).toHaveCSS("width", "64px");
+    await expect(page.locator(".main")).toHaveCSS("margin-left", "64px");
+    await expect(sidebar.locator(".side-brand .brand-mark")).toBeVisible();
+    await expect(sidebar.locator(".side-brand b")).toBeHidden();
+    await expect(sidebar.locator(".side-label")).toBeHidden();
+    await expect(sidebar.locator(".nav-item-label")).toBeHidden();
+    await expect(sidebar.getByRole("button", { name: "Dashboard" })).toBeVisible();
+    await expect(sidebar.getByRole("button", { name: "Settings" })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   }
   await page.setViewportSize({ width: 901, height: 900 });
   await expect(openNavigation).toBeHidden();
   await expect.poll(() => page.locator("#workspace-sidebar").evaluate(element => Math.round(element.getBoundingClientRect().left))).toBe(0);
   await expect(page.locator(".main")).toHaveCSS("margin-left", "250px");
+  await expect(page.locator("#workspace-sidebar .side-brand b")).toBeVisible();
+  await expect(page.locator("#workspace-sidebar .nav-item-label")).toBeVisible();
 
   const pages = [
     { path: "/", heading: /good (morning|afternoon|evening),/i },

@@ -1650,3 +1650,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Local focused Playwright run: Staff Account & Access **8/8**, workload-only Teacher visibility **1/1**, failed Teacher Assignment refresh **1/1**, Role Management **3/3**, Platform Admin **3/3** — **16/16 passed, zero failures**.
 - This verifies the listed automated workflows but is not manual School Admin sign-off and does not close the page at 100%. The Account & Access page remains the active page; next gate is authenticated School Admin manual acceptance of the visible UI and effective role scope. Do not start another Staff Management page before this gate.
 - Full Frontend CI remains red only on the already-recorded Student Management ambiguous Students-button locator cases; it must not be represented as green. main untouched; document upload remains deferred/excluded.
+
+
+## 2026-11-28 — Tablet icon-rail navigation
+
+- Applied the shared workspace tablet navigation requested during Account & Access acceptance: desktop (901px+) keeps the full labeled sidebar; tablet (521–900px) uses a fixed 64px icon-only rail; mobile (520px and below) retains the hamburger drawer.
+- Tablet navigation buttons retain accessible names, native title tooltips, focus-visible treatment and active-page styling. The sidebar remains permission-filtered exactly as before.
+- Added Playwright coverage at 521/768/900px and retained mobile/desktop boundary checks. Verification remains pending until local Windows tests and GitHub Actions complete.
+- This is a shared-shell UX improvement, not a Staff permission change. Account & Access remains open pending verification.

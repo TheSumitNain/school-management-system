@@ -3146,3 +3146,12 @@ cd /d D:\school-management-system && git pull --ff-only origin work && cd /d D:\
 - Results: staff-management.spec.ts Account & Access group **8/8 PASS**; workload-only Teacher report **1/1 PASS**; failed Teacher Assignment refresh **1/1 PASS**; Role Management **3/3 PASS**; Platform Admin **3/3 PASS**. Total **16/16 PASS**, zero failures.
 - Covered account disable/enable and temporary password flow, inactive-employee re-enable conflict, role assignment visibility/delegation, protected peer School Admin, Teacher eligibility, permission overrides, workload-only report isolation, failed assignment refresh, custom role delegation/revocation, retryable permission loading, and Platform Admin account/school onboarding/audit history.
 - Account & Access remains open pending authenticated School Admin manual acceptance (including visible page behavior/role scope). Do not claim the page 100% or advance to another Staff Management page until that acceptance is recorded. Full Frontend CI remains red for Student Management locator conflicts as recorded above; local backend/typecheck/build and Backend CI results remain separate. main untouched; document upload deferred/excluded.
+
+
+## 2026-11-28 — Tablet icon-rail navigation applied (verification pending)
+
+- Shared authenticated workspace navigation now has three responsive modes: full 250px labeled sidebar at 901px+, persistent 64px icon-only rail at 521–900px, and hamburger/off-canvas drawer at 520px and below.
+- Tablet rail keeps every permitted destination visible as an icon, with the full accessible name and native hover title on each navigation control; active page styling remains visible. Brand mark and signed-in user avatar remain available.
+- Main content offsets by the 64px rail on tablet; mobile drawer retains zero content offset. No permission or route visibility rules were changed.
+- Added responsive Playwright assertions for 521px, 768px and 900px tablet widths, plus 390px mobile and 901px desktop. Local typecheck/build/Playwright and CI are pending; do not mark Account & Access complete until these checks and authenticated manual acceptance pass.
+- Code is on `work`; `main` untouched. Document upload remains deferred and excluded from Staff Management completion.
