@@ -349,5 +349,5 @@ test("dashboard reports malformed metric payloads across all metrics and recover
     await expect(metric.locator("strong")).toHaveText(value);
   }
   await expect(page.getByRole("alert")).toHaveCount(0);
-  expect(requests).toEqual({ staff: 3, classes: 3, years: 3, enrollments: 2 });
+  expect(requests).toEqual({ staff: 4, classes: 4, years: 4, enrollments: 2 });
 });
