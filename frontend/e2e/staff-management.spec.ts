@@ -1422,7 +1422,7 @@ test("disabling a staff account requires explicit confirmation and refreshes its
   let holdDisable = false;
   let releaseDisable!: () => void;
   const pendingDisable = new Promise<void>(resolve => { releaseDisable = resolve; });
-  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.disable"]);
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.disable", "users.update"]);
   await page.route("**/api/school/staff/516", async route => {
     if (route.request().method() === "DELETE") {
       disableCalls += 1;
@@ -1435,7 +1435,7 @@ test("disabling a staff account requires explicit confirmation and refreshes its
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  const staffRow = page.locator("tr").filter({ hasText: "disable.teacher" });
+  const staffRow = page.locator("tr").filter({ hasText: "EMP-DISABLE-01" });
   await expect(staffRow).toBeVisible();
   await staffRow.getByRole("button", { name: "Disable disable.teacher" }).click();
   const cancelled = page.getByRole("dialog", { name: "Disable staff account?" });
@@ -1463,7 +1463,7 @@ test("disabling a staff account requires explicit confirmation and refreshes its
   releaseDisable();
   await expect(page.getByText("disable.teacher has been disabled and active sessions revoked.")).toBeVisible();
   expect(disableCalls).toBe(1);
-  await expect(page.locator("tr").filter({ hasText: "disable.teacher" })).toContainText("disabled");
+  await expect(staffRow.getByRole("button", { name: "Enable disable.teacher" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Disable disable.teacher" })).toHaveCount(0);
 });
 
@@ -1559,7 +1559,7 @@ test("enabling a disabled staff account validates a temporary password and enfor
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  const staffRow = page.locator("tr").filter({ hasText: "enable.teacher" });
+  const staffRow = page.locator("tr").filter({ hasText: "EMP-ENABLE-01" });
   await expect(staffRow).toBeVisible();
   await staffRow.getByRole("button", { name: "Enable enable.teacher" }).click();
   const enableDialog = page.getByRole("dialog", { name: "Enable staff account" });
@@ -1574,7 +1574,7 @@ test("enabling a disabled staff account validates a temporary password and enfor
   await expect(page.getByText("Staff account enabled. A password change is required at next sign-in.")).toBeVisible();
   expect(enableCalls).toBe(1);
   expect(submittedPayload).toEqual({ temporary_password: "EnableTempPass!2026" });
-  await expect(page.locator("tr").filter({ hasText: "enable.teacher" })).toContainText("active");
+  await expect(staffRow.getByRole("button", { name: "Disable enable.teacher" })).toBeVisible();
   await expect(page.getByText("Change required")).toBeVisible();
   await expect(page.getByRole("button", { name: "Enable enable.teacher" })).toHaveCount(0);
 });
@@ -1600,7 +1600,7 @@ test("enabling a staff account ignores a second submit while the request is pend
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  const staffRow = page.locator("tr").filter({ hasText: "enable.double" });
+  const staffRow = page.locator("tr").filter({ hasText: "EMP-ENABLE-DOUBLE" });
   await expect(staffRow).toBeVisible();
   await staffRow.getByRole("button", { name: "Enable enable.double" }).click();
   const dialog = page.getByRole("dialog", { name: "Enable staff account" });
@@ -1644,7 +1644,7 @@ test("staff account re-enable keeps the dialog open and explains an inactive emp
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  const staffRow = page.locator("tr").filter({ hasText: "inactive.enable" });
+  const staffRow = page.locator("tr").filter({ hasText: "EMP-INACTIVE-ENABLE" });
   await expect(staffRow).toBeVisible();
   await staffRow.getByRole("button", { name: "Enable inactive.enable" }).click();
   const enableDialog = page.getByRole("dialog", { name: "Enable staff account" });
@@ -2745,7 +2745,7 @@ test("staff account access keeps role assignments read-only without delegation p
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Role Reader" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.role-reader" }).click();
   const profile = page.getByRole("dialog", { name: "Role Reader" });
   await profile.getByRole("button", { name: "Account & Access" }).click();
   await expect(profile.getByText("Access roles")).toBeVisible();
@@ -2809,7 +2809,7 @@ test("protected peer School Admin account is read-only for role and permission c
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Protected Admin" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.protected-admin" }).click();
   const profile = page.getByRole("dialog", { name: "Protected Admin" });
   await profile.getByRole("button", { name: "Account & Access" }).click();
   await expect(profile.getByText("Protected School Admin account: role changes are disabled.")).toBeVisible();
@@ -2885,7 +2885,7 @@ test("staff role assignment and removal require the delegated permission and exp
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Role Admin" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.role-admin" }).click();
   const profile = page.getByRole("dialog", { name: "Role Admin" });
   await profile.getByRole("button", { name: "History & Activity" }).click();
   await expect(profile.getByText("No audited activity is recorded for this employee yet.")).toBeVisible();
@@ -2895,7 +2895,7 @@ test("staff role assignment and removal require the delegated permission and exp
   const firstRoleReadCount = roleAssignmentReads;
   expect(firstRoleReadCount).toBeGreaterThan(0);
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Role Admin" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.role-admin" }).click();
   const reopenedProfile = page.getByRole("dialog", { name: "Role Admin" });
   await reopenedProfile.getByRole("button", { name: "Account & Access" }).click();
   await expect.poll(() => roleAssignmentReads).toBeGreaterThan(firstRoleReadCount);
@@ -3029,7 +3029,7 @@ test("staff permission overrides require a delegated permission, reason and remo
   });
 
   await page.getByRole("button", { name: /Staff Directory/ }).click();
-  await page.getByRole("button", { name: "Override Admin" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.override-admin" }).click();
   const profile = page.getByRole("dialog", { name: "Override Admin" });
   await profile.getByRole("button", { name: "History & Activity" }).click();
   await expect(profile.getByText("No audited activity is recorded for this employee yet.")).toBeVisible();
@@ -3039,7 +3039,7 @@ test("staff permission overrides require a delegated permission, reason and remo
   const firstOverrideReadCount = overrideReads;
   expect(firstOverrideReadCount).toBeGreaterThan(0);
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Override Admin" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.override-admin" }).click();
   const reopenedProfile = page.getByRole("dialog", { name: "Override Admin" });
   await reopenedProfile.getByRole("button", { name: "Account & Access" }).click();
   await expect(reopenedProfile.getByText("Individual permission overrides", { exact: true })).toBeVisible();
