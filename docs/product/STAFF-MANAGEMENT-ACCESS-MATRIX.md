@@ -320,3 +320,11 @@ New Non-teaching employees receive no default system role. After login, with no 
 | ACCESS-18 | Teacher dashboard is generic; Homework/Notices permission keys have no matching app pages; no self-profile or self-service leave workflow. | The Teacher role has permissions that the UI does not surface, while important teacher tasks are absent. | Define Teacher home, homework/notices, own profile and leave request scope before adding more permissions. Build role-specific UX and tests after School Admin Account & Access is accepted. |
 | ACCESS-19 | Non-teaching accounts have no default role or self-service experience. | A new Non-teaching login has no useful pages beyond shared Dashboard/Settings. | Decide whether non-teaching users need a limited base role (e.g. own profile and leave request) or remain login-disabled/role-less until assigned. Do not grant Teacher role. |
 
+
+## 17. Directory status visibility detail
+
+- Staff Directory's main table currently displays the employee's **Employment** status (Active/Inactive). The toolbar separately offers a **Login account** filter (Enabled/Disabled), and the employee profile Overview shows both Employment and Login status. The directory table itself does not currently have a dedicated Login status column.
+- Disable account row action is shown for active logins when the viewer has users.disable. Enable account row action is shown for disabled logins only when the employee profile is complete, employment is Active, and the viewer has users.update. Password reset is separate and requires users.password_reset.
+- Employment status is changed from Staff Directory → Edit employee profile → Employment status (users.update). Moving to Inactive disables the login and revokes sessions; moving back to Active does not automatically enable a disabled login.
+
+New gap ACCESS-20: Directory table makes Employment status visible but not Login status; the separate filter and profile overview expose it. Consider a dedicated Login column so School Admin can distinguish an employed employee whose login is disabled from an employee whose employment is inactive without opening each profile.
