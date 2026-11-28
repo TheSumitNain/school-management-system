@@ -192,58 +192,41 @@ func TestStaffDirectorySummaryMatchesFilteredCountsAndEnforcesLivePermissionPost
 		t.Fatalf("School Admin unexpectedly read a forged foreign-school directory summary: summary=%+v err=%v", forgedSummary, err)
 	}
 
-	// Repository reads must honor the same live DENY override as AuthMiddleware,
-	// even when the principal still has the School Admin system-role grant.
-	denyTx, err := fixture.pool.Begin(fixture.ctx)
+	// Repository reads must honor live role revocation at the repository
+	// boundary, not rely only on the permission snapshot checked by middleware.
+	// The outer transaction makes this mutation rollback-scoped.
+	permissionTx, err := fixture.pool.Begin(fixture.ctx)
 	if err != nil {
-		t.Fatalf("begin rollback-scoped users.read DENY regression: %v", err)
+		t.Fatalf("begin rollback-scoped live permission regression: %v", err)
 	}
-	defer func() { _ = denyTx.Rollback(fixture.ctx) }()
-	denyRepo := NewUserRepository(denyTx)
-	var usersReadPermissionID, schoolAdminRoleID int64
-	if err := denyTx.QueryRow(fixture.ctx, `
-		SELECT id FROM permissions WHERE permission_key='users.read' AND scope_type='school'
-	`).Scan(&usersReadPermissionID); err != nil {
-		t.Fatalf("load users.read permission for DENY regression: %v", err)
-	}
-	if err := denyTx.QueryRow(fixture.ctx, `
+	defer func() { _ = permissionTx.Rollback(fixture.ctx) }()
+
+	var schoolAdminRoleID int64
+	if err := permissionTx.QueryRow(fixture.ctx, `
 		SELECT id FROM roles
 		 WHERE school_id=$1 AND principal_type='staff' AND scope_type='school'
 		   AND role_key='school_admin' AND is_system=TRUE
 	`, fixture.schoolID).Scan(&schoolAdminRoleID); err != nil {
-		t.Fatalf("load School Admin role for DENY regression: %v", err)
+		t.Fatalf("load School Admin role for live revocation regression: %v", err)
 	}
-	if _, err := denyTx.Exec(fixture.ctx, `
-		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
-		VALUES ($1,$2,$3)
-		ON CONFLICT DO NOTHING
-	`, fixture.staffPrincipalID, schoolAdminRoleID, fixture.adminPrincipalID); err != nil {
-		t.Fatalf("grant rollback-scoped School Admin role for DENY regression: %v", err)
+	tag, err := permissionTx.Exec(fixture.ctx, `
+		UPDATE principal_roles
+		   SET revoked_at=NOW()
+		 WHERE principal_id=$1 AND role_id=$2 AND revoked_at IS NULL
+	`, fixture.adminPrincipalID, schoolAdminRoleID)
+	if err != nil {
+		t.Fatalf("revoke School Admin role inside regression transaction: %v", err)
 	}
-	var overrideDelegationID int64
-	if err := denyTx.QueryRow(fixture.ctx, `
-		SELECT id FROM role_permission_delegations
-		 WHERE school_id=$1 AND permission_id=$2
-		   AND can_override_users=TRUE AND revoked_at IS NULL
-		 LIMIT 1
-	`, fixture.schoolID, usersReadPermissionID).Scan(&overrideDelegationID); err != nil {
-		t.Skipf("users.read has no active user-override delegation in this test database: %v", err)
+	if tag.RowsAffected() != 1 {
+		t.Fatalf("revoked School Admin role rows=%d, want 1", tag.RowsAffected())
 	}
-	if _, err := denyTx.Exec(fixture.ctx, `
-		INSERT INTO user_permission_overrides
-			(principal_id, school_id, permission_id, effect, reason, granted_by, delegation_id)
-		VALUES ($1,$2,$3,'deny','staff directory DENY regression',$4,$5)
-		ON CONFLICT (principal_id, school_id, permission_id)
-		DO UPDATE SET effect='deny', reason=EXCLUDED.reason, granted_by=EXCLUDED.granted_by,
-		              delegation_id=EXCLUDED.delegation_id
-	`, fixture.staffPrincipalID, fixture.schoolID, usersReadPermissionID, fixture.adminPrincipalID, overrideDelegationID); err != nil {
-		t.Fatalf("apply users.read DENY override: %v", err)
+
+	livePermissionRepo := NewUserRepository(permissionTx)
+	if denied, err := livePermissionRepo.GetStaffDirectorySummary(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID); err == nil || denied != nil {
+		t.Fatalf("staff directory summary ignored live School Admin role revocation: summary=%+v err=%v", denied, err)
 	}
-	if denied, err := denyRepo.GetStaffDirectorySummary(fixture.ctx, fixture.staffPrincipalID, fixture.schoolID); err == nil || denied != nil {
-		t.Fatalf("staff directory summary ignored users.read DENY override: summary=%+v err=%v", denied, err)
-	}
-	if denied, err := denyRepo.ListStaffDirectoryPage(fixture.ctx, fixture.staffPrincipalID, fixture.schoolID,
+	if denied, err := livePermissionRepo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID,
 		models.StaffDirectoryFilter{Limit: 10}); err == nil || denied != nil {
-		t.Fatalf("staff directory page ignored users.read DENY override: page=%+v err=%v", denied, err)
+		t.Fatalf("staff directory page ignored live School Admin role revocation: page=%+v err=%v", denied, err)
 	}
 }
