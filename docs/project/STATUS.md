@@ -3114,3 +3114,12 @@ cd /d D:\school-management-system && git pull --ff-only origin work && cd /d D:\
 - **Latest code checkpoint:** 9506a04ef00a63848d04d2781ee9f1841cbe94e8 on work; latest docs checkpoint cd9013544951610f0fda8e41caf5b58bba360810. main remains untouched.
 - **CI:** Backend CI 46115928661 PASS. Frontend CI 46115928660 was in progress after build and Chromium setup; inspect its final result before claiming acceptance.
 - **Current batch:** Staff Account & Access, employment/login lifecycle, Teacher My Workload visibility and permission-control navigation. The current page is not yet manually accepted.
+
+
+## 2026-11-28 — Local backend/build verification and Frontend CI reconciliation
+
+- User pulled branch `work` at documentation commit `8ad794d70c260050d774d63c3360fd1628efbd82` (code parent `cd9013544951610f0fda8e41caf5b58bba360810`; implementation checkpoint remains `9506a04ef00a63848d04d2781ee9f1841cbe94e8`).
+- User-run local checks on Windows: full Go/PostgreSQL integration suite `go test -count=1 -p 1 ./...` **PASS**; `go vet ./...` **PASS**; frontend design-token check, TypeScript typecheck and Vite production build **PASS**.
+- Reconciled Frontend CI [46115928660](https://github.com/TheSumitNain/school-management-system/actions/runs/46115928660): **FAIL** overall, but the TypeScript/Vite build and Chromium setup passed. Playwright reported **185 passed, 5 failed and 3 flaky**; all eight affected cases are in Student Management and fail because the broad `Students` button locator matches both the sidebar item and dashboard shortcut. No Staff Management test failure appeared in the job log. Backend CI [46115928661](https://github.com/TheSumitNain/school-management-system/actions/runs/46115928661) **PASS**.
+- This is not a green full-frontend CI result. The local focused Account & Access/lifecycle Playwright run and authenticated School Admin acceptance are still outstanding. Do not close Account & Access or move to the next page yet.
+- Next single local browser batch: run the focused Staff Account & Access/lifecycle, workload-only Teacher, failed Teacher Assignment refresh, Role Management and Platform Admin Playwright groups. Keep all work on `work`; `main` untouched. Document upload remains deferred and excluded.
