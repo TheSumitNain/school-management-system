@@ -1608,3 +1608,9 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Added STAFF-MANAGEMENT-PERMISSION-DICTIONARY.md as the canonical key-by-key reference for Staff Directory, Account & Access, academic assignments, attendance, leave/holidays, substitutions and workload.
 - Each permission records its meaning, UI effect, delegability and granting screen. The dictionary is sourced from V4/V58/V59/V60 and current UI/backend authorization.
 - Read the dictionary together with STAFF-MANAGEMENT-ACCESS-MATRIX.md before changing role or permission behaviour.
+
+## 2026-11-28 — Open access-policy decisions recorded
+
+- Added ACCESS-22: no delegated HR/Staff Manager role because Staff Directory and staff operations are non-delegable.
+- Added ACCESS-23: no Teacher self-service staff attendance/leave because there are no own-record permission keys or endpoints.
+- These are product/security design decisions, not quick toggles. Keep current School Admin-only behaviour until a scoped HR Manager or own-record Teacher workflow is explicitly approved.

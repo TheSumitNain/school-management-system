@@ -3108,3 +3108,5 @@ cd /d D:\school-management-system && git pull --ff-only origin work && cd /d D:\
 - Do not declare Staff Management 100% from automated tests alone. Document upload remains deferred and excluded. Preserve existing page-level acceptance records; do not invent an overall percentage.
 
 - **Permission dictionary:** docs/product/STAFF-MANAGEMENT-PERMISSION-DICTIONARY.md now records each Staff Management permission's meaning, UI gate, delegability and granting screen. Read it together with the Access Matrix before changing permissions.
+
+- **Open access-policy decisions:** ACCESS-22 records that no delegated HR/Staff Manager role exists; ACCESS-23 records that Teacher self-service staff attendance/leave is not implemented. Do not make Staff Directory or staff.* permissions delegable as a shortcut.

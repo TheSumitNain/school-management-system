@@ -89,3 +89,9 @@ Both keys below are non-delegable in V60.
 ## 8. Continuation rule
 
 Before changing a permission, verify its catalogue description and delegability in the current migration, its UI gate, its API route guard, its repository authorization and its tenant/resource scope. Update this dictionary and STAFF-MANAGEMENT-ACCESS-MATRIX.md in the same batch whenever a permission policy changes.
+
+### Additional design constraints
+
+- There is currently no delegated HR/Staff Manager permission bundle: users.read and staff operations are non-delegable. A Non-teaching custom role cannot be given Staff Directory access in the current policy.
+- There are no Teacher self-service staff attendance/leave permissions. The current staff attendance and leave keys are School Admin operational permissions, not own-record permissions.
+- Do not make these keys delegable without dedicated row-scoped/self-only API authorization and cross-employee negative tests.

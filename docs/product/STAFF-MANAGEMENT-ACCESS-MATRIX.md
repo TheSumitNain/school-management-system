@@ -506,3 +506,12 @@ The database trigger also disables a profile inserted directly as Inactive. A se
 ### Page-level reporting rule
 
 Keep previously accepted scope and pending manual acceptance separate. Staff Dashboard and Staff Directory were previously accepted for their current planned scope (document upload excluded). Other modules with green automated suites remain pending their recorded authenticated manual sign-off. Do not publish a single overall Staff Management percentage until the role/page matrix, all page workflows and manual acceptance evidence are reconciled.
+
+## 22. Open product decisions — delegated HR access and Teacher self-service
+
+| ID | Gap | Why the current user cannot see/use it | Safe future design; no implementation approved yet |
+|---|---|---|---|
+| ACCESS-22 (P1) | No delegated HR / Staff Manager role exists. | users.read and all staff attendance, leave/holiday and substitution permissions are non-delegable. A Non-teaching employee cannot be given Staff Directory or staff operations through a custom role. | If the school needs an HR/Office Manager, add dedicated staff-directory read/create/update permissions and carefully scoped operational permissions. Define whether the manager can see all employees or only assigned groups; add same-school and record-scope enforcement before making keys delegable. |
+| ACCESS-23 (P1) | Teacher self-service staff attendance and leave are not implemented. | staff.attendance.* and staff.leave.* are non-delegable admin permissions; there are no separate self-only keys for viewing one's own staff attendance or requesting/cancelling one's own leave. | If required, introduce distinct self-service permissions and endpoints (own record only), separate from School Admin manage/decide permissions. Test that Teachers cannot view or change another employee's records. |
+
+These are product/security decisions, not quick permission toggles. Keep the current School Admin-only policy until the user explicitly approves a scoped HR Manager or Teacher self-service design. Do not change V4/V58/V59/V60 delegability flags as a shortcut.
