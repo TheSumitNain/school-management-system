@@ -36,6 +36,8 @@ type staffRecordsRepository interface {
 	UpdateStaffQualification(context.Context,int64,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error)
 	UpdateStaffCertification(context.Context,int64,int64,int64,int64,repository.StaffCertification)(*repository.StaffCertification,error)
 	UpdateStaffExperience(context.Context,int64,int64,int64,int64,repository.StaffExperience)(*repository.StaffExperience,error)
+	VerifyStaffQualification(context.Context,int64,int64,int64,int64,string,string)(*repository.StaffQualification,error)
+	VerifyStaffCertification(context.Context,int64,int64,int64,int64,string,string)(*repository.StaffCertification,error)
 	ListStaffAuditEvents(context.Context,int64,int64,int64,repository.StaffAuditEventFilter)(*repository.StaffAuditEventPage,error)
 }
 
@@ -198,3 +200,36 @@ func (s *StaffRecordsService) ListExperienceReport(ctx context.Context, actor, s
     if filter.Limit<1 || filter.Limit>200 || filter.Offset<0 || filter.Offset>1000000 { return nil,ErrInvalidStaffRecord }
     return s.repository.ListStaffExperienceReport(ctx,actor,school,filter)
 }
+
+func validateStaffCredentialDecision(status, note string) error {
+	if status != "verified" && status != "rejected" {
+		return staffRecordFieldError("status", "Choose Verify or Reject.")
+	}
+	note = strings.TrimSpace(note)
+	if status == "rejected" && note == "" {
+		return staffRecordFieldError("note", "A reason is required when rejecting a credential.")
+	}
+	if len([]rune(note)) > 1000 {
+		return staffRecordFieldError("note", "The note must be 1,000 characters or fewer.")
+	}
+	return nil
+}
+
+func (s *StaffRecordsService) VerifyQualification(ctx context.Context, actor, school, staff, record int64, status, note string) (*repository.StaffQualification, error) {
+	if s == nil || s.repository == nil || actor <= 0 || school <= 0 || staff <= 0 || record <= 0 {
+		return nil, ErrInvalidStaffRecord
+	}
+	note = strings.TrimSpace(note)
+	if err := validateStaffCredentialDecision(status, note); err != nil { return nil, err }
+	return s.repository.VerifyStaffQualification(ctx, actor, school, staff, record, status, note)
+}
+
+func (s *StaffRecordsService) VerifyCertification(ctx context.Context, actor, school, staff, record int64, status, note string) (*repository.StaffCertification, error) {
+	if s == nil || s.repository == nil || actor <= 0 || school <= 0 || staff <= 0 || record <= 0 {
+		return nil, ErrInvalidStaffRecord
+	}
+	note = strings.TrimSpace(note)
+	if err := validateStaffCredentialDecision(status, note); err != nil { return nil, err }
+	return s.repository.VerifyStaffCertification(ctx, actor, school, staff, record, status, note)
+}
+
