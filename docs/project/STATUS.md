@@ -1,3 +1,18 @@
+## 2026-11-28 — Staff access matrix and role-specific UX implementation in progress
+
+- Canonical continuation document: docs/product/STAFF-MANAGEMENT-ACCESS-MATRIX.md. Start every future chat by reading this file and this status entry; continue on work only, never main.
+- Batch 1 audit has mapped shared navigation, Staff workspace tabs, profile tabs, default role bundles, Platform Admin delegation, School Admin custom roles, staff role assignments, ALLOW/DENY overrides, and employment-vs-login lifecycle.
+- Default system bundles confirmed: School Admin 63 permissions; Teacher 7 permissions. Non-teaching accounts receive no default Teacher role. New Teaching staff receive Teacher role during account creation; existing accounts are not backfilled.
+- ACCESS-11 code implemented: V73 DB guard + repository validation + API 422 + effective-permission suppression for legacy mismatches + UI filter. Changing away from Teaching requires revoking Teacher role first in Account & Access; profile update returns 409 with the exact route. No existing role rows are silently rewritten.
+- ACCESS-12 code implemented: timetable-only users now see My Workload navigation/page, personal-only workload summary/export labels, and no staff search/employment filters. School Admin retains school-wide report.
+- Staff create/edit forms now explain the automatic Teacher role on new Teaching staff and the manual role workflow when editing staff type.
+- Regression tests added for role eligibility, legacy permission suppression, profile conversion prerequisite, non-teaching role picker, and teacher-only workload view. Old PostgreSQL test fixtures were updated to create Teaching profiles before Teacher role assignment.
+- CI history: initial Backend CI failed on fixture assumptions and a legacy assertion; those were corrected. The next run was pending/in progress at latest code commit a73f16c2c750fae9d18f2601e0f6766c553f8fd1. Frontend CI for role/workload changes was also pending/in progress. No local Windows tests have been run in this turn; do not mark the batch complete until both CI workflows and user local verification pass.
+- Latest code branch head at this checkpoint: a73f16c2c750fae9d18f2601e0f6766c553f8fd1. Documentation update itself will create a newer docs-only commit.
+- Next: get Backend + Frontend CI green; run local full backend tests/vet, frontend typecheck/build and focused Playwright; then continue Account & Access and permission lifecycle audit. Document upload stays deferred/excluded.
+
+---
+
 ## 2026-11-28 — Teacher-role eligibility guard implementation
 
 - ACCESS-11 implementation is on work: V73 database triggers, repository pre-check, API 422, effective-permission filter for legacy inconsistent rows, Account & Access UI filtering, PostgreSQL integration test and Playwright test.
