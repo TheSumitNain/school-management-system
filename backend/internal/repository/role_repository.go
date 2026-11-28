@@ -19,6 +19,7 @@ var (
 	ErrDelegationAlreadyActive = errors.New("an active delegation already exists for this school permission")
 	ErrRolePermissionAlreadyGranted = errors.New("permission is already granted to this custom role")
 	ErrRoleAssignmentExists = errors.New("staff member already has this active role assignment")
+	ErrTeacherRoleRequiresTeachingStaff = errors.New("Teacher role can only be assigned to an active Teaching employee")
 )
 
 type SchoolRole struct {
@@ -1231,6 +1232,65 @@ func (r *RoleRepository) AssignStaffRole(ctx context.Context, actorPrincipalID, 
 	if !authorized {
 		return ErrRolePermissionDenied
 	}
+
+	// Resolve the target role and principal before attempting a Teacher grant.
+	// The database trigger remains authoritative for races and direct SQL writes.
+	var targetRoleKey string
+	err = tx.QueryRow(ctx, `
+		SELECT role_key
+		FROM roles
+		WHERE id = $1 AND school_id = $2
+		  AND principal_type = 'staff' AND scope_type = 'school'
+		  AND role_key <> 'school_admin'
+	`, roleID, schoolID).Scan(&targetRoleKey)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrRoleNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("resolve staff role assignment target role: %w", err)
+	}
+	if targetRoleKey == "teacher" {
+		var targetExists bool
+		err = tx.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1
+				FROM users target
+				JOIN auth_principals target_principal ON target_principal.id = target.principal_id
+				WHERE target.principal_id = $1 AND target.school_id = $2
+				  AND target.status = 'active' AND target_principal.status = 'active'
+				  AND target_principal.principal_type = 'staff'
+			)
+		`, targetPrincipalID, schoolID).Scan(&targetExists)
+		if err != nil {
+			return fmt.Errorf("check Teacher role target account: %w", err)
+		}
+		if !targetExists {
+			return ErrRoleNotFound
+		}
+		var eligibleTeachingEmployee bool
+		err = tx.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1
+				FROM users target
+				JOIN auth_principals target_principal ON target_principal.id = target.principal_id
+				JOIN staff_profiles profile
+				  ON profile.principal_id = target.principal_id
+				 AND profile.school_id = target.school_id
+				WHERE target.principal_id = $1 AND target.school_id = $2
+				  AND target.status = 'active' AND target_principal.status = 'active'
+				  AND target_principal.principal_type = 'staff'
+				  AND profile.staff_type = 'teaching'
+				  AND profile.employment_status = 'active'
+			)
+		`, targetPrincipalID, schoolID).Scan(&eligibleTeachingEmployee)
+		if err != nil {
+			return fmt.Errorf("check Teacher role employment eligibility: %w", err)
+		}
+		if !eligibleTeachingEmployee {
+			return ErrTeacherRoleRequiresTeachingStaff
+		}
+	}
+
 	var assignmentID int64
 	err = tx.QueryRow(ctx, `
 		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
