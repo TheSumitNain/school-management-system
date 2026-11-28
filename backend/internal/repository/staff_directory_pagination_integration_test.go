@@ -216,7 +216,7 @@ func TestStaffDirectorySummaryMatchesFilteredCountsAndEnforcesLivePermissionPost
 	if _, err := denyTx.Exec(fixture.ctx, `
 		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
 		VALUES ($1,$2,$3)
-		ON CONFLICT (principal_id, role_id) DO NOTHING
+		ON CONFLICT DO NOTHING
 	`, fixture.staffPrincipalID, schoolAdminRoleID, fixture.adminPrincipalID); err != nil {
 		t.Fatalf("grant rollback-scoped School Admin role for DENY regression: %v", err)
 	}
