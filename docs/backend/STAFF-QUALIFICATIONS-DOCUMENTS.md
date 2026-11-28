@@ -187,3 +187,19 @@ Contract:
 - Frontend CI [45533775269](https://github.com/TheSumitNain/school-management-system/actions/runs/45533775269) **PASS** on commit `d34a7c3ccf50626463e5e99ef012b9a61c9bdd7c`, including the full Playwright suite. Backend CI [45533775348](https://github.com/TheSumitNain/school-management-system/actions/runs/45533775348) **PASS**, including ephemeral PostgreSQL migrations/integration tests and `go vet`.
 - The Playwright scenario mocks HTTP responses and validates browser behavior/request parameters; it does not replace the PostgreSQL integration coverage of repository filtering, pagination and school isolation.
 - No persistent database migration or data change. Document upload/download and profile photographs remain deferred under the existing go-live storage approval gate.
+
+
+## 7. Approved credential verification decision (2026-11-28)
+
+The product decision is to keep credential verification separate from ordinary profile/record editing while avoiding any School Admin setup burden.
+
+- New non-delegable permission: `staff.credentials.verify`.
+- Automatically seed it into the School Admin system role for both existing schools and schools created after the migration. It is not added to custom-role delegation or individual overrides.
+- Only education qualifications and professional certifications are verifiable. Previous employment remains self-reported; do not imply that experience records have been verified.
+- Add explicit Verify and Reject actions to each qualification/certification record. Reject requires a short reason; Verify may accept an optional note. Show status clearly as Pending, Verified or Rejected, and show verifier/time where available.
+- Keep `users.update` for creating/editing record details only. Editing a verified record's factual details must return its verification status to Pending and clear prior verifier metadata in the same audited transaction, so a previous approval cannot silently survive a changed credential.
+- Verification/rejection must be implemented as a school-scoped, record-type-specific transactional repository operation. Re-check active School Admin identity, live `staff.credentials.verify` permission, target staff membership and record ownership. Update status and verifier metadata and insert the audit event in the same transaction.
+- Audit event metadata must include staff principal ID, record type/ID, previous status and new status. Rejection reason and verifier note may be included only as bounded, access-controlled audit metadata; never include document bytes or unrelated personal data.
+- Do not add hard delete. Archive/retention semantics remain a separate decision and existing records stay intact.
+- Migration must provision the permission for existing and future schools, update the approved School Admin permission allowlist and its exact-bundle integration tests, and keep the permission non-delegable. No manual setup should be required from schools.
+- Document upload/download remains deferred until a private storage provider is selected. It is not a prerequisite for verifying the structured qualification/certification details, but the UI must not imply that an uploaded document was checked when no document is attached.
