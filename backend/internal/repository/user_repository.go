@@ -1419,6 +1419,48 @@ func (r *UserRepository) EnableStaffAccount(
 }
 
 
+
+// authorizeStaffDirectoryRead uses the same live effective-permission resolver
+// as AuthMiddleware. This keeps custom-role delegation, exact delegation
+// revocation, and user ALLOW/DENY overrides consistent at the repository edge.
+func authorizeStaffDirectoryRead(ctx context.Context, db repositoryDB, actorPrincipalID, schoolID int64) error {
+	if db == nil || actorPrincipalID <= 0 || schoolID <= 0 {
+		return ErrRolePermissionDenied
+	}
+	var principal models.AuthPrincipal
+	var userStatus, schoolStatus string
+	err := db.QueryRow(ctx, `
+		SELECT ap.id, ap.principal_type, ap.status, u.school_id, u.status, s.status
+		FROM auth_principals ap
+		JOIN users u ON u.principal_id = ap.id
+		JOIN schools s ON s.id = u.school_id
+		WHERE ap.id = $1
+	`, actorPrincipalID).Scan(
+		&principal.ID, &principal.Type, &principal.Status,
+		&principal.SchoolID, &userStatus, &schoolStatus,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrRolePermissionDenied
+	}
+	if err != nil {
+		return fmt.Errorf("load staff directory actor: %w", err)
+	}
+	if principal.Type != "staff" || principal.Status != "active" ||
+		principal.SchoolID != schoolID || userStatus != "active" || schoolStatus != "active" {
+		return ErrRolePermissionDenied
+	}
+	permissions, err := loadEffectivePermissions(ctx, db, &principal)
+	if err != nil {
+		return fmt.Errorf("resolve staff directory permissions: %w", err)
+	}
+	for _, permission := range permissions {
+		if permission == "users.read" {
+			return nil
+		}
+	}
+	return ErrRolePermissionDenied
+}
+
 func (r *UserRepository) ListStaffDirectoryPage(ctx context.Context, actorPrincipalID, schoolID int64, filter models.StaffDirectoryFilter) (*models.StaffDirectoryPage, error) {
 	if r == nil || r.db == nil || actorPrincipalID <= 0 || schoolID <= 0 || filter.Limit < 1 || filter.Limit > 100 || filter.Offset < 0 {
 		return nil, ErrRolePermissionDenied
@@ -1431,33 +1473,11 @@ func (r *UserRepository) ListStaffDirectoryPage(ctx context.Context, actorPrinci
 			return nil, fmt.Errorf("set staff directory page snapshot: %w", err)
 		}
 	}
-	var authorized bool
-	if err := tx.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1
-			FROM auth_principals ap
-			JOIN users actor ON actor.principal_id = ap.id
-			JOIN schools s ON s.id = actor.school_id
-			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
-			JOIN roles role ON role.id = pr.role_id
-			JOIN role_permissions rp ON rp.role_id = role.id
-			JOIN permissions p ON p.id = rp.permission_id
-			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
-			  AND actor.status = 'active' AND actor.school_id = $2 AND s.status = 'active'
-			  AND role.school_id = $2 AND role.scope_type = 'school'
-			  AND role.principal_type = 'staff' AND role.role_key = 'school_admin' AND role.is_system = TRUE
-			  AND p.permission_key = 'users.read' AND p.scope_type = 'school' AND p.is_active = TRUE
-			  AND NOT EXISTS (
-			      SELECT 1 FROM user_permission_overrides denied
-			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
-			        AND denied.permission_id = p.id AND denied.effect = 'deny'
-			  )
-		)
-	`, actorPrincipalID, schoolID).Scan(&authorized); err != nil {
+	if err := authorizeStaffDirectoryRead(ctx, tx, actorPrincipalID, schoolID); err != nil {
+		if errors.Is(err, ErrRolePermissionDenied) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("authorize staff directory page: %w", err)
-	}
-	if !authorized {
-		return nil, ErrRolePermissionDenied
 	}
 
 	const filtered = `
@@ -1535,33 +1555,11 @@ func (r *UserRepository) GetStaffDirectorySummary(ctx context.Context, actorPrin
 			return nil, fmt.Errorf("set staff directory summary snapshot: %w", err)
 		}
 	}
-	var authorized bool
-	if err := tx.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1
-			FROM auth_principals ap
-			JOIN users actor ON actor.principal_id = ap.id
-			JOIN schools s ON s.id = actor.school_id
-			JOIN principal_roles pr ON pr.principal_id = ap.id AND pr.revoked_at IS NULL
-			JOIN roles role ON role.id = pr.role_id
-			JOIN role_permissions rp ON rp.role_id = role.id
-			JOIN permissions p ON p.id = rp.permission_id
-			WHERE ap.id = $1 AND ap.principal_type = 'staff' AND ap.status = 'active'
-			  AND actor.status = 'active' AND actor.school_id = $2 AND s.status = 'active'
-			  AND role.school_id = $2 AND role.scope_type = 'school'
-			  AND role.principal_type = 'staff' AND role.role_key = 'school_admin' AND role.is_system = TRUE
-			  AND p.permission_key = 'users.read' AND p.scope_type = 'school' AND p.is_active = TRUE
-			  AND NOT EXISTS (
-			      SELECT 1 FROM user_permission_overrides denied
-			      WHERE denied.principal_id = ap.id AND denied.school_id = $2
-			        AND denied.permission_id = p.id AND denied.effect = 'deny'
-			  )
-		)
-	`, actorPrincipalID, schoolID).Scan(&authorized); err != nil {
+	if err := authorizeStaffDirectoryRead(ctx, tx, actorPrincipalID, schoolID); err != nil {
+		if errors.Is(err, ErrRolePermissionDenied) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("authorize staff directory summary: %w", err)
-	}
-	if !authorized {
-		return nil, ErrRolePermissionDenied
 	}
 
 	summary := &models.StaffDirectorySummary{}
