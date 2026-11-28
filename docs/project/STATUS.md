@@ -1,3 +1,19 @@
+## 2026-11-28 — Qualifications & Experience credential verification implementation in progress
+
+- Continue the current one-page focus: Staff Profile → Qualifications & Experience. Do not switch to another Staff tab until this workflow is verified.
+- Implemented on `work`: V074 adds non-delegable `staff.credentials.verify`, backfills existing School Admin system roles and provisions future schools; runtime allowlist updated.
+- Implemented backend: qualification/certification Verify/Reject service, handlers and routes; active School Admin + live permission + same-school staff/record checks; rejection reason validation; verifier/time/note metadata; transactional audit events.
+- Factual edits reset verification to Pending and clear reviewer metadata only when values change; no-op edits preserve the decision. Employment history remains self-reported.
+- Implemented frontend: API/query mutations, permission-gated Verify/Reject controls, rejection reason form, status/reviewer/time, and History & Activity labels. UI explicitly says no supporting document was uploaded or reviewed.
+- Added/updated service validation tests, handler availability/nil-result tests, repository PostgreSQL integration scenarios for verify/reject metadata, same-value preservation, factual-edit reset, cross-school denial and audit-failure rollback, plus runtime permission allowlist test.
+- Documentation updated: roadmap, backend contract, permission dictionary and access matrix (ACCESS-22). Document upload remains deferred/excluded; no delete/archive behaviour added.
+- Latest implementation code checkpoint: `85a3c8601539a71428bf71c5b1b6f178396c69ae` on `work`; docs commits follow. `main` remains untouched.
+- **Not yet verified:** no local Windows test output or CI result has been observed for this batch. Do not mark this tab complete or claim 100%.
+- **Next:** inspect/fix source-level issues, then run Backend Go + PostgreSQL integration + vet; Frontend typecheck + build; focused and full Staff Management Playwright; responsive workspace tests; verify CI; user performs authenticated School Admin + no-verification-permission checks on desktop/tablet/mobile.
+- Keep one batched local command for the user after source review is complete. Preserve local uncommitted changes; never reset the user's checkout.
+
+---
+
 ## Mandatory continuation protocol for future chats
 
 1. Before any Staff Management work, read this file's latest dated entry, docs/product/STAFF-MANAGEMENT-ACCESS-MATRIX.md and docs/product/STAFF-MANAGEMENT-ROADMAP.md.
