@@ -2667,7 +2667,7 @@ test("staff profile does not retain the previous employee's certifications or ex
 
 test("staff account access keeps role assignments read-only without delegation permissions", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
-    id: 1, principal_id: 513, school_id: 10, username: "teacher.role-reader",
+    id: 1, principal_id: 513, school_id: 10, username: "teacher.role-reader", staff_type: "teaching",
     employee_code: "EMP-ROLE-READ", full_name: "Role Reader", designation: "Teacher",
     mobile_number: "9876543213", employment_status: "active", profile_complete: true,
     status: "active", must_change_password: false,
@@ -2776,7 +2776,7 @@ test("protected peer School Admin account is read-only for role and permission c
 
 test("staff role assignment and removal require the delegated permission and explicit confirmation", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
-    id: 1, principal_id: 514, school_id: 10, username: "teacher.role-admin",
+    id: 1, principal_id: 514, school_id: 10, username: "teacher.role-admin", staff_type: "teaching",
     employee_code: "EMP-ROLE-ADMIN", full_name: "Role Admin", designation: "School Admin",
     mobile_number: "9876543212", employment_status: "active", profile_complete: true,
     status: "active", must_change_password: false,
@@ -2908,7 +2908,7 @@ test("Teacher role is not offered to an active Non-teaching employee", async ({ 
 
 test("staff permission overrides require a delegated permission, reason and removal confirmation", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
-    id: 1, principal_id: 515, school_id: 10, username: "teacher.override-admin",
+    id: 1, principal_id: 515, school_id: 10, username: "teacher.override-admin", staff_type: "teaching",
     employee_code: "EMP-OVERRIDE-ADMIN", full_name: "Override Admin", designation: "School Admin",
     mobile_number: "9876543213", employment_status: "active", profile_complete: true,
     status: "active", must_change_password: false,
