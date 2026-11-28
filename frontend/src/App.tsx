@@ -71,7 +71,7 @@ function Dashboard({user,availablePages,onNavigate}:{user:AuthUser;availablePage
     if(user.permissions.includes("students.read_basic")){
      const currentYear=years.find(year=>year.is_current&&year.status==="active");
      if(currentYear){
-      try{const enrollmentResponse=await api<{enrollments:unknown}> (`/school/enrollments?academic_year_id=${currentYear.id}`);if(!Array.isArray(enrollmentResponse.enrollments))throw new Error("Invalid enrollment response");nextMetrics.push({label:"Accessible enrollments",value:String(enrollmentResponse.enrollments.length),note:"Current-year enrollments visible to your account",icon:GraduationCap,tone:"green"});}
+      try{const enrollmentResponse=await api<{enrollments:unknown}> (`/school/enrollments?academic_year_id=${currentYear.id}`);if(!Array.isArray(enrollmentResponse.enrollments)||!enrollmentResponse.enrollments.every(enrollment=>enrollment&&typeof enrollment==="object"&&["active","promoted","transferred","withdrawn"].includes((enrollment as {status?:unknown}).status as string)))throw new Error("Invalid enrollment response");const activeEnrollments=enrollmentResponse.enrollments.filter(enrollment=>(enrollment as {status:string}).status==="active");nextMetrics.push({label:"Active enrollments",value:String(activeEnrollments.length),note:"Current-year active enrollments visible to your account",icon:GraduationCap,tone:"green"});}
       catch(e){nextErrors.push("Accessible enrollments: "+(e instanceof Error?e.message:"Unavailable"));}
      }else{nextMetrics.push({label:"Accessible enrollments",value:"—",note:"Set an active current academic year to view available enrollments",icon:GraduationCap,tone:"green"});}
     }
