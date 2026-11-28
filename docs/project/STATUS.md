@@ -3179,10 +3179,8 @@ cd /d D:\school-management-system && git pull --ff-only origin work && cd /d D:\
 
 - 2026-11-28 backend source audit follow-up for History & Activity: route middleware requires school.audit.read; handler and repository both validate permission; repository verifies same-school staff target including legacy profiles, scopes audit rows to the school, selects only safe summary fields (no metadata), orders by created_at DESC then id DESC, bounds limit to 1–100 and offset to 0–1,000,000, and calculates has_more using limit+1. Source review complete; PostgreSQL test execution/coverage confirmation remains pending.
 
-### Retry regression correction (2026-11-28)
+### Retry regression test update (2026-11-28)
 
-- The shared QueryClient retry policy is one automatic retry for network/5xx failures. The earlier E2E fixture/assertion changes still failed locally because the error state did not become visible reliably in that scenario; no production defect has been established.
-- The manual retry test is now deliberately isolated from automatic retry behavior: the first request returns a non-retryable 400, which must expose the error state; clicking **Try again** then returns a successful audit page. The test asserts exactly one initial request and one explicit retry.
-- This verifies the user-visible manual recovery control deterministically without duplicating the global React Query retry-policy test. Local focused/full-suite verification is pending.
-
-History & Activity retry regression note (2026-11-28): the Playwright retry test now simulates a network failure by aborting the initial audit request and the single configured automatic network retry, then verifies that the visible manual Try again action recovers successfully. This avoids relying on mocked HTTP 400 behavior while exercising the actual React Query network retry policy. The profile remains pending final local focused/full-suite and backend verification.
+- The prior fixture allowed a successful response to arrive before the error-state assertion, as confirmed by the captured Playwright snapshot. That was a test-fixture determinism problem; no production component defect has been established.
+- The E2E test now keeps the audit endpoint at HTTP 503 until the user explicitly clicks **Try again**. It waits for the visible error state, then enables the successful response and verifies that the manual retry recovers. It does not assume a fixed number of background requests.
+- The updated test is committed on work; local focused test, full Staff suite, PostgreSQL integration tests and go vet are still pending. History & Activity remains incomplete until those checks pass.
