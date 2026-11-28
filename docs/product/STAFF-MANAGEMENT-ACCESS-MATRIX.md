@@ -241,3 +241,18 @@ These are current code-derived navigation outcomes, not the final approved produ
 - ACCESS-05: **Database lifecycle confirmed in code** — setting employment inactive disables the principal, increments token version and revokes refresh sessions; active login cannot be restored until employment is Active. Live login/refresh/API E2E remains pending.
 - ACCESS-06: **Partially verified** — role/override mutations invalidate relevant query caches and server checks are live; authenticated navigation refresh after role changes still needs E2E.
 - ACCESS-11 through ACCESS-15: newly recorded findings above; none is marked fixed.
+
+## 13. ACCESS-11 implementation checkpoint — 2026-11-28
+
+**Implemented on work; automated CI is pending. Do not mark fixed/accepted until CI and local verification pass.**
+
+- Added migration V73. A Teacher system role can only be assigned when the target has an active login and a same-school staff profile classified as Teaching with Active employment.
+- Added a database guard that rejects changing a profile away from Teaching while an active Teacher role remains assigned. Required operator workflow: revoke Teacher role in Staff Directory → employee profile → Account & Access, then edit Staff Type. This prevents a dangling Teacher role during conversion to Non-teaching/Unclassified.
+- Added repository pre-validation and a specific API 422 response for ineligible Teacher role assignment.
+- Added a second effective-permission resolver guard: even if a legacy inconsistent Teacher role assignment exists, Teacher permissions are suppressed unless the profile is Teaching and Active. Existing role rows are not silently rewritten.
+- Updated StaffRoleAssignments UI to omit Teacher from available roles for disabled accounts, non-Teaching profiles and inactive employment; it explains the eligibility requirement. Other custom roles remain available under existing delegation rules.
+- Added PostgreSQL integration coverage for rejection on Non-teaching profile, successful Teaching assignment, permission suppression for a simulated legacy mismatch, blocking staff-type conversion until Teacher role revocation, and successful conversion after revocation.
+- Added Playwright coverage confirming Teacher is not offered to an active Non-teaching employee while an eligible custom role remains assignable.
+- Files changed: V73 up/down migration; role repository and integration test; effective-permission resolver; role handler; StaffRoleAssignments component; Staff Management Playwright spec.
+- CI at checkpoint commit d38e4e23996a99ab98a86462e8cb2a8a7967bd29: Backend CI and Frontend CI started; results pending. No local test result is claimed.
+- Next: inspect CI results; fix any failures; then run the focused PostgreSQL integration test and focused Staff Account & Access Playwright suite locally. After that audit the remaining permission management screen and lifecycle.
