@@ -4001,7 +4001,7 @@ test("staff workload requests only the selected teacher timetable and explains u
   }];
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "timetable.read"]);
   await page.locator(".staff-workspace-tabs").getByRole("button", { name: "Staff Directory" }).click();
-  await page.getByRole("button", { name: "Workload Teacher" }).click();
+  await page.getByRole("button", { name: "View profile for teacher.workload" }).click();
   const dialog = page.getByRole("dialog", { name: "Workload Teacher" });
   await dialog.getByRole("button", { name: "Workload & Timetable" }).click();
   await expect(dialog.getByRole("heading", { name: "Teaching workload" })).toBeVisible();
