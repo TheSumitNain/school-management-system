@@ -582,3 +582,9 @@ These are product/security decisions, not quick permission toggles. Keep the cur
 - The repository repeats the school.audit.read authorization check, confirms the target is a staff principal belonging to the actor's school (including legacy accounts without a staff_profiles row), scopes events by audit_events.school_id, and selects only id/action/resource_type/outcome/actor username/created_at. Event metadata is not selected into the response.
 - Event ordering is deterministic: created_at DESC, id DESC. The query fetches limit+1 rows and derives has_more from the extra row.
 - This closes the source-code review items for permission, tenant scoping, response allowlist, pagination bounds, ordering and has_more. PostgreSQL integration coverage for same-school/cross-school target access and exact pagination behaviour must still be confirmed from test output; source inspection is not a substitute for test execution.
+
+### Retry regression correction (2026-11-28)
+
+- First local run: History & Activity tests 2/3 passed. Retry test failed because React Query automatically retries failed queries before exposing its error state; the mocked API returned success on the first automatic retry, so the explicit Try again state was never reached. This was a test-fixture timing/behaviour issue, not evidence of a broken production retry control.
+- Corrected the fixture to return 503 for the initial request plus all three automatic retries, then return success only after the user-triggered Try again action. The test now waits for the exhausted-retry error state and asserts four failed requests followed by a fifth successful explicit retry.
+- Correction commit: d4da86e064238024498402e27c3f761b1946cb5d. Focused rerun and full-suite rerun are pending.
