@@ -25,6 +25,8 @@ type StaffRecordsManagementService interface {
 	UpdateQualification(context.Context,int64,int64,int64,int64,repository.StaffQualification)(*repository.StaffQualification,error)
 	UpdateCertification(context.Context,int64,int64,int64,int64,repository.StaffCertification)(*repository.StaffCertification,error)
 	UpdateExperience(context.Context,int64,int64,int64,int64,repository.StaffExperience)(*repository.StaffExperience,error)
+	VerifyQualification(context.Context,int64,int64,int64,int64,string,string)(*repository.StaffQualification,error)
+	VerifyCertification(context.Context,int64,int64,int64,int64,string,string)(*repository.StaffCertification,error)
 	ListAuditEvents(context.Context,int64,int64,int64,repository.StaffAuditEventFilter)(*repository.StaffAuditEventPage,error)
 }
 
@@ -144,6 +146,44 @@ func(h *StaffRecordsHandler) UpdateExperience(c *gin.Context){
 	saved,err:=h.service.UpdateExperience(c.Request.Context(),actor,school,staff,record,item);if err!=nil{h.fail(c,err);return}
 	if saved == nil { c.JSON(http.StatusInternalServerError,gin.H{"status":"error","message":"Unable to update staff experience"}); return }
 	c.JSON(200,gin.H{"status":"success","experience":saved})
+}
+
+
+type staffCredentialDecisionRequest struct {
+	Status string `json:"status"`
+	Note string `json:"note"`
+}
+
+func (h *StaffRecordsHandler) VerifyQualification(c *gin.Context) {
+	actor, school, ok := staffRecordActor(c)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
+	if h.unavailable(c) { return }
+	staff, ok := staffRecordTarget(c)
+	if !ok { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid staff principal ID"}); return }
+	record, ok := staffRecordID(c)
+	if !ok { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid qualification record ID"}); return }
+	var request staffCredentialDecisionRequest
+	if err := c.ShouldBindJSON(&request); err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid credential verification request"}); return }
+	saved, err := h.service.VerifyQualification(c.Request.Context(), actor, school, staff, record, request.Status, request.Note)
+	if err != nil { h.fail(c, err); return }
+	if saved == nil { c.JSON(http.StatusInternalServerError, gin.H{"status":"error","message":"Unable to update qualification verification"}); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","qualification":saved})
+}
+
+func (h *StaffRecordsHandler) VerifyCertification(c *gin.Context) {
+	actor, school, ok := staffRecordActor(c)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"status":"error","message":"School staff authentication required"}); return }
+	if h.unavailable(c) { return }
+	staff, ok := staffRecordTarget(c)
+	if !ok { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid staff principal ID"}); return }
+	record, ok := staffRecordID(c)
+	if !ok { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid certification record ID"}); return }
+	var request staffCredentialDecisionRequest
+	if err := c.ShouldBindJSON(&request); err != nil { c.JSON(http.StatusBadRequest, gin.H{"status":"error","message":"Invalid credential verification request"}); return }
+	saved, err := h.service.VerifyCertification(c.Request.Context(), actor, school, staff, record, request.Status, request.Note)
+	if err != nil { h.fail(c, err); return }
+	if saved == nil { c.JSON(http.StatusInternalServerError, gin.H{"status":"error","message":"Unable to update certification verification"}); return }
+	c.JSON(http.StatusOK, gin.H{"status":"success","certification":saved})
 }
 
 func(h *StaffRecordsHandler) ListAuditEvents(c *gin.Context){
