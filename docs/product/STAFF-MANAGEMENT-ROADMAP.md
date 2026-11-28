@@ -1,3 +1,17 @@
+## 2026-11-28 — Staff Management role/page audit findings
+
+- Source audit completed for all Staff workspace tab visibility predicates and the complete default system-role bundles.
+- Default School Admin bundle is 63 permissions after V4 base 51 plus V58 staff attendance 4, V59 leave/holiday 6, and V60 substitution 2. V58/V59/V60 backfill existing schools as well as provisioning future schools.
+- Teacher system role is exactly seven keys: students.read_basic, attendance.read, attendance.mark, attendance.update_same_day, timetable.read, homework.read, notices.read. New Teaching staff receive this role transactionally; Non-teaching staff do not receive it by default; existing accounts are not backfilled.
+- Role-less Non-teaching users currently receive only shared Dashboard and Settings navigation. Teacher sees Dashboard, Staff, Students, Attendance, Timetable and Settings; Staff opens at Workload Report because Teacher has timetable.read. This Teacher navigation/label needs UX review.
+- Identified P0 security gap ACCESS-11: manual Teacher role assignment does not enforce active Teaching employee classification, even though onboarding defaults and teacher resource APIs rely on that classification. This is recorded as an implementation task; not yet fixed.
+- Identified that staff attendance/leave/holiday/substitution permissions are non-delegable, Account & Access tab is visible to all Staff Directory readers with per-panel denial messages, and the Workload Report UI says “School-wide” even though Teacher backend scope is own workload.
+- Canonical evidence and stable gap IDs are in [STAFF-MANAGEMENT-ACCESS-MATRIX.md](STAFF-MANAGEMENT-ACCESS-MATRIX.md).
+- Next implementation batch: enforce Teacher-role assignment only for active Teaching profiles in UI, repository and database; add PostgreSQL + Playwright regression tests. Do not alter existing assignments automatically.
+- work only; main untouched. Document upload remains deferred and excluded.
+
+---
+
 ## 2026-11-28 — Staff Management access blueprint started
 
 - Added [STAFF-MANAGEMENT-ACCESS-MATRIX.md](STAFF-MANAGEMENT-ACCESS-MATRIX.md) as the canonical role/page/permission/lifecycle map and cross-chat continuation record.
