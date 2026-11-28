@@ -174,7 +174,7 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 		INSERT INTO users (school_id, username, password_hash, status)
 		VALUES ($1, $2, $3, 'active') RETURNING principal_id
 	`, schoolID, "v17-nt-"+suffix, "integration-test-password-hash").Scan(&nonTeachingPrincipalID); err != nil {
-		t.Fatalf("create non-teaching Teacher-role account: %v", err)
+		t.Fatalf("create non-teaching staff account: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO staff_profiles
@@ -187,7 +187,8 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 
 
 	// Legacy profiles with NULL Staff Type and explicitly inactive Teaching
-	// profiles must not become eligible merely because they hold the Teacher role.
+	// profiles remain ineligible. V73 prevents new Teacher grants to either; the
+	// dedicated role repository integration test also simulates a legacy mismatch.
 	var legacyPrincipalID, inactivePrincipalID int64
 	teachingType := "teaching"
 	for _, fixture := range []struct {
