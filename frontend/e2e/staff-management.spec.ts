@@ -6515,13 +6515,14 @@ test("staff History & Activity exposes a retry after an audit request fails", as
     status: "active", must_change_password: false,
   }];
   let auditReads = 0;
+  let allowAuditSuccess = false;
   await signInAndOpenStaff(page, rows, undefined, ["users.read", "school.audit.read"]);
   await page.route("**/api/school/staff/593/audit-events**", async route => {
     auditReads += 1;
-    // Abort both the initial request and the configured single network retry.
-    // This deterministically reaches the query error state before the manual retry.
-    if (auditReads <= 2) {
-      await route.abort("failed");
+    // Keep every automatic attempt failing until the user explicitly retries.
+    // This prevents an incidental remount/refetch from making the test pass early.
+    if (!allowAuditSuccess) {
+      await route.fulfill({ status: 503, json: { message: "Audit service temporarily unavailable" } });
       return;
     }
     await route.fulfill({ json: { events: [{
@@ -6535,8 +6536,10 @@ test("staff History & Activity exposes a retry after an audit request fails", as
   const profile = page.getByRole("dialog", { name: "History Retry" });
   await profile.getByRole("button", { name: "History & Activity" }).click();
   await expect(profile.getByText("Unable to load staff activity.")).toBeVisible({ timeout: 15000 });
-  expect(auditReads).toBe(2);
+  const failedReadCount = auditReads;
+  expect(failedReadCount).toBeGreaterThanOrEqual(1);
+  allowAuditSuccess = true;
   await profile.getByRole("button", { name: "Try again" }).click();
   await expect(profile.getByText("Profile updated")).toBeVisible();
-  expect(auditReads).toBe(3);
+  expect(auditReads).toBe(failedReadCount + 1);
 });
