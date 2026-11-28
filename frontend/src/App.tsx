@@ -60,18 +60,20 @@ function Dashboard({user,availablePages,onNavigate}:{user:AuthUser;availablePage
    {p:"users.read",url:"/school/staff/summary",key:"summary",label:"Staff accounts",note:"People in your school",icon:Users,tone:"blue"},
    {p:"classes.read",url:"/school/classes",key:"classes",label:"Classes",note:"Academic structure",icon:BookOpen,tone:"violet"}
   ].filter(x=>user.permissions.includes(x.p));
-  const results=await Promise.all(jobs.map(async j=>{try{const d=await api<Record<string,unknown>>(j.url);const v=d[j.key];const count=j.key==="summary"&&v&&typeof v==="object"&&"total" in v?(v as {total:number}).total:Array.isArray(v)?v.length:0;return {metric:{label:j.label,value:String(count),note:j.note,icon:j.icon,tone:j.tone} as Metric,error:""};}catch(e){return {metric:null,error:j.label+": "+(e instanceof Error?e.message:"Unavailable")};}}));
+  const results=await Promise.all(jobs.map(async j=>{try{const d=await api<Record<string,unknown>>(j.url);const v=d[j.key];let count:number;if(j.key==="summary"){if(!v||typeof v!=="object"||!("total" in v)||typeof (v as {total:unknown}).total!=="number"||!Number.isSafeInteger((v as {total:number}).total)||(v as {total:number}).total<0)throw new Error("Invalid staff summary response");count=(v as {total:number}).total;}else{if(!Array.isArray(v))throw new Error("Invalid classes response");count=v.length;}return {metric:{label:j.label,value:String(count),note:j.note,icon:j.icon,tone:j.tone} as Metric,error:""};}catch(e){return {metric:null,error:j.label+": "+(e instanceof Error?e.message:"Unavailable")};}}));
   const nextMetrics=results.flatMap(x=>x.metric?[x.metric]:[]);const nextErrors=results.flatMap(x=>x.error?[x.error]:[]);
   if(user.permissions.includes("academic_years.read")){
    try{
-    const yearsResponse=await api<{academic_years:Array<{id:number;is_current:boolean;status:string}>}>("/school/academic-years");
-    nextMetrics.push({label:"Academic years",value:String(yearsResponse.academic_years.length),note:"School calendar",icon:CalendarDays,tone:"amber"});
+    const yearsResponse=await api<{academic_years:unknown}>("/school/academic-years");
+    if(!Array.isArray(yearsResponse.academic_years)||!yearsResponse.academic_years.every(year=>year&&typeof year==="object"&&Number.isSafeInteger((year as {id?:unknown}).id)&&(year as {id:number}).id>0&&typeof (year as {is_current?:unknown}).is_current==="boolean"&&typeof (year as {status?:unknown}).status==="string"))throw new Error("Invalid academic years response");
+    const years=yearsResponse.academic_years as Array<{id:number;is_current:boolean;status:string}>;
+    nextMetrics.push({label:"Academic years",value:String(years.length),note:"School calendar",icon:CalendarDays,tone:"amber"});
     if(user.permissions.includes("students.read_basic")){
-     const currentYear=yearsResponse.academic_years.find(year=>year.is_current&&year.status==="active");
+     const currentYear=years.find(year=>year.is_current&&year.status==="active");
      if(currentYear){
-      try{const enrollmentResponse=await api<{enrollments:unknown[]}>(`/school/enrollments?academic_year_id=${currentYear.id}`);nextMetrics.push({label:"Current-year enrollments",value:String(enrollmentResponse.enrollments.length),note:"Students enrolled in the current academic year",icon:GraduationCap,tone:"green"});}
-      catch(e){nextErrors.push("Current-year enrollments: "+(e instanceof Error?e.message:"Unavailable"));}
-     }else{nextMetrics.push({label:"Current-year enrollments",value:"—",note:"Set an active current academic year to view this count",icon:GraduationCap,tone:"green"});}
+      try{const enrollmentResponse=await api<{enrollments:unknown}> (`/school/enrollments?academic_year_id=${currentYear.id}`);if(!Array.isArray(enrollmentResponse.enrollments))throw new Error("Invalid enrollment response");nextMetrics.push({label:"Accessible enrollments",value:String(enrollmentResponse.enrollments.length),note:"Current-year enrollments visible to your account",icon:GraduationCap,tone:"green"});}
+      catch(e){nextErrors.push("Accessible enrollments: "+(e instanceof Error?e.message:"Unavailable"));}
+     }else{nextMetrics.push({label:"Accessible enrollments",value:"—",note:"Set an active current academic year to view available enrollments",icon:GraduationCap,tone:"green"});}
     }
    }catch(e){nextErrors.push("Academic years: "+(e instanceof Error?e.message:"Unavailable"));}
   }
