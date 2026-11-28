@@ -89,7 +89,7 @@ export function StaffWorkloadReportWorkspace({permissions}:Props){
       <article><span>Staff profiles</span><strong>{groups.length}</strong></article>
       <article><span>Teachers with scheduled lessons</span><strong>{scheduledTeachers}</strong></article>
       <article><span>Total weekly periods</span><strong>{totalPeriods}</strong></article>
-    </div> : <div className="staff-workload-report-summary">
+    </div>  : <div className="staff-workload-report-summary personal">
       <article><span>My weekly periods</span><strong>{totalPeriods}</strong></article>
       <article><span>Days with lessons</span><strong>{daysWithLessons}</strong></article>
     </div>}
