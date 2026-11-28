@@ -1,3 +1,13 @@
+## 2026-11-28 — Staff Management access audit baseline
+
+- Canonical continuation document: [Staff Management Access Matrix](../product/STAFF-MANAGEMENT-ACCESS-MATRIX.md). Use it at the start of every new chat before continuing implementation.
+- Batch 1 has documented confirmed navigation gates and current control locations, including Platform Admin permission delegation, School Admin custom roles, staff-level role/override management, employment status and login account status.
+- Audit is in progress: exact Staff tab predicates, seeded role bundles, role-specific login/navigation, account lifecycle and backend/UI authorization alignment remain to be verified. No blanket Staff Management completion claim is made.
+- Continue on `work` only; do not touch `main`. Document upload is deferred and excluded from scope.
+- Initial documentation commit: `5c2bc51d4f8ef5eb0cb48da76e520030a3441100`; subsequent documentation commits are on `work`.
+
+---
+
 ## 2026-11-26 — paginated staff reads bounded and snapshot-consistent
 
 - Staff Directory, Attendance Daily/Monthly, Qualifications/Experience reports, Leave Requests and Substitutions now keep authorization and their count/page reads in a single read-only repeatable-read transaction for pool-backed requests. Existing caller-owned transactions retain their isolation level.
