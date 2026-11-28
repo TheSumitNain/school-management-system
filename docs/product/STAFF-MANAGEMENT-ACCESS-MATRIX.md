@@ -274,3 +274,9 @@ These are current code-derived navigation outcomes, not the final approved produ
 System roles are immutable in the School Admin Roles & permissions screen. To add extra access to one Teacher or Non-teaching employee, the School Admin creates/uses a custom role with delegated permissions and assigns it through Staff Profile → Account & Access. Individual ALLOW/DENY is for one-off exceptions and requires its own exact active delegation with can_override_users=true plus a reason.
 
 New gap ACCESS-16: roles.assign alone does not expose the Staff Role Assignments panel because that panel is rendered only when roles.read is present; backend assignment authority is still separately checked. New gap ACCESS-17: permissions.override combines read and write, so a read-only auditor cannot inspect override history without also receiving override mutation capability. Review these as permission-model product decisions, not automatic code changes.
+
+### Who can manage roles and permissions?
+
+The V4 permission catalogue marks the following capabilities as non-delegable: roles.create_custom, roles.update_custom, roles.assign, permissions.assign and permissions.override. They are part of the School Admin system role, but Platform Admin cannot delegate them to custom roles or individual overrides. Therefore role creation, custom-role permission grants and individual overrides remain School Admin-only operations in the current model. The read capabilities roles.read and permissions.read are delegable, so a delegated staff user may be allowed to inspect roles/catalogue without changing them.
+
+This is an intentional central-control boundary in the current code, not an implementation claim that every School Admin can delegate role administration to another staff member. If the school needs a separate HR/IT access manager, that requires a new narrowly scoped permission design and explicit Platform Admin policy decision.
