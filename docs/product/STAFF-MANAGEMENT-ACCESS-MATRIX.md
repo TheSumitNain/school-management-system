@@ -541,3 +541,26 @@ These are product/security decisions, not quick permission toggles. Keep the cur
 2. Run the focused Windows command in docs/project/STATUS.md on the user's local database/browser.
 3. Complete authenticated School Admin acceptance for Account & Access and employment/login lifecycle.
 4. Only then close this page and proceed to the next Staff Management page. Do not report overall percentage or 100% without the acceptance evidence.
+
+
+## 24. Responsive Account & Access UI batch — 2026-11-28
+
+### Implemented on `work` (verification pending)
+
+- Shared shell sidebar breakpoint is 900px: fixed sidebar above 900px; hamburger-controlled drawer at 900px and below. The independent Dashboard content layout breakpoint remains 740px.
+- Staff Directory row actions switch to a three-dot menu at 520px and below. The menu contains only actions allowed by the current principal's permissions and the target account's state; protected School Admin targets do not receive edit/reset/disable actions. Desktop action icons remain unchanged.
+- The menu is portalled to `document.body` so it is not clipped by the horizontally scrollable table. It closes on outside pointer interaction, Escape, resize and scroll.
+- Individual permission Effect control is disabled when `availablePermissions.length === 0`, matching the delegated-permission picker and Save button. Backend delegation checks remain authoritative.
+
+### Regression coverage added
+
+- Mobile directory action menu exposes the expected permitted actions, closes on Escape, and opens the staff profile from the menu.
+- With no Platform Admin individual-override delegation, delegated permission, Effect and Save controls are all disabled.
+- Workspace navigation drawer is exercised at 768px and 900px; fixed sidebar is exercised at 901px.
+
+### Acceptance status
+
+- Code checkpoint before the docs update: `ce4b156d5811767311e52dafa5be849e9f8a44f7`.
+- Frontend CI [46146670940](https://github.com/TheSumitNain/school-management-system/actions/runs/46146670940) and Backend CI [46146671047](https://github.com/TheSumitNain/school-management-system/actions/runs/46146671047) were pending when recorded. Local Windows verification is pending.
+- User has manually confirmed mobile bottom-sheet modal and centred tablet modal behaviour. New mobile action menu and 768px/900px sidebar changes are awaiting local acceptance.
+- Account & Access remains in progress; no 100% completion claim. Continue on this page until role-wise, responsive, automated and local acceptance gates are met.

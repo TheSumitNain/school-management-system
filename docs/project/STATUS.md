@@ -11,6 +11,19 @@
 
 ---
 
+## 2026-11-28 — Account & Access responsive UX batch implemented; verification pending
+
+- Implemented a permission-aware three-dot action menu for Staff Directory rows on mobile (up to 520px). The menu is rendered in a body portal to avoid clipping by the horizontally scrollable table, closes on outside click/Escape/viewport changes, and only includes actions allowed by the current user's permissions and target account state. Desktop row actions remain unchanged.
+- Updated the shared workspace sidebar breakpoint from 740px to 900px: at 900px and below it becomes a hamburger-controlled drawer; above 900px the fixed sidebar remains visible. The separate Dashboard content-stacking breakpoint remains 740px.
+- Fixed the Account & Access override form so the Effect selector is disabled whenever no Platform Admin individual-override delegation is available; Save remains disabled as before.
+- Added Playwright coverage for the mobile action menu and permitted menu items, the no-delegation Effect/Save disabled state, and sidebar behaviour at 768px, 900px and 901px.
+- Current code checkpoint before this documentation commit: `ce4b156d5811767311e52dafa5be849e9f8a44f7` on `work`. Frontend CI [46146670940](https://github.com/TheSumitNain/school-management-system/actions/runs/46146670940) and Backend CI [46146671047](https://github.com/TheSumitNain/school-management-system/actions/runs/46146671047) were pending when checked; earlier intermediate runs were cancelled by subsequent commits. No local Windows verification has been run for this batch.
+- Manual acceptance already observed: mobile modal opens from the bottom and tablet modal remains centred. The new mobile row menu and 768px/900px sidebar behaviour still need local verification after pulling.
+- Account & Access remains open. Teacher eligibility, role assign/remove confirmation, and audit-history entries passed the user's manual checks. Effect selector issue is addressed in code but awaits Playwright/CI/local confirmation. Do not declare the page 100% or move to another Staff page until the new responsive checks and remaining role-wise acceptance pass.
+- `main` remains untouched. Staff document upload remains deferred and excluded from completion percentage.
+
+---
+
 ## 2026-11-28 — Teacher and Non-teaching experience gaps added to the access map
 
 - Added ACCESS-18/19: Teacher currently has a generic Dashboard, My Workload, Students, Attendance and Timetable; homework.read/notices.read are not surfaced by navigation; no self-profile or self-service leave workflow exists. Non-teaching accounts receive no default role and only shared Dashboard/Settings until a custom role is assigned.

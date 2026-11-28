@@ -1,3 +1,15 @@
+## 2026-11-28 — Account & Access responsive UX batch
+
+- Mobile Staff Directory row actions now collapse into a permission-aware three-dot popover; desktop action icons remain unchanged. The popover uses a body portal so it is not clipped by the table's horizontal scroll container and supports outside-click, Escape and viewport-change dismissal.
+- Shared sidebar now switches to a hamburger drawer at widths up to 900px, including iPad mini portrait (768px). At 901px and above, the fixed sidebar remains visible. Dashboard's independent 740px content-stacking breakpoint is unchanged.
+- Account & Access Effect selector is now disabled when no individual-override delegation exists, matching the already-disabled permission picker and Save button.
+- Added Playwright tests for mobile row-action visibility and permitted actions, no-delegation override control locking, and sidebar breakpoints at 768px/900px/901px.
+- Code checkpoint: `ce4b156d5811767311e52dafa5be849e9f8a44f7` on `work`. Frontend CI [46146670940](https://github.com/TheSumitNain/school-management-system/actions/runs/46146670940) and Backend CI [46146671047](https://github.com/TheSumitNain/school-management-system/actions/runs/46146671047) were pending; local Windows checks remain pending.
+- User previously confirmed mobile bottom-sheet and tablet centred modal behaviour. New row menu/sidebar behaviour still requires local verification.
+- Account & Access is not closed; keep the page open until automated CI and authenticated local responsive checks pass. Document upload remains deferred/excluded; `main` untouched.
+
+---
+
 ## 2026-11-28 — Teacher and Non-teaching experience gaps
 
 - Access map now explicitly records missing Teacher self-profile, self-service leave, Homework/Notices pages and role-specific Teacher dashboard; Non-teaching staff currently have no default role or self-service workspace. See ACCESS-18/19 in [STAFF-MANAGEMENT-ACCESS-MATRIX.md](STAFF-MANAGEMENT-ACCESS-MATRIX.md).
