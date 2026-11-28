@@ -1680,3 +1680,9 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Current page remains History & Activity. Do not declare it complete or move to the next Staff page until backend and browser gates are verified. Document upload remains deferred/excluded; main untouched.
 
 - 2026-11-28 backend source review follow-up: audit route is protected by authentication + school.audit.read; handler and repository both enforce the permission; target principal must be a same-school staff principal; the SQL response allowlist excludes metadata; pagination is bounded (limit 1–100, offset 0–1,000,000), ordered by created_at DESC/id DESC, and uses limit+1 for has_more. This is source-review evidence only; run backend integration tests and inspect the exact regression coverage before closing the page.
+
+### Retry regression correction (2026-11-28)
+
+- First local run: History & Activity tests 2/3 passed. Retry test failed because React Query automatically retries failed queries before exposing its error state; the mocked API returned success on the first automatic retry, so the explicit Try again state was never reached. This was a test-fixture timing/behaviour issue, not evidence of a broken production retry control.
+- Corrected the fixture to return 503 for the initial request plus all three automatic retries, then return success only after the user-triggered Try again action. The test now waits for the exhausted-retry error state and asserts four failed requests followed by a fifth successful explicit retry.
+- Correction commit: d4da86e064238024498402e27c3f761b1946cb5d. Focused rerun and full-suite rerun are pending.
