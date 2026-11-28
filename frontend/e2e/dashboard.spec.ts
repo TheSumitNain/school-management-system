@@ -70,7 +70,7 @@ test("dashboard shows permission-scoped staff, class and current-year enrollment
   expect(requested).toContain("/school/enrollments?academic_year_id=7");
   expect(requested).toContain("/school/staff/summary");
   expect(requested).not.toContain("/school/staff");
-  const staffShortcut = page.getByRole("button", { name: "Staff" });
+  const staffShortcut = page.getByRole("region", { name: "Go to a workspace" }).getByRole("button", { name: "Staff" });
   await expect(staffShortcut).toBeVisible();
   await staffShortcut.click();
   await expect(page).toHaveURL(/\/staff$/);
