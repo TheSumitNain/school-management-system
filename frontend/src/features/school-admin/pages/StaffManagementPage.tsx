@@ -338,6 +338,8 @@ export function StaffManagementPage({ permissions }: Props) {
     setCertificationExpiryDate("");
     setExperienceStartDate("");
     setExperienceEndDate("");
+    setCredentialDecision(null);
+    setCredentialDecisionNote("");
   }
   function closeStandaloneRoleAssignments() {
     if (rolesForPrincipal !== null) {
