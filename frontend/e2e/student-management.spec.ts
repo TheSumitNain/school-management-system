@@ -497,8 +497,8 @@ test("student admission, profile navigation and parent details render without br
   await page.getByLabel("Username").fill("e2e-school-admin");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
-  await page.getByRole("button", { name: "Students" }).click();
+  await expect(page.locator("button.nav-item").filter({ hasText: /^Students$/ })).toBeVisible();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
   await expect(page.getByRole("heading", { name: "Students", exact: true })).toBeVisible({ timeout: 15_000 });
   const studentDirectoryTab = page.getByRole("button", { name: "Student directory" });
   await expect(studentDirectoryTab).toBeVisible({ timeout: 15_000 });
@@ -1906,7 +1906,7 @@ test("standalone enrollment validates admission and roll number before saving", 
   await page.getByLabel("Username").fill("e2e-enrollment-admin");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Students" }).click();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
   await page.getByRole("button", { name: "Enrollments" }).click();
   await page.getByRole("button", { name: "Enroll student" }).click();
   const enrollmentDialog = page.getByRole("dialog", { name: "Enroll student" });
@@ -2061,8 +2061,8 @@ test("student directory remains view-only when update and archive permissions ar
   await page.getByLabel("Username").fill("e2e-view-only-staff");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
-  await page.getByRole("button", { name: "Students" }).click();
+  await expect(page.locator("button.nav-item").filter({ hasText: /^Students$/ })).toBeVisible();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
 
   await expect(page.getByText("View Only Student")).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit profile for View Only Student" })).toHaveCount(1);
@@ -2178,8 +2178,8 @@ test("student promotion validates required fields and preserves prior enrollment
   await page.getByLabel("Username").fill("e2e-promotion-admin");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
-  await page.getByRole("button", { name: "Students" }).click();
+  await expect(page.locator("button.nav-item").filter({ hasText: /^Students$/ })).toBeVisible();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
   await page.getByRole("button", { name: "Enrollments" }).click();
   await expect(page.getByText("Promotion Test Student")).toBeVisible();
   await page.getByRole("button", { name: "Promote" }).click();
@@ -2385,7 +2385,7 @@ test("student archive confirmation recovers when the archive committed but its r
   await page.getByLabel("Username").fill("e2e-archive-admin");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Students" }).click();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
   await expect(page.getByText("Archive Retry Student", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Archive Archive Retry Student" }).click();
@@ -2631,7 +2631,7 @@ test("staff can create a guardian contact and link it to a student with relation
   await page.getByLabel("Username").fill("e2e-guardian-manager");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Students" }).click();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
   await page.getByRole("button", { name: "Edit profile for Guardian Workflow Student" }).click();
   await page.getByRole("button", { name: /Parents & siblings/i }).click();
   const familyDialog = page.getByRole("dialog", { name: "Parents & Siblings" });
@@ -2874,8 +2874,8 @@ test("staff can create a guardian contact and link it to a student with relation
   await page.getByLabel("Username").fill("e2e-guardian-manager");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
-  await page.getByRole("button", { name: "Students" }).click();
+  await expect(page.locator("button.nav-item").filter({ hasText: /^Students$/ })).toBeVisible();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
   await page.getByRole("button", { name: "Edit profile for Guardian Workflow Student" }).click();
   await page.getByRole("button", { name: /Parents & siblings/i }).click();
   await expect(page.getByRole("dialog", { name: "Parents & Siblings" })).toBeVisible();
@@ -3010,7 +3010,7 @@ test("staff with guardian management permission cannot change an inactive studen
   await page.getByLabel("Username").fill("e2e-inactive-family");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Students" }).click();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
   await expect(page.getByRole("button", { name: "Edit profile for Inactive Family Student" })).toBeVisible();
   await page.getByRole("button", { name: "Edit profile for Inactive Family Student" }).click();
   await page.getByRole("button", { name: "Basic details" }).click();
@@ -3103,8 +3103,8 @@ test("switching student profiles clears unsaved basic-details drafts and validat
   await page.getByLabel("Username").fill("e2e-school-admin");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
-  await page.getByRole("button", { name: "Students" }).click();
+  await expect(page.locator("button.nav-item").filter({ hasText: /^Students$/ })).toBeVisible();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
 
   await page.getByRole("button", { name: "Edit profile for Student A" }).click();
   await page.getByRole("button", { name: "Basic details" }).click();
@@ -3186,8 +3186,8 @@ test("switching student Parent Details clears unsaved guardian drafts and field 
   await page.getByLabel("Username").fill("e2e-school-admin");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
-  await page.getByRole("button", { name: "Students" }).click();
+  await expect(page.locator("button.nav-item").filter({ hasText: /^Students$/ })).toBeVisible();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
 
   await page.getByRole("button", { name: "Edit profile for Family Student A" }).click();
   await page.getByRole("button", { name: /Parents & Siblings/i }).click();
@@ -3337,8 +3337,8 @@ test("switching student profiles clears address, contact, medical and physical d
   await page.getByLabel("Username").fill("e2e-profile-state");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await expect(page.getByRole("button", { name: "Students" })).toBeVisible();
-  await page.getByRole("button", { name: "Students" }).click();
+  await expect(page.locator("button.nav-item").filter({ hasText: /^Students$/ })).toBeVisible();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
 
   await page.getByRole("button", { name: "Edit profile for State Student A" }).click();
   await page.getByRole("button", { name: /Address & communication/ }).click();
@@ -3540,7 +3540,7 @@ test("archived student profile sections remain readable but cannot be changed", 
   await page.getByLabel("Username").fill("e2e-archived-student");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Students" }).click();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
   await page.getByRole("button", { name: "Edit profile for Archived Student" }).click();
   const profileDialog = page.getByRole("dialog", { name: "Student profile" });
   await expect(profileDialog.getByText("archived", { exact: true })).toBeVisible();
@@ -3634,7 +3634,7 @@ test("student directory pagination resets when search, status or academic-year f
   await page.getByLabel("Username").fill("e2e-directory-pagination");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Students" }).click();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
   await expect(page.getByText("Directory Student 1", { exact: true })).toBeVisible();
   await expect(page.getByText("Showing 1–20 of 45")).toBeVisible();
   await page.getByRole("button", { name: "Next" }).click();
@@ -3755,7 +3755,7 @@ test("student directory returns to the last valid page when archiving empties th
   await page.getByLabel("Username").fill("e2e-directory-archive");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Students" }).click();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
   await expect(page.getByText("Showing 1–20 of 41")).toBeVisible();
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("Showing 21–40 of 41")).toBeVisible();
@@ -3815,7 +3815,7 @@ test("student directory sends wildcard characters as literal search text", async
   await page.getByLabel("Username").fill("e2e-literal-search");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Students" }).click();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
   const literalSearch = "Updated%_\\";
   await page.getByRole("textbox", { name: "Search students" }).fill(literalSearch);
   await expect.poll(() => receivedQueries.at(-1)).toBe(literalSearch);
@@ -3883,7 +3883,7 @@ test("enrollment directory pagination requests only the selected page", async ({
   await page.getByLabel("Username").fill("e2e-enrollment-pagination");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.getByRole("button", { name: "Students" }).click();
+  await page.locator("button.nav-item").filter({ hasText: /^Students$/ }).click();
   await page.getByRole("button", { name: "Enrollments" }).click();
   await expect(page.getByText("Enrollment Student 1", { exact: true })).toBeVisible();
   await expect(page.getByText("Showing 1–20 of 45")).toBeVisible();
