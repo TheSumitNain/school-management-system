@@ -1629,3 +1629,10 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Frontend CI [46115928660](https://github.com/TheSumitNain/school-management-system/actions/runs/46115928660) completed **FAIL**: build and Chromium setup passed; Playwright **185 passed, 5 failed, 3 flaky**. All failed/flaky tests are Student Management strict-locator conflicts where `getByRole('button', {name: 'Students'})` matches both the sidebar item and dashboard shortcut. The job log showed no Staff Management test failures. Backend CI [46115928661](https://github.com/TheSumitNain/school-management-system/actions/runs/46115928661) **PASS**.
 - This does not replace local Account & Access/lifecycle browser acceptance or authenticated School Admin sign-off. Keep the Account & Access page open; do not advance to another Staff Management page until those gates pass.
 - Next batch is one combined Windows Playwright run for Staff Account & Access/lifecycle, workload-only Teacher, failed Teacher Assignment refresh, Role Management and Platform Admin. Keep the page scope unchanged; document upload remains deferred and excluded. `main` remains untouched.
+
+
+## 2026-11-28 — Account & Access browser acceptance batch (automated) PASS
+
+- Local focused Playwright run: Staff Account & Access **8/8**, workload-only Teacher visibility **1/1**, failed Teacher Assignment refresh **1/1**, Role Management **3/3**, Platform Admin **3/3** — **16/16 passed, zero failures**.
+- This verifies the listed automated workflows but is not manual School Admin sign-off and does not close the page at 100%. The Account & Access page remains the active page; next gate is authenticated School Admin manual acceptance of the visible UI and effective role scope. Do not start another Staff Management page before this gate.
+- Full Frontend CI remains red only on the already-recorded Student Management ambiguous Students-button locator cases; it must not be represented as green. main untouched; document upload remains deferred/excluded.
