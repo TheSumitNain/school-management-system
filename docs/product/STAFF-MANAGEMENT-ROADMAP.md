@@ -1,3 +1,13 @@
+## 2026-11-28 — Staff access matrix, Teacher eligibility and workload scope
+
+- Canonical role/page/permission/lifecycle matrix: [STAFF-MANAGEMENT-ACCESS-MATRIX.md](STAFF-MANAGEMENT-ACCESS-MATRIX.md).
+- ACCESS-11 implemented on work: active Teaching profile required for Teacher role; DB and repository guards; effective permissions suppress legacy invalid assignments; staff-type conversion requires revoking Teacher role first; clear 422/409 API responses and UI guidance.
+- ACCESS-12 implemented on work: timetable-only Teacher navigation is My Workload, with self-scoped title/summary/export and hidden staff filters; School Admin retains school-wide report.
+- Updated PostgreSQL fixtures and added Playwright coverage. Initial Backend CI failed due old fixtures and a legacy authorization expectation; those were corrected. Latest Backend CI and Frontend CI are pending/in progress; local verification remains pending. Do not claim complete until green.
+- Current code head before this docs commit: a73f16c2c750fae9d18f2601e0f6766c553f8fd1. See docs/project/STATUS.md for continuation state.
+
+---
+
 ## 2026-11-28 — ACCESS-11 Teacher-role eligibility guard implemented
 
 - Added V73 PostgreSQL guards so the Teacher system role is assigned only to an active Teaching employee, and a profile cannot be converted away from Teaching until the Teacher role is revoked.
