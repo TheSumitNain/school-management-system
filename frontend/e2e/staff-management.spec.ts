@@ -2876,6 +2876,36 @@ test("staff role assignment and removal require the delegated permission and exp
   await expect.poll(() => auditReads).toBeGreaterThan(firstAuditReadCount);
 });
 
+test("Teacher role is not offered to an active Non-teaching employee", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 514, school_id: 10, username: "support.staff",
+    employee_code: "EMP-SUPPORT-01", full_name: "Support Staff", designation: "Office Assistant",
+    staff_type: "non_teaching", mobile_number: "9876543212", employment_status: "active",
+    profile_complete: true, status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "roles.read", "roles.assign"]);
+  await page.route("**/api/school/roles", async route => {
+    await route.fulfill({ json: { roles: [
+      { id: 4, role_key: "teacher", name: "Teacher", is_system: true, created_at: "2026-01-01T00:00:00Z" },
+      { id: 5, role_key: "librarian", name: "Librarian", is_system: false, created_at: "2026-01-01T00:00:00Z" },
+    ] } });
+  });
+  await page.route("**/api/school/staff/514/roles", async route => {
+    await route.fulfill({ json: { roles: [] } });
+  });
+
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "View profile for support.staff" }).click();
+  const profile = page.getByRole("dialog", { name: "Support Staff" });
+  await profile.getByRole("button", { name: "Account & Access" }).click();
+  await expect(profile.getByText("Teacher role is available only for an account with an active login and an active Teaching employee profile.")).toBeVisible();
+
+  const roleSelect = profile.locator('button[aria-label="Role to assign to support.staff"]');
+  await roleSelect.click();
+  await expect(profile.getByRole("option", { name: "Teacher (system)" })).toHaveCount(0);
+  await expect(profile.getByRole("option", { name: "Librarian (custom)" })).toBeVisible();
+});
+
 test("staff permission overrides require a delegated permission, reason and removal confirmation", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 515, school_id: 10, username: "teacher.override-admin",
