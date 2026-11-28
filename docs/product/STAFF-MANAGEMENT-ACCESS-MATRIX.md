@@ -574,3 +574,11 @@ These are product/security decisions, not quick permission toggles. Keep the cur
 - New Playwright coverage added on 2026-11-28 verifies the no-permission/no-request boundary, 50-row pagination with safe-summary-only rendering, and retry after a failed audit request. These tests are pending local Windows and CI execution at commit 20a704be5d5fbd8afb4e3e20817f053f7429db69.
 - **Backend verification still required:** inspect the exact audit-events route, handler, service and repository to prove same-school target isolation, server-side school.audit.read enforcement, metadata exclusion from the response, bounded limit/offset validation, deterministic newest-first ordering with a unique tie-breaker, and correct has_more calculation. Frontend type definitions alone do not prove the server response is safe.
 - Do not mark History & Activity complete until backend integration/authorization tests, Playwright, responsive acceptance and authenticated School Admin role checks pass. Continue this tab only; do not jump to another Staff page.
+
+### Backend source audit follow-up (2026-11-28)
+
+- Route registration in backend/cmd/api/main.go applies authentication middleware and RequirePermission("school.audit.read") before StaffRecordsHandler.ListAuditEvents.
+- The handler independently validates authenticated actor/school context, positive target principal ID, limit 1–100 (default 50), and offset 0–1,000,000 (default 0); it returns an empty event array for a nil page.
+- The repository repeats the school.audit.read authorization check, confirms the target is a staff principal belonging to the actor's school (including legacy accounts without a staff_profiles row), scopes events by audit_events.school_id, and selects only id/action/resource_type/outcome/actor username/created_at. Event metadata is not selected into the response.
+- Event ordering is deterministic: created_at DESC, id DESC. The query fetches limit+1 rows and derives has_more from the extra row.
+- This closes the source-code review items for permission, tenant scoping, response allowlist, pagination bounds, ordering and has_more. PostgreSQL integration coverage for same-school/cross-school target access and exact pagination behaviour must still be confirmed from test output; source inspection is not a substitute for test execution.
