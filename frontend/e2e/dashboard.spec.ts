@@ -332,6 +332,12 @@ test("dashboard reports malformed metric payloads across all metrics and recover
   await expect(page.locator(".stat")).toHaveCount(0);
 
   await page.getByRole("button", { name: /Retry/ }).click();
+  await expect(page.getByRole("alert")).toContainText("Accessible enrollments: Invalid enrollment response");
+  await expect(page.locator(".stat").filter({ hasText: "Staff accounts" }).locator("strong")).toHaveText("7");
+  await expect(page.locator(".stat").filter({ hasText: "Classes" }).locator("strong")).toHaveText("1");
+  await expect(page.locator(".stat").filter({ hasText: "Academic years" }).locator("strong")).toHaveText("1");
+
+  await page.getByRole("button", { name: /Retry/ }).click();
   const expected = [
     ["Staff accounts", "7"],
     ["Classes", "1"],
@@ -344,5 +350,5 @@ test("dashboard reports malformed metric payloads across all metrics and recover
     await expect(metric.locator("strong")).toHaveText(value);
   }
   await expect(page.getByRole("alert")).toHaveCount(0);
-  expect(requests).toEqual({ staff: 2, classes: 2, years: 2, enrollments: 2 });
+  expect(requests).toEqual({ staff: 3, classes: 3, years: 3, enrollments: 2 });
 });
