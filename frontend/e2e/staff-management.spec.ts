@@ -47,7 +47,7 @@ const staffUser = {
   school_id: 10,
 };
 
-async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>, onStaffMutation?: (path: string, route: Route) => Promise<void>, permissions = ["users.read", "users.create", "users.update"], onStaffRecordMutation?: (collection: string, route: Route) => Promise<void>, leaveRequestRows?: Array<Record<string, unknown>>, staffRecordRows?: Record<"qualifications" | "certifications" | "experience", Array<Record<string, unknown>>>) {
+async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, unknown>>, onStaffMutation?: (path: string, route: Route) => Promise<void>, permissions = ["users.read", "users.create", "users.update"], onStaffRecordMutation?: (collection: string, route: Route) => Promise<void>, leaveRequestRows?: Array<Record<string, unknown>>, staffRecordRows?: Record<"qualifications" | "certifications" | "experience", Array<Record<string, unknown>>>, onStaffCredentialDecision?: (collection: "qualifications" | "certifications", recordID: number, route: Route) => Promise<void>) {
   const staffRecords: Record<string, Array<Record<string, unknown>>> = staffRecordRows ?? { qualifications: [], certifications: [], experience: [] };
   const leaveTypes: Array<Record<string, unknown>> = [{ id: 1, name: "Casual Leave", is_paid: true, requires_approval: true, is_active: true }];
   const leaveRequests: Array<Record<string, unknown>> = leaveRequestRows ?? [{
@@ -307,6 +307,24 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
       const saved = { ...payload, id: schoolHolidays.length + 32 };
       schoolHolidays.push(saved);
       await route.fulfill({ json: { data: saved } });
+      return;
+    }
+
+    const staffCredentialVerificationMatch = path.match(/^\/school\/staff\/(\d+)\/(qualifications|certifications)\/(\d+)\/verification$/);
+    if (staffCredentialVerificationMatch && method === "POST") {
+      const collection = staffCredentialVerificationMatch[2] as "qualifications" | "certifications";
+      const recordID = Number(staffCredentialVerificationMatch[3]);
+      if (onStaffCredentialDecision) {
+        await onStaffCredentialDecision(collection, recordID, route);
+        return;
+      }
+      const index = staffRecords[collection].findIndex(item => Number(item.id) === recordID);
+      if (index < 0) { await route.fulfill({ status: 404, json: { message: "Credential not found" } }); return; }
+      const payload = request.postDataJSON() as {status:"verified"|"rejected";note?:string};
+      const saved = { ...staffRecords[collection][index], verification_status: payload.status, verification_notes: payload.note ?? "", verified_by_principal_id: 9001, verified_at: "2026-11-28T10:00:00.000Z" };
+      staffRecords[collection][index] = saved;
+      const singular = collection === "qualifications" ? "qualification" : "certification";
+      await route.fulfill({ json: { [singular]: saved } });
       return;
     }
     const staffRecordMatch = path.match(/^\/school\/staff\/(\d+)\/(qualifications|certifications|experience)(?:\/(\d+))?$/);
