@@ -564,3 +564,13 @@ These are product/security decisions, not quick permission toggles. Keep the cur
 - Frontend CI [46146670940](https://github.com/TheSumitNain/school-management-system/actions/runs/46146670940) and Backend CI [46146671047](https://github.com/TheSumitNain/school-management-system/actions/runs/46146671047) were pending when recorded. Local Windows verification is pending.
 - User has manually confirmed mobile bottom-sheet modal and centred tablet modal behaviour. New mobile action menu and 768px/900px sidebar changes are awaiting local acceptance.
 - Account & Access remains in progress; no 100% completion claim. Continue on this page until role-wise, responsive, automated and local acceptance gates are met.
+
+## 20. History & Activity — current UI contract and open backend audit
+
+- Profile tab is visible in the Staff profile tab list; the panel itself requires school.audit.read. Without that permission, it displays an access-denied message and must not issue the staff audit-events request.
+- The panel requests 50 events per page using limit=50 and offset pagination. has_more controls Older events; Newer events returns to the previous offset. Refresh and retry are explicit actions.
+- The UI currently renders only an action label, actor username, outcome and IST-formatted timestamp. It does not intentionally render event metadata, free-text reasons, credentials or other payload fields. Unknown action keys use a humanized fallback label.
+- Existing browser coverage verifies that leave decisions/creation/cancellation and role assignment/removal cause the employee audit history to be fetched again when the profile is reopened or the History & Activity tab is revisited.
+- New Playwright coverage added on 2026-11-28 verifies the no-permission/no-request boundary, 50-row pagination with safe-summary-only rendering, and retry after a failed audit request. These tests are pending local Windows and CI execution at commit 20a704be5d5fbd8afb4e3e20817f053f7429db69.
+- **Backend verification still required:** inspect the exact audit-events route, handler, service and repository to prove same-school target isolation, server-side school.audit.read enforcement, metadata exclusion from the response, bounded limit/offset validation, deterministic newest-first ordering with a unique tie-breaker, and correct has_more calculation. Frontend type definitions alone do not prove the server response is safe.
+- Do not mark History & Activity complete until backend integration/authorization tests, Playwright, responsive acceptance and authenticated School Admin role checks pass. Continue this tab only; do not jump to another Staff page.
