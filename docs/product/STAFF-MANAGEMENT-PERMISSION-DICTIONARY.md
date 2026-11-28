@@ -95,3 +95,16 @@ Before changing a permission, verify its catalogue description and delegability 
 - There is currently no delegated HR/Staff Manager permission bundle: users.read and staff operations are non-delegable. A Non-teaching custom role cannot be given Staff Directory access in the current policy.
 - There are no Teacher self-service staff attendance/leave permissions. The current staff attendance and leave keys are School Admin operational permissions, not own-record permissions.
 - Do not make these keys delegable without dedicated row-scoped/self-only API authorization and cross-employee negative tests.
+
+
+## 9. Credential verification (approved product decision — 2026-11-28)
+
+| Key | Meaning / UI effect | Delegable? | Where granted or changed |
+|---|---|---:|---|
+| staff.credentials.verify | Verify or reject staff education qualifications and professional certifications. Does not grant document upload/download, profile editing, or experience verification. | No | Automatically included in the School Admin system role by migration; no per-school setup. |
+
+- Keep verification authority separate from `users.update`. Editing a staff profile or credential's descriptive fields must not grant authority to mark a credential Verified/Rejected.
+- School Admin receives this permission automatically through the immutable system role, so the normal product flow needs no permission setup.
+- Verification applies only to qualifications and certifications. Previous employment is self-reported and is not presented as verified.
+- Rejection requires a concise reason; verification may include an optional note. Every status transition is audited transactionally with actor, school, staff, record type/id, previous status, new status and reason/note as appropriate. Do not put sensitive document content in audit metadata.
+- The permission is non-delegable and unavailable to Teacher/custom roles in this version. Revisit only if a dedicated HR role is introduced with explicit row-scope tests.
