@@ -1587,3 +1587,9 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Located existing Playwright and PostgreSQL/HTTP integration coverage for read-only access, protected School Admin accounts, role assign/revoke, Teacher eligibility, ALLOW/DENY overrides, self-escalation, cross-school denial and audit rollback. Test presence is not treated as a passing result.
 - ACCESS-16/17 remain documented permission-model constraints: role assignment UI requires role-read capability to load the role list; override viewing and mutation share `permissions.override`.
 - Next batch: complete permission-key dictionary and end-to-end employment/login lifecycle authorization audit. Local Windows focused tests and authenticated acceptance remain required.
+
+## 2026-11-28 — Employment/login lifecycle audit checkpoint
+
+- Confirmed Active/Inactive employment and Enabled/Disabled login are separate state machines. Employment inactivation is enforced by V28/V29 database triggers and revokes sessions; reactivation of employment alone does not re-enable login. Login enable requires Active employment, a complete profile and a new temporary password.
+- Added ACCESS-21 for the future formal Relieved/Archived/exit workflow. No new status or migration is approved in this batch.
+- Recorded the red Frontend CI checkpoint and green Backend CI checkpoint in the canonical access matrix. Frontend build passed in the failed run; Playwright did not. Focused local Account & Access/lifecycle tests remain the next acceptance gate.
