@@ -1593,3 +1593,12 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Confirmed Active/Inactive employment and Enabled/Disabled login are separate state machines. Employment inactivation is enforced by V28/V29 database triggers and revokes sessions; reactivation of employment alone does not re-enable login. Login enable requires Active employment, a complete profile and a new temporary password.
 - Added ACCESS-21 for the future formal Relieved/Archived/exit workflow. No new status or migration is approved in this batch.
 - Recorded the red Frontend CI checkpoint and green Backend CI checkpoint in the canonical access matrix. Frontend build passed in the failed run; Playwright did not. Focused local Account & Access/lifecycle tests remain the next acceptance gate.
+
+## 2026-11-28 — Batch 4 continuation checkpoint
+
+- Canonical access map and user-facing quick reference are in STAFF-MANAGEMENT-ACCESS-MATRIX.md. Read it before continuing this project in a new chat.
+- Current default role outcomes: School Admin gets the full Staff workspace; Teacher gets My Workload only (plus student/academic pages); a new Non-teaching account with no role gets Dashboard/Settings only; Platform Admin uses the platform workspace and delegates school permission ceilings.
+- Access controls have explicit screen locations: Platform Admin → Delegate school permissions; School Admin → Roles & permissions; employee profile → Account & Access; Edit employee profile → Employment; Directory account actions → Enable/Disable.
+- Code checkpoint fbcfd8c76895cb193c92f5d6aa6dd567c89cdf44: fixed lifecycle test assertions/selectors, aligned the Teacher workload-only test with the My Workload UI, and disabled Academic Assignment create actions when assignment state fails to load.
+- Backend CI [46114885133](https://github.com/TheSumitNain/school-management-system/actions/runs/46114885133) passed. Frontend CI [46114885123](https://github.com/TheSumitNain/school-management-system/actions/runs/46114885123) was still running when this note was written; verify its final result before acceptance.
+- Continue on work only. Do not report Staff Management 100% or invent an overall percentage. Run focused local Windows acceptance and real School Admin role verification before closing Account & Access.

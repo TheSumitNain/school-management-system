@@ -8,6 +8,29 @@
 
 > This is an evidence-based baseline from the current `work` branch. “Confirmed” means the current code explicitly implements the behaviour. “Needs verification” means the rule is not yet fully proven across UI, backend, data and real authenticated role sessions. Do not treat an intended role design as an implemented guarantee.
 
+## Quick answer — default access and where to change it
+
+This is the current code/migration-derived default, assuming the full migration chain is applied and no extra custom roles or overrides exist.
+
+| User | What appears by default | What does not appear by default |
+|---|---|---|
+| School Admin | **Staff** workspace: Overview, Staff Directory, Academic Assignments, Staff Attendance, Leave & Holidays, Substitutions, Workload Report, Reports and ID Cards. Employee profiles expose all profile tabs; Account & Access panels are permission-gated. | Individual DENY overrides and incomplete prerequisites can still restrict actions. |
+| Teacher | **My Workload** only inside the Staff workspace. Other shared pages: Dashboard, Students, student Attendance, Timetable and Settings. | Staff Directory, employee account actions, role/permission administration, staff attendance, leave/holidays, substitutions, ID Cards and school-wide workload. |
+| New Non-teaching Staff with no additional role | Dashboard and Settings only. | Teacher pages and all Staff workspace pages until an approved role is assigned. |
+| Platform Admin | Dashboard, Platform Admin and Settings. | School-level Staff workspace and employee profiles; platform admin delegates school permission ceilings instead. |
+
+**Important:** Teacher's shared **Attendance** page is student attendance, not **Staff Management → Attendance**. Teacher's default timetable-read permission produces the **My Workload** navigation label; it does not grant Staff Directory access.
+
+### Where each access change happens
+
+1. **Platform Admin → Delegate school permissions:** choose the school and a delegable permission; set whether School Admin may grant it to custom roles (can_assign_to_roles) and/or individual users (can_override_users).
+2. **School Admin → Roles & permissions:** create a custom role and add/remove only permissions covered by an active delegation.
+3. **Staff Directory → open employee profile → Account & Access:** assign/revoke a role, or add/remove an individual ALLOW/DENY override with a reason.
+4. **Staff Directory → Edit employee profile → Employment:** change employment Active/Inactive.
+5. **Staff Directory → Disable account / Enable account:** control login access separately from employment status.
+
+The full route, permission-key and lifecycle details follow below. The canonical continuation record is this file plus STAFF-MANAGEMENT-ROADMAP.md and docs/project/STATUS.md.
+
 ## 1. The access model — four separate concepts
 
 | Concept | Meaning | Where it is currently controlled |
@@ -208,7 +231,7 @@ New Teaching staff onboarding assigns this Teacher role transactionally. New Non
 ### What each role currently sees in the shared navigation
 
 - **School Admin:** Dashboard, Staff, Roles & permissions, Academics, Students, Attendance, Timetable, Settings (assuming the standard system role and no DENY override).
-- **Teacher:** Dashboard, Staff, Students, Attendance, Timetable, Settings. The Staff entry appears because the Teacher bundle includes `timetable.read`; within Staff the initial tab becomes Workload Report. The separate Timetable page is also visible. Teacher does not get Staff Directory or employee-account controls by default.
+- **Teacher:** Dashboard, My Workload, Students, Attendance, Timetable, Settings. The Staff workspace sidebar entry is labelled **My Workload** because the default Teacher bundle has timetable.read but no other Staff-management capability; its only accessible Staff workspace tab is My Workload. The separate Timetable page is also visible. Teacher does not get Staff Directory or employee-account controls by default.
 - **Non-teaching staff with no additional role:** after the new onboarding behaviour, no default role is assigned. With no effective permissions, the shared shell shows Dashboard and Settings only. A School Admin must assign an approved custom/system role before other pages appear.
 
 These are current code-derived navigation outcomes, not the final approved product UX. In particular, the Teacher seeing a top-level “Staff” page whose only available tab is “Workload Report” is confusing and should be reviewed in the role-aware navigation batch.
@@ -454,3 +477,32 @@ The database trigger also disables a profile inserted directly as Inactive. A se
 2. Inspect the first failed network request and test fixture/route handling; do not increase timeouts or weaken assertions to hide the issue.
 3. Fix the root cause, then rerun the focused group and the full Frontend CI suite.
 4. Record the exact passing commit and test output. Keep ACCESS-21 as a product-design gap; do not add a new status field/migration without a complete exit workflow.
+
+## 21. Batch 4 — Staff Account & Access and lifecycle test reconciliation
+
+**Code checkpoint:** fbcfd8c76895cb193c92f5d6aa6dd567c89cdf44 on work; main untouched.
+
+### Changes made
+
+- Corrected Staff Account & Access Playwright locators to use the actual employee-profile accessible button name (View profile for username) and the visible employee code in directory rows. The directory table shows employee name, employee code and employment status; it does not show the login username as row text or a separate login-status column.
+- Corrected lifecycle assertions to test the visible employment label and the Enable/Disable action state rather than expecting login status text in the Employment column. The Enable test fixture includes users.disable so it can verify the post-enable Disable action.
+- Updated the timetable-only Teacher test to use the current My Workload sidebar/tab and heading, rather than the old Staff / Workload Report / School-wide labels.
+- Fixed the Academic Assignments workspace so a failed subject-assignment list load disables the Assign subject teacher action, and a failed class-in-charge list load disables the Assign class in-charge action. This prevents writes when the current assignment state cannot be verified.
+
+### CI state at this checkpoint
+
+- Backend CI [46114885133](https://github.com/TheSumitNain/school-management-system/actions/runs/46114885133): **PASS** — complete migration chain, Go tests, PostgreSQL integration and vet.
+- Frontend CI [46114885123](https://github.com/TheSumitNain/school-management-system/actions/runs/46114885123): **IN PROGRESS** when this checkpoint was written. TypeScript/Vite production build and Chromium installation had passed; full Playwright suite was still running. Do not infer its final result.
+- The prior Frontend CI run [46114254986](https://github.com/TheSumitNain/school-management-system/actions/runs/46114254986) had 177 passing, 15 failing and 1 flaky test. Account & Access role/override profile-navigation locator failures were resolved in the current checkpoint; the current run is the acceptance gate for the lifecycle/workload/assignment fixes.
+- Local Windows focused Account & Access/lifecycle tests and authenticated School Admin acceptance are still required.
+
+### Next batch
+
+1. Read the final result of Frontend CI [46114885123] and inspect any remaining Staff-related failures before changing anything else.
+2. Run the focused local Windows command from the latest roadmap/status checkpoint.
+3. Complete authenticated School Admin acceptance for role assign/revoke, ALLOW/DENY override, protected School Admin, Teacher eligibility, employment Active/Inactive and login Enable/Disable.
+4. Only after those pass, mark Account & Access accepted and move to the next unfinished page. Do not declare the whole Staff Management page 100%.
+
+### Page-level reporting rule
+
+Keep previously accepted scope and pending manual acceptance separate. Staff Dashboard and Staff Directory were previously accepted for their current planned scope (document upload excluded). Other modules with green automated suites remain pending their recorded authenticated manual sign-off. Do not publish a single overall Staff Management percentage until the role/page matrix, all page workflows and manual acceptance evidence are reconciled.

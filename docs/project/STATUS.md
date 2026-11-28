@@ -3089,3 +3089,20 @@ This update supersedes older status bullets that listed the following database-b
 - Backend CI [45944728147](https://github.com/TheSumitNain/school-management-system/actions/runs/45944728147) **PASS** on `f26e635e8cb776902325fe16868cee90e7ec451e`: migration chain, Go unit/integration tests including the V72 real concurrent leave/assignment race, and `go vet`.
 - Remaining page exit gate is a real authenticated School Admin sign-off. Execute against a test timetable in the target school: (1) assign cover for a lesson on the matching weekday inside the active academic year; (2) verify only active Teaching staff with the matching class/subject assignment are eligible; (3) verify an approved-leave substitute is rejected with a clear message; (4) verify overlapping leave approval is rejected and remains pending; (5) cancel a future cover and confirm the cancelled history remains; (6) confirm completed coverage cannot be cancelled; (7) verify read-only access exposes history but no management controls; (8) verify mobile/landscape layout, filters, pagination and CSV export.
 - Do not mark Substitute Teacher Coverage or Staff Management 100% until that sign-off and the outstanding product/policy approvals are recorded. Document upload remains deferred; `main` remains untouched.
+
+## 2026-11-28 — Staff Management access map and continuation checkpoint
+
+- **Source of truth:** docs/product/STAFF-MANAGEMENT-ACCESS-MATRIX.md for role/page visibility, exact permission gates, grant/revoke screens, employment/login lifecycle, gaps and batch history; docs/product/STAFF-MANAGEMENT-ROADMAP.md for ordered delivery.
+- **Current code checkpoint:** fbcfd8c76895cb193c92f5d6aa6dd567c89cdf44 on branch work. Never update main.
+- **Default page map:** School Admin → Staff workspace; Teacher → My Workload only inside Staff; new Non-teaching account with no role → Dashboard/Settings; Platform Admin → Platform Admin workspace, not school Staff.
+- **Permission control path:** Platform Admin delegates exact permission keys/capabilities; School Admin builds custom roles in Roles & permissions; employee-specific role and ALLOW/DENY changes live in Staff Profile → Account & Access.
+- **Employment and login are separate:** employment Active/Inactive is edited in the employee profile; login Disable/Enable is a separate Directory action. Inactive employment disables login and revokes sessions; reactivating employment alone does not re-enable login.
+- **Batch 4 code changes:** Account & Access/lifecycle test selectors and assertions corrected; workload-only Teacher test aligned to My Workload; Academic Assignment create actions disabled when assignment lists fail to load.
+- **CI:** Backend CI [46114885133](https://github.com/TheSumitNain/school-management-system/actions/runs/46114885133) PASS. Frontend CI [46114885123](https://github.com/TheSumitNain/school-management-system/actions/runs/46114885123) was in progress at this checkpoint; check final result before claiming frontend acceptance.
+- **Next:** inspect final Frontend CI result; run the focused Windows command below; complete authenticated School Admin acceptance of Account & Access before moving to the next page.
+
+```cmd
+cd /d D:\school-management-system && git pull --ff-only origin work && cd /d D:\school-management-system\frontend && npm run typecheck && npm run build && npx playwright test e2e/staff-management.spec.ts --grep "disabling a staff account|enabling a disabled staff account|staff account re-enable|staff account access|protected peer School Admin|staff role assignment and removal|staff permission overrides|Teacher role is not offered" && npx playwright test e2e/staff-reports.spec.ts --grep "workload-only permission" && npx playwright test e2e/teacher-assignments.spec.ts --grep "failed assignment refresh" && npx playwright test e2e/role-management.spec.ts
+```
+
+- Do not declare Staff Management 100% from automated tests alone. Document upload remains deferred and excluded. Preserve existing page-level acceptance records; do not invent an overall percentage.
