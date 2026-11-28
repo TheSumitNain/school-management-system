@@ -2056,6 +2056,80 @@ test("staff profile creates education, certification and experience records", as
   await expect(dialog.getByText("Senior Science Teacher")).toBeVisible();
 });
 
+test("staff credential verification controls require the dedicated permission", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 622, school_id: 10, username: "teacher.credential-no-permission",
+    employee_code: "EMP-CRED-01", full_name: "Credential Teacher", designation: "Science Teacher",
+    mobile_number: "9876543213", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const records: Record<"qualifications" | "certifications" | "experience", Array<Record<string, unknown>>> = {
+    qualifications: [{ id: 951, staff_principal_id: 622, qualification_type: "postgraduate", qualification_name: "M.Sc. Physics", institution: "State University", verification_status: "pending" }],
+    certifications: [{ id: 952, staff_principal_id: 622, certificate_name: "First Aid", issuing_organization: "State Board", verification_status: "pending" }],
+    experience: [],
+  };
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.update"], undefined, undefined, records);
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "View profile for teacher.credential-no-permission" }).click();
+  const dialog = page.getByRole("dialog", { name: "Credential Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+  const qualification = dialog.locator(".staff-record-card").filter({ hasText: "M.Sc. Physics" });
+  const certification = dialog.locator(".staff-record-card").filter({ hasText: "First Aid" });
+  await expect(qualification.getByRole("button", { name: "Edit" })).toBeVisible();
+  await expect(qualification.getByRole("button", { name: "Verify" })).toHaveCount(0);
+  await expect(qualification.getByRole("button", { name: "Reject" })).toHaveCount(0);
+  await expect(certification.getByRole("button", { name: "Verify" })).toHaveCount(0);
+  await expect(certification.getByRole("button", { name: "Reject" })).toHaveCount(0);
+});
+
+test("staff qualification and certification verification decisions are audited and displayed", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 623, school_id: 10, username: "teacher.credential-review",
+    employee_code: "EMP-CRED-02", full_name: "Credential Review Teacher", designation: "Science Teacher",
+    mobile_number: "9876543214", employment_status: "active", profile_complete: true,
+    status: "active", must_change_password: false,
+  }];
+  const records: Record<"qualifications" | "certifications" | "experience", Array<Record<string, unknown>>> = {
+    qualifications: [{ id: 961, staff_principal_id: 623, qualification_type: "postgraduate", qualification_name: "M.Sc. Physics", institution: "State University", verification_status: "pending" }],
+    certifications: [{ id: 962, staff_principal_id: 623, certificate_name: "First Aid", issuing_organization: "State Board", verification_status: "pending" }],
+    experience: [],
+  };
+  const decisions: Array<{collection:string;recordID:number;payload:Record<string,unknown>}> = [];
+  await signInAndOpenStaff(page, rows, undefined, ["users.read", "users.update", "staff.credentials.verify"], undefined, undefined, records,
+    async (collection, recordID, route) => {
+      const payload = route.request().postDataJSON() as Record<string, unknown>;
+      decisions.push({collection,recordID,payload});
+      const index = records[collection].findIndex(item => Number(item.id) === recordID);
+      expect(index).toBeGreaterThanOrEqual(0);
+      const saved = { ...records[collection][index], verification_status: payload.status, verification_notes: payload.note ?? "", verified_by_principal_id: 9001, verified_at: "2026-11-28T10:00:00.000Z" };
+      records[collection][index] = saved;
+      const singular = collection === "qualifications" ? "qualification" : "certification";
+      await route.fulfill({ json: { [singular]: saved } });
+    });
+  await page.getByRole("button", { name: /Staff Directory/ }).click();
+  await page.getByRole("button", { name: "View profile for teacher.credential-review" }).click();
+  const dialog = page.getByRole("dialog", { name: "Credential Review Teacher" });
+  await dialog.getByRole("button", { name: "Qualifications & Experience" }).click();
+
+  const qualification = dialog.locator(".staff-record-card").filter({ hasText: "M.Sc. Physics" });
+  await qualification.getByRole("button", { name: "Verify" }).click();
+  await expect(qualification.getByText("verified")).toBeVisible();
+  await expect(qualification.getByText(/Reviewed by account #9001/)).toBeVisible();
+  await expect(qualification.getByRole("button", { name: "Verify" })).toHaveCount(0);
+
+  const certification = dialog.locator(".staff-record-card").filter({ hasText: "First Aid" });
+  await certification.getByRole("button", { name: "Reject" }).click();
+  await certification.getByLabel("Reason for rejection").fill("Certificate number could not be confirmed.");
+  await certification.getByRole("button", { name: "Confirm rejection" }).click();
+  await expect(certification.getByText("rejected")).toBeVisible();
+  await expect(certification.getByText("Note: Certificate number could not be confirmed.")).toBeVisible();
+  await expect(certification.getByText(/Reviewed by account #9001/)).toBeVisible();
+  expect(decisions).toEqual([
+    {collection:"qualifications",recordID:961,payload:{status:"verified"}},
+    {collection:"certifications",recordID:962,payload:{status:"rejected",note:"Certificate number could not be confirmed."}},
+  ]);
+});
+
 test("staff qualification, certification and experience edits preserve values after failure and retry", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 619, school_id: 10, username: "teacher.record-edit-retry",
