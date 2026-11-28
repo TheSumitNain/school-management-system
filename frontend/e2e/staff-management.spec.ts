@@ -356,8 +356,28 @@ async function signInAndOpenStaff(page: Page, staffRows: Array<Record<string, un
   await page.getByLabel("Username").fill("staff-e2e-admin");
   await page.getByLabel("Password").fill("E2E-only-password");
   await page.getByRole("button", { name: /Continue/ }).click();
-  await page.locator("button.nav-item").filter({ hasText: /^Staff$/ }).click();
+  await page.locator("button.nav-item").filter({ hasText: /^(Staff|My Workload)$/ }).click();
 }
+
+test("teacher-only timetable access opens a personal My Workload workspace", async ({ page }) => {
+  const rows: Array<Record<string, unknown>> = [{
+    id: 1, principal_id: 501, school_id: 10, username: "teacher.workload",
+    employee_code: "EMP-WL-01", full_name: "Workload Teacher", designation: "Science Teacher",
+    staff_type: "teaching", mobile_number: "9876543218", employment_status: "active",
+    profile_complete: true, status: "active", must_change_password: false,
+  }];
+  await signInAndOpenStaff(page, rows, undefined, ["timetable.read"]);
+
+  await expect(page.locator("button.nav-item").filter({ hasText: /^My Workload$/ })).toBeVisible();
+  await expect(page.locator(".staff-workspace-heading h1")).toHaveText("My Workload");
+  await expect(page.getByRole("heading", { name: "My Workload" })).toHaveCount(2);
+  await expect(page.getByText("My weekly periods")).toBeVisible();
+  await expect(page.getByText("Days with lessons")).toBeVisible();
+  await expect(page.getByLabel("Search workload report staff")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Export my workload CSV" })).toBeVisible();
+  await expect(page.getByText("Staff profiles")).toHaveCount(0);
+  await expect(page.getByText("Teachers with scheduled lessons")).toHaveCount(0);
+});
 
 test("staff workspace opens on a real-data overview and hides permission-gated or later-phase tabs", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [
