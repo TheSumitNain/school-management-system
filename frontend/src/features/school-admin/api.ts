@@ -605,7 +605,7 @@ export type StaffQualification = {
 };
 export type StaffCertification = {
   id: number; staff_principal_id: number; certificate_name: string; issuing_organization: string;
-  issue_date?: string; expiry_date?: string; credential_id?: string; verification_status: "pending" | "verified" | "rejected";
+  issue_date?: string; expiry_date?: string; credential_id?: string; verification_status: "pending" | "verified" | "rejected"; verification_notes?: string; verified_by_principal_id?: number | null; verified_at?: string | null;
   created_at: string; updated_at: string;
 };
 export type StaffExperience = {
