@@ -891,6 +891,12 @@ func TestAcademicFoundationAndStudentLifecyclePostgresIntegration(t *testing.T) 
 	if err != nil || len(years) < 3 { t.Fatalf("list academic years through repository: count=%d err=%v", len(years), err) }
 	classes, err := academicRepo.ListClasses(ctx, actorPrincipalID, schoolID)
 	if err != nil || len(classes) < 3 { t.Fatalf("list classes through repository: count=%d err=%v", len(classes), err) }
+	if _, err := academicRepo.ListAcademicYears(ctx, actorPrincipalID, otherSchoolID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school academic year list error = %v, want ErrAcademicAccessDenied", err)
+	}
+	if _, err := academicRepo.ListClasses(ctx, actorPrincipalID, otherSchoolID); !errors.Is(err, ErrAcademicAccessDenied) {
+		t.Fatalf("cross-school class list error = %v, want ErrAcademicAccessDenied", err)
+	}
 	sections, err := academicRepo.ListSections(ctx, actorPrincipalID, schoolID, apiYear.ID)
 	if err != nil || len(sections) != 1 || sections[0].ID != apiSection.ID { t.Fatalf("list sections through repository: items=%+v err=%v", sections, err) }
 	subjects, err := academicRepo.ListSubjects(ctx, actorPrincipalID, schoolID)
