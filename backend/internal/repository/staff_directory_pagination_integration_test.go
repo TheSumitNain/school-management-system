@@ -200,11 +200,25 @@ func TestStaffDirectorySummaryMatchesFilteredCountsAndEnforcesLivePermissionPost
 	}
 	defer func() { _ = denyTx.Rollback(fixture.ctx) }()
 	denyRepo := NewUserRepository(denyTx)
-	var usersReadPermissionID int64
+	var usersReadPermissionID, schoolAdminRoleID int64
 	if err := denyTx.QueryRow(fixture.ctx, `
 		SELECT id FROM permissions WHERE permission_key='users.read' AND scope_type='school'
 	`).Scan(&usersReadPermissionID); err != nil {
 		t.Fatalf("load users.read permission for DENY regression: %v", err)
+	}
+	if err := denyTx.QueryRow(fixture.ctx, `
+		SELECT id FROM roles
+		 WHERE school_id=$1 AND principal_type='staff' AND scope_type='school'
+		   AND role_key='school_admin' AND is_system=TRUE
+	`, fixture.schoolID).Scan(&schoolAdminRoleID); err != nil {
+		t.Fatalf("load School Admin role for DENY regression: %v", err)
+	}
+	if _, err := denyTx.Exec(fixture.ctx, `
+		INSERT INTO principal_roles (principal_id, role_id, assigned_by)
+		VALUES ($1,$2,$3)
+		ON CONFLICT (principal_id, role_id) DO NOTHING
+	`, fixture.staffPrincipalID, schoolAdminRoleID, fixture.adminPrincipalID); err != nil {
+		t.Fatalf("grant rollback-scoped School Admin role for DENY regression: %v", err)
 	}
 	var overrideDelegationID int64
 	if err := denyTx.QueryRow(fixture.ctx, `
@@ -222,13 +236,13 @@ func TestStaffDirectorySummaryMatchesFilteredCountsAndEnforcesLivePermissionPost
 		ON CONFLICT (principal_id, school_id, permission_id)
 		DO UPDATE SET effect='deny', reason=EXCLUDED.reason, granted_by=EXCLUDED.granted_by,
 		              delegation_id=EXCLUDED.delegation_id
-	`, fixture.adminPrincipalID, fixture.schoolID, usersReadPermissionID, fixture.adminPrincipalID, overrideDelegationID); err != nil {
+	`, fixture.staffPrincipalID, fixture.schoolID, usersReadPermissionID, fixture.adminPrincipalID, overrideDelegationID); err != nil {
 		t.Fatalf("apply users.read DENY override: %v", err)
 	}
-	if denied, err := denyRepo.GetStaffDirectorySummary(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID); err == nil || denied != nil {
+	if denied, err := denyRepo.GetStaffDirectorySummary(fixture.ctx, fixture.staffPrincipalID, fixture.schoolID); err == nil || denied != nil {
 		t.Fatalf("staff directory summary ignored users.read DENY override: summary=%+v err=%v", denied, err)
 	}
-	if denied, err := denyRepo.ListStaffDirectoryPage(fixture.ctx, fixture.adminPrincipalID, fixture.schoolID,
+	if denied, err := denyRepo.ListStaffDirectoryPage(fixture.ctx, fixture.staffPrincipalID, fixture.schoolID,
 		models.StaffDirectoryFilter{Limit: 10}); err == nil || denied != nil {
 		t.Fatalf("staff directory page ignored users.read DENY override: page=%+v err=%v", denied, err)
 	}
