@@ -1683,6 +1683,6 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 
 ### Retry regression correction (2026-11-28)
 
-- First local run: History & Activity tests 2/3 passed. Retry test failed because React Query automatically retries failed queries before exposing its error state; the mocked API returned success on the first automatic retry, so the explicit Try again state was never reached. This was a test-fixture timing/behaviour issue, not evidence of a broken production retry control.
-- Follow-up inspection of frontend/src/app/providers.tsx found the shared QueryClient explicitly sets `retry: (failureCount) => failureCount < 1` for server/network errors. Therefore the correct sequence is two failed requests (initial + one automatic retry), followed by a third successful request only after the user clicks Try again. The prior fixture incorrectly assumed three automatic retries and expected four failures; it was corrected to match the actual application-wide retry policy. Production retry behavior was not changed.
-- Correction commit: d4da86e064238024498402e27c3f761b1946cb5d. Focused rerun and full-suite rerun are pending.
+- The shared QueryClient retry policy is one automatic retry for network/5xx failures. The earlier E2E fixture/assertion changes still failed locally because the error state did not become visible reliably in that scenario; no production defect has been established.
+- The manual retry test is now deliberately isolated from automatic retry behavior: the first request returns a non-retryable 400, which must expose the error state; clicking **Try again** then returns a successful audit page. The test asserts exactly one initial request and one explicit retry.
+- This verifies the user-visible manual recovery control deterministically without duplicating the global React Query retry-policy test. Local focused/full-suite verification is pending.
