@@ -1288,7 +1288,75 @@ textarea[aria-invalid="true"]:focus,
 .dashboard-page .welcome p {
   overflow-wrap: anywhere;
 }
+
+.dashboard-workspaces {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  align-items: center;
+  gap: 18px 24px;
+  margin-top: 18px;
+  padding: 20px 22px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.dashboard-workspaces > div:first-child {
+  min-width: 0;
+}
+.dashboard-workspaces h2 {
+  margin: 7px 0 5px;
+  color: var(--color-text);
+  font: 750 16px var(--font-heading);
+}
+.dashboard-workspaces p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.dashboard-workspace-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: 0;
+}
+.dashboard-workspaces .text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 8px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  color: var(--color-brand);
+  font-size: 11px;
+  font-weight: 650;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.dashboard-workspaces .text-button:hover {
+  border-color: var(--color-brand);
+  background: var(--color-brand-subtle);
+}
+.dashboard-workspaces .text-button:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 @media (max-width: 740px) {
+  .dashboard-workspaces {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    padding: 18px;
+  }
+  .dashboard-workspace-links {
+    justify-content: flex-start;
+  }
   .dashboard-page > .heading {
     gap: 12px;
   }
