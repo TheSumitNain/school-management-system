@@ -1662,3 +1662,11 @@ The roadmap was informed by public product pages, manuals and walkthroughs for m
 - Follow-up verification note (2026-11-28): user confirms tablet rendering looks correct; local typecheck and production build passed. Corrected the responsive test's multi-element hidden assertion (strict-mode issue, not an observed visual defect). Re-run `workspace-responsive.spec.ts` and the complete `staff-management.spec.ts` suite before closing Account & Access.
 
 - 2026-11-28 responsive regression follow-up: the desktop sidebar assertion also treated the 8 `.nav-item-label` elements as a single locator. Updated it to assert that every desktop navigation label is rendered and visible, matching the tablet assertion's collection-safe approach. Awaiting local responsive and Staff Management Playwright rerun; Account & Access is not yet marked complete.
+
+
+## 2026-11-28 — Responsive and Staff Management regression rerun
+
+- Local responsive Playwright: **1/1 PASS**.
+- Full Staff Management Playwright: **144/145 PASS**. Account & Access automated checks passed in this run.
+- The one failing mobile directory test expected a desktop-only standalone View button, while the current mobile design correctly exposes `View profile` inside the accessible three-dot actions menu. Updated the test to exercise the actual mobile menu action and verify the same profile-detail fetch/open behavior. No production UI behavior was changed in this correction.
+- Pending user rerun of the focused mobile directory test and full Staff Management suite. Account & Access stays the active page until verification and remaining acceptance gates are complete. Do not mark 100% or start the next page. `main` untouched; document upload remains deferred/excluded.
