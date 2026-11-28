@@ -6223,7 +6223,7 @@ test("refreshing the daily attendance register discards unsaved drafts in favor 
 });
 
 
-test("staff directory shows a compact four-column list and an explicit View action on mobile", async ({ page }) => {
+test("staff directory shows a compact four-column list and an accessible View profile action on mobile", async ({ page }) => {
   const rows: Array<Record<string, unknown>> = [{
     id: 1, principal_id: 991, school_id: 10, username: "compact.directory",
     employee_code: "EMP-COMPACT-01", full_name: "Compact Directory Teacher",
@@ -6248,11 +6248,14 @@ test("staff directory shows a compact four-column list and an explicit View acti
   await expect(table.locator("thead th")).toHaveCount(4);
   await expect(table.getByRole("columnheader", { name: "Designation" })).toBeHidden();
   const row = table.locator("tbody tr").filter({ hasText: "Compact Directory Teacher" });
-  const viewButton = row.getByRole("button", { name: "View profile for compact.directory" });
-  await expect(viewButton).toHaveAttribute("title", "View all details");
-  await expect(viewButton.locator("svg")).toBeVisible();
+  const actionsTrigger = row.getByRole("button", { name: "More actions for compact.directory" });
+  await expect(actionsTrigger).toBeVisible();
+  await expect(actionsTrigger).toHaveAttribute("aria-haspopup", "menu");
+  await actionsTrigger.click();
+  const viewAction = page.getByRole("menuitem", { name: "View profile", exact: true });
+  await expect(viewAction).toBeVisible();
   const detailRequest = page.waitForRequest(request => request.method() === "GET" && new URL(request.url()).pathname.endsWith("/school/staff/991"));
-  await viewButton.click();
+  await viewAction.click();
   await detailRequest;
   const profile = page.getByRole("dialog", { name: "Compact Directory Teacher" });
   await expect(profile.getByRole("button", { name: "Personal Details" })).toBeVisible();
