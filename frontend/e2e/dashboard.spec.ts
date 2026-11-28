@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("dashboard shows permission-scoped staff, class and current-year enrollment totals", async ({ page }) => {
+test("dashboard shows permission-scoped staff, class and accessible current-year enrollment totals", async ({ page }) => {
   const requested: string[] = [];
   const permissions = ["users.read", "classes.read", "academic_years.read", "students.read_basic"];
 
@@ -60,7 +60,7 @@ test("dashboard shows permission-scoped staff, class and current-year enrollment
     ["Staff accounts", "7"],
     ["Classes", "4"],
     ["Academic years", "2"],
-    ["Current-year enrollments", "18"],
+    ["Accessible enrollments", "18"],
   ] as const;
   for (const [label, value] of metrics) {
     const metric = page.locator(".stat").filter({ hasText: label });
@@ -262,4 +262,56 @@ test("dashboard shows a helpful empty state when the account has no overview per
 
   await expect(page.locator(".stat")).toHaveCount(0);
   expect(unexpectedRequests).toEqual([]);
+});
+
+
+test("dashboard reports malformed metric payloads and recovers on retry instead of showing a false zero", async ({ page }) => {
+  let classRequests = 0;
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace(/^\/api/, "");
+    if (path === "/auth/refresh") {
+      await route.fulfill({ status: 401, json: { message: "No active session" } });
+      return;
+    }
+    if (path === "/auth/login" && request.method() === "POST") {
+      await route.fulfill({ json: {
+        access_token: "e2e-dashboard-malformed-token",
+        token_type: "Bearer",
+        principal: { principal_id: 155, principal_type: "staff", status: "active", school_id: 10 },
+      } });
+      return;
+    }
+    if (path === "/auth/me") {
+      await route.fulfill({ json: {
+        principal_id: 155, principal_type: "staff", school_id: 10,
+        username: "e2e-dashboard-malformed", permissions: ["classes.read"],
+      } });
+      return;
+    }
+    if (path === "/school/classes") {
+      classRequests += 1;
+      if (classRequests === 1) {
+        await route.fulfill({ json: { classes: { total: 0 } } });
+      } else {
+        await route.fulfill({ json: { classes: [{ id: 1 }] } });
+      }
+      return;
+    }
+    await route.fulfill({ status: 404, json: { message: `Unmocked dashboard request: ${request.method()} ${path}` } });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill("e2e-dashboard-malformed");
+  await page.getByLabel("Password").fill("E2E-only-password");
+  await page.getByRole("button", { name: /Continue/ }).click();
+
+  await expect(page.getByRole("alert")).toContainText("Classes: Invalid classes response");
+  await expect(page.locator(".stat").filter({ hasText: "Classes" })).toHaveCount(0);
+  await page.getByRole("button", { name: /Retry/ }).click();
+  const classesMetric = page.locator(".stat").filter({ hasText: "Classes" });
+  await expect(classesMetric).toBeVisible();
+  await expect(classesMetric.locator("strong")).toHaveText("1");
+  expect(classRequests).toBe(2);
 });
