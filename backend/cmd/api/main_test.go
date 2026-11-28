@@ -1449,3 +1449,67 @@ func TestHolidayManagerCanReachCalendarReadRouteWithoutSeparateReadGrant(t *test
 		t.Fatalf("holiday manager should pass route authorization and reach handler: status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 }
+
+
+func TestDashboardAcademicReadRoutesEnforceTheirLivePermissions(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	validator := fakeTokenValidator{claims: &services.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "31"},
+		PrincipalType: "staff",
+		TokenVersion: 1,
+	}}
+	principal := &models.AuthPrincipal{
+		ID: 31, Type: "staff", Status: "active", TokenVersion: 1,
+		SchoolID: 8, Username: "dashboard.reader",
+	}
+	academicHandler := handlers.NewAcademicHandler(nil)
+	cases := []struct {
+		name       string
+		path       string
+		permission string
+	}{
+		{name: "academic years", path: "/school/academic-years", permission: "academic_years.read"},
+		{name: "classes", path: "/school/classes", permission: "classes.read"},
+		{name: "student enrollments", path: "/school/enrollments?academic_year_id=12", permission: "students.read_basic"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, permissions := range [][]string{nil, { "unrelated.permission" }} {
+				router, err := setupTestRouterWithHandlers(
+					fakeDatabase{}, nil, validator,
+					fakePrincipalLoader{principal: principal},
+					fakePermissionLoader{permissions: permissions},
+					nil, nil, academicHandler,
+				)
+				if err != nil {
+					t.Fatalf("setup router: %v", err)
+				}
+				request := httptest.NewRequest(http.MethodGet, tc.path, nil)
+				request.Header.Set("Authorization", "Bearer valid-test-token")
+				recorder := httptest.NewRecorder()
+				router.ServeHTTP(recorder, request)
+				if recorder.Code != http.StatusForbidden {
+					t.Fatalf("without %s status=%d body=%s want=403", tc.permission, recorder.Code, recorder.Body.String())
+				}
+			}
+
+			router, err := setupTestRouterWithHandlers(
+				fakeDatabase{}, nil, validator,
+				fakePrincipalLoader{principal: principal},
+				fakePermissionLoader{permissions: []string{tc.permission}},
+				nil, nil, academicHandler,
+			)
+			if err != nil {
+				t.Fatalf("setup authorized router: %v", err)
+			}
+			request := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			request.Header.Set("Authorization", "Bearer valid-test-token")
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, request)
+			if recorder.Code != http.StatusServiceUnavailable {
+				t.Fatalf("with %s request should pass route authorization and reach unavailable handler, status=%d body=%s want=503", tc.permission, recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}
