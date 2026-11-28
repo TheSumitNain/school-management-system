@@ -3157,3 +3157,5 @@ cd /d D:\school-management-system && git pull --ff-only origin work && cd /d D:\
 - Code is on `work`; `main` untouched. Document upload remains deferred and excluded from Staff Management completion.
 
 - 2026-11-28 follow-up: local user verification confirms tablet appearance is correct; typecheck and Vite production build pass. The first local responsive Playwright run stopped on a strict-mode assertion that incorrectly applied `toBeHidden()` to the collection of eight nav labels. Updated the test to assert every label's computed display state. Re-run responsive and Staff Management suites after pulling `6b54b87`; do not treat this test correction as completed verification until the rerun passes.
+
+- 2026-11-28 responsive regression follow-up: the desktop sidebar assertion also treated the 8 `.nav-item-label` elements as a single locator. Updated it to assert that every desktop navigation label is rendered and visible, matching the tablet assertion's collection-safe approach. Awaiting local responsive and Staff Management Playwright rerun; Account & Access is not yet marked complete.
